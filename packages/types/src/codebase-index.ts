@@ -25,6 +25,7 @@ export const codebaseIndexConfigSchema = z.object({
 		.enum([
 			"openai",
 			"ollama",
+			"lmstudio",
 			"openai-compatible",
 			"gemini",
 			"mistral",
@@ -35,6 +36,10 @@ export const codebaseIndexConfigSchema = z.object({
 		])
 		.optional(),
 	codebaseIndexEmbedderBaseUrl: z.string().optional(),
+	codebaseIndexLmStudioBaseUrl: z.string().optional(),
+	// LM Studio specific fields
+	codebaseIndexLmStudioUseRestApi: z.boolean().optional(),
+	codebaseIndexLmStudioBypassProxy: z.boolean().optional(),
 	codebaseIndexEmbedderModelId: z.string().optional(),
 	codebaseIndexEmbedderModelDimension: z.number().optional(),
 	codebaseIndexSearchMinScore: z.number().min(0).max(1).optional(),
@@ -62,6 +67,7 @@ export type CodebaseIndexConfig = z.infer<typeof codebaseIndexConfigSchema>
 export const codebaseIndexModelsSchema = z.object({
 	openai: z.record(z.string(), z.object({ dimension: z.number() })).optional(),
 	ollama: z.record(z.string(), z.object({ dimension: z.number() })).optional(),
+	lmstudio: z.record(z.string(), z.object({ dimension: z.number() })).optional(),
 	"openai-compatible": z.record(z.string(), z.object({ dimension: z.number() })).optional(),
 	gemini: z.record(z.string(), z.object({ dimension: z.number() })).optional(),
 	mistral: z.record(z.string(), z.object({ dimension: z.number() })).optional(),

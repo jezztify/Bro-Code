@@ -1,4 +1,5 @@
 import { QdrantClient, Schemas } from "@qdrant/js-client-rest"
+import { fetch as undiciFetch } from "undici"
 import { createHash } from "crypto"
 import * as path from "path"
 import { v5 as uuidv5 } from "uuid"
@@ -6,6 +7,32 @@ import { IVectorStore } from "../interfaces/vector-store"
 import { Payload, VectorStoreSearchResult } from "../interfaces"
 import { DEFAULT_MAX_SEARCH_RESULTS, DEFAULT_SEARCH_MIN_SCORE, QDRANT_CODE_BLOCK_NAMESPACE } from "../constants"
 import { t } from "../../../i18n"
+
+// `@qdrant/js-client-rest` calls the bare global `fetch` internally and exposes no way to inject
+// a custom fetch implementation. VS Code patches `globalThis.fetch` in the extension host to honor
+// the user's configured `http.proxy`/system proxy, which is often the wrong route for a local/LAN
+// Qdrant instance. When the user opts in (reusing the LM Studio "bypass proxy" setting), we patch
+// `globalThis.fetch` to undici's fetch directly so Qdrant requests skip the proxy. This is scoped to
+// a single module-level toggle (applied/reverted on every QdrantVectorStore construction) rather than
+// per-call, since per-call swapping would race with concurrent batch requests.
+let qdrantFetchPatched = false
+let originalGlobalFetch: typeof fetch | undefined
+
+function applyQdrantProxyBypass(bypassProxy: boolean): void {
+	if (bypassProxy) {
+		if (!qdrantFetchPatched) {
+			originalGlobalFetch = globalThis.fetch
+			globalThis.fetch = undiciFetch as unknown as typeof fetch
+			qdrantFetchPatched = true
+		}
+	} else if (qdrantFetchPatched) {
+		if (originalGlobalFetch) {
+			globalThis.fetch = originalGlobalFetch
+		}
+		qdrantFetchPatched = false
+		originalGlobalFetch = undefined
+	}
+}
 
 /**
  * Qdrant implementation of the vector store interface
@@ -23,14 +50,17 @@ export class QdrantVectorStore implements IVectorStore {
 	 * Creates a new Qdrant vector store
 	 * @param workspacePath Path to the workspace
 	 * @param url Optional URL to the Qdrant server
+	 * @param bypassProxy Bypass the system/VS Code proxy for requests to this Qdrant instance
 	 */
-	constructor(workspacePath: string, url: string, vectorSize: number, apiKey?: string) {
+	constructor(workspacePath: string, url: string, vectorSize: number, apiKey?: string, bypassProxy?: boolean) {
 		// Parse the URL to determine the appropriate QdrantClient configuration
 		const parsedUrl = this.parseQdrantUrl(url)
 
 		// Store the resolved URL for our property
 		this.qdrantUrl = parsedUrl
 		this.workspacePath = workspacePath
+
+		applyQdrantProxyBypass(!!bypassProxy)
 
 		try {
 			const urlObj = new URL(parsedUrl)

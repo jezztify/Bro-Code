@@ -285,6 +285,9 @@ const lmStudioSchema = baseProviderSettingsSchema.extend({
 	lmStudioBaseUrl: z.string().optional(),
 	lmStudioDraftModelId: z.string().optional(),
 	lmStudioSpeculativeDecodingEnabled: z.boolean().optional(),
+	lmStudioUseRestApi: z.boolean().optional(),
+	lmStudioBypassProxy: z.boolean().optional(),
+	lmStudioProxyUrl: z.string().optional(),
 })
 
 const geminiSchema = apiModelIdProviderModelSchema.extend({

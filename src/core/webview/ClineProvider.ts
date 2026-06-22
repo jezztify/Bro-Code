@@ -460,6 +460,7 @@ export class ClineProvider
 					await forceFullModelDetailsLoad(
 						cline.apiConfiguration.lmStudioBaseUrl ?? "http://localhost:1234",
 						cline.apiConfiguration.lmStudioModelId!,
+						cline.apiConfiguration.lmStudioUseRestApi,
 					)
 				}
 			} catch (error) {
@@ -659,7 +660,19 @@ export class ClineProvider
 	}
 
 	public static getVisibleInstance(): ClineProvider | undefined {
-		return findLast(Array.from(this.activeInstances), (instance) => instance.view?.visible === true)
+		const visibleInstances = Array.from(this.activeInstances).filter((instance) => instance.view?.visible === true)
+
+		// Multiple tabs can report `visible === true` at once when more than one Zoo-Code
+		// tab is open across split editor groups. In that case prefer the one that's also
+		// `active` (focused within its group) - that's the tab the user actually clicked the
+		// title-bar button on. Sidebar webviews have no `.active` concept, so this falls
+		// through to the previous "last visible" behavior for them.
+		const activeInstance = findLast(
+			visibleInstances,
+			(instance) => (instance.view as vscode.WebviewPanel | undefined)?.active === true,
+		)
+
+		return activeInstance ?? visibleInstances[visibleInstances.length - 1]
 	}
 
 	public static getAllInstances(): ClineProvider[] {
@@ -2444,6 +2457,9 @@ export class ClineProvider
 				codebaseIndexQdrantUrl: codebaseIndexConfig?.codebaseIndexQdrantUrl ?? "http://localhost:6333",
 				codebaseIndexEmbedderProvider: codebaseIndexConfig?.codebaseIndexEmbedderProvider ?? "openai",
 				codebaseIndexEmbedderBaseUrl: codebaseIndexConfig?.codebaseIndexEmbedderBaseUrl ?? "",
+				codebaseIndexLmStudioBaseUrl: codebaseIndexConfig?.codebaseIndexLmStudioBaseUrl ?? "",
+				codebaseIndexLmStudioUseRestApi: codebaseIndexConfig?.codebaseIndexLmStudioUseRestApi ?? false,
+				codebaseIndexLmStudioBypassProxy: codebaseIndexConfig?.codebaseIndexLmStudioBypassProxy ?? false,
 				codebaseIndexEmbedderModelId: codebaseIndexConfig?.codebaseIndexEmbedderModelId ?? "",
 				codebaseIndexEmbedderModelDimension: codebaseIndexConfig?.codebaseIndexEmbedderModelDimension ?? 1536,
 				codebaseIndexOpenAiCompatibleBaseUrl: codebaseIndexConfig?.codebaseIndexOpenAiCompatibleBaseUrl,
@@ -2651,6 +2667,11 @@ export class ClineProvider
 				codebaseIndexEmbedderProvider:
 					stateValues.codebaseIndexConfig?.codebaseIndexEmbedderProvider ?? "openai",
 				codebaseIndexEmbedderBaseUrl: stateValues.codebaseIndexConfig?.codebaseIndexEmbedderBaseUrl ?? "",
+				codebaseIndexLmStudioBaseUrl: stateValues.codebaseIndexConfig?.codebaseIndexLmStudioBaseUrl ?? "",
+				codebaseIndexLmStudioUseRestApi:
+					stateValues.codebaseIndexConfig?.codebaseIndexLmStudioUseRestApi ?? false,
+				codebaseIndexLmStudioBypassProxy:
+					stateValues.codebaseIndexConfig?.codebaseIndexLmStudioBypassProxy ?? false,
 				codebaseIndexEmbedderModelId: stateValues.codebaseIndexConfig?.codebaseIndexEmbedderModelId ?? "",
 				codebaseIndexEmbedderModelDimension:
 					stateValues.codebaseIndexConfig?.codebaseIndexEmbedderModelDimension,

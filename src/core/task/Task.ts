@@ -3144,6 +3144,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							? undefined
 							: `${t("common:interruption.streamTerminatedByProvider")}: ${rawErrorMessage}`
 
+						if (!this.abort) {
+							this.providerRef
+								.deref()
+								?.log(
+									`[Task#${this.taskId}.${this.instanceId}] Stream failed (model: ${this.api.getModel().id}): ${rawErrorMessage}`,
+								)
+						}
+
 						// Clean up partial state
 						await abortStream(cancelReason, streamingFailedMessage)
 
@@ -4217,6 +4225,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.isWaitingForFirstChunk = false
 		} catch (error) {
 			this.isWaitingForFirstChunk = false
+
+			this.providerRef
+				.deref()
+				?.log(
+					`[Task#${this.taskId}.${this.instanceId}] API request failed (model: ${this.api.getModel().id}): ${error?.message ?? error}`,
+				)
+
 			const isContextWindowExceededError = checkContextWindowExceededError(error)
 
 			if (!isContextWindowExceededError) {

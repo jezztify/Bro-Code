@@ -1,6 +1,7 @@
 export type EmbedderProvider =
 	| "openai"
 	| "ollama"
+	| "lmstudio"
 	| "openai-compatible"
 	| "gemini"
 	| "mistral"

@@ -2,6 +2,7 @@ import type { MockedClass, MockedFunction } from "vitest"
 import { CodeIndexServiceFactory } from "../service-factory"
 import { OpenAiEmbedder } from "../embedders/openai"
 import { CodeIndexOllamaEmbedder } from "../embedders/ollama"
+import { CodeIndexLmStudioEmbedder } from "../embedders/lmstudio"
 import { OpenAICompatibleEmbedder } from "../embedders/openai-compatible"
 import { GeminiEmbedder } from "../embedders/gemini"
 import { QdrantVectorStore } from "../vector-store/qdrant-client"
@@ -9,6 +10,7 @@ import { QdrantVectorStore } from "../vector-store/qdrant-client"
 // Mock the embedders and vector store
 vitest.mock("../embedders/openai")
 vitest.mock("../embedders/ollama")
+vitest.mock("../embedders/lmstudio")
 vitest.mock("../embedders/openai-compatible")
 vitest.mock("../embedders/gemini")
 vitest.mock("../vector-store/qdrant-client")
@@ -30,6 +32,7 @@ vitest.mock("@roo-code/telemetry", () => ({
 
 const MockedOpenAiEmbedder = OpenAiEmbedder as MockedClass<typeof OpenAiEmbedder>
 const MockedCodeIndexOllamaEmbedder = CodeIndexOllamaEmbedder as MockedClass<typeof CodeIndexOllamaEmbedder>
+const MockedCodeIndexLmStudioEmbedder = CodeIndexLmStudioEmbedder as MockedClass<typeof CodeIndexLmStudioEmbedder>
 const MockedOpenAICompatibleEmbedder = OpenAICompatibleEmbedder as MockedClass<typeof OpenAICompatibleEmbedder>
 const MockedGeminiEmbedder = GeminiEmbedder as MockedClass<typeof GeminiEmbedder>
 const MockedQdrantVectorStore = QdrantVectorStore as MockedClass<typeof QdrantVectorStore>
@@ -171,6 +174,43 @@ describe("CodeIndexServiceFactory", () => {
 
 			// Act & Assert
 			expect(() => factory.createEmbedder()).toThrow("serviceFactory.ollamaConfigMissing")
+		})
+
+		it("should pass model ID to LM Studio embedder when using LM Studio provider", () => {
+			// Arrange
+			const testModelId = "text-embedding-nomic-embed-text-v1.5"
+			const testConfig = {
+				embedderProvider: "lmstudio",
+				modelId: testModelId,
+				lmStudioOptions: {
+					lmStudioBaseUrl: "http://localhost:1234",
+				},
+			}
+			mockConfigManager.getConfig.mockReturnValue(testConfig as any)
+
+			// Act
+			factory.createEmbedder()
+
+			// Assert
+			expect(MockedCodeIndexLmStudioEmbedder).toHaveBeenCalledWith({
+				lmStudioBaseUrl: "http://localhost:1234",
+				lmStudioModelId: testModelId,
+			})
+		})
+
+		it("should throw error when LM Studio base URL is missing", () => {
+			// Arrange
+			const testConfig = {
+				embedderProvider: "lmstudio",
+				modelId: "text-embedding-nomic-embed-text-v1.5",
+				lmStudioOptions: {
+					lmStudioBaseUrl: undefined,
+				},
+			}
+			mockConfigManager.getConfig.mockReturnValue(testConfig as any)
+
+			// Act & Assert
+			expect(() => factory.createEmbedder()).toThrow("serviceFactory.lmStudioConfigMissing")
 		})
 
 		it("should pass model ID to OpenAI Compatible embedder when using OpenAI Compatible provider", () => {
@@ -397,6 +437,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				3072,
 				"test-key",
+				undefined,
 			)
 		})
 
@@ -422,6 +463,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				768,
 				"test-key",
+				undefined,
 			)
 		})
 
@@ -447,6 +489,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				3072,
 				"test-key",
+				undefined,
 			)
 		})
 
@@ -479,6 +522,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				modelDimension, // Should use model's built-in dimension, not manual
 				"test-key",
+				undefined,
 			)
 		})
 
@@ -510,6 +554,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				manualDimension, // Should use manual dimension as fallback
 				"test-key",
+				undefined,
 			)
 		})
 
@@ -539,6 +584,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				768,
 				"test-key",
+				undefined,
 			)
 		})
 
@@ -608,6 +654,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				3072,
 				"test-key",
+				undefined,
 			)
 		})
 
@@ -633,6 +680,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				3072,
 				"test-key",
+				undefined,
 			)
 		})
 
@@ -657,6 +705,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				1536,
 				"test-key",
+				undefined,
 			)
 		})
 

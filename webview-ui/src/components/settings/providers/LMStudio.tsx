@@ -2,12 +2,12 @@ import { useCallback, useState, useMemo, useEffect, useRef } from "react"
 import { useEvent } from "react-use"
 import { Trans } from "react-i18next"
 import { Checkbox } from "vscrui"
-import { VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeButton, VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import type { ProviderSettings, ExtensionMessage, ModelRecord } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { requestLmStudioModels } from "@src/components/ui/hooks/useLmStudioModels"
+import { requestLmStudioModels, testLmStudioConnection } from "@src/components/ui/hooks/useLmStudioModels"
 import { useRouterModels } from "@src/components/ui/hooks/useRouterModels"
 
 import { inputEventTransform } from "../transforms"
@@ -24,6 +24,39 @@ export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudi
 	const [lmStudioModels, setLmStudioModels] = useState<ModelRecord>({})
 	const routerModels = useRouterModels()
 	const initialBaseUrlRef = useRef(apiConfiguration?.lmStudioBaseUrl)
+	const initialUseRestApiRef = useRef(apiConfiguration?.lmStudioUseRestApi)
+
+	const [connectionTestState, setConnectionTestState] = useState<{
+		status: "idle" | "testing" | "success" | "error"
+		message?: string
+	}>({ status: "idle" })
+
+	const handleTestConnection = useCallback(async () => {
+		setConnectionTestState({ status: "testing" })
+
+		const result = await testLmStudioConnection(
+			apiConfiguration?.lmStudioBaseUrl,
+			apiConfiguration?.lmStudioBypassProxy,
+			apiConfiguration?.lmStudioProxyUrl,
+		)
+
+		if (result.success) {
+			setConnectionTestState({
+				status: "success",
+				message: t("settings:providers.lmStudio.testConnectionSuccess", { count: result.modelCount ?? 0 }),
+			})
+		} else {
+			setConnectionTestState({
+				status: "error",
+				message: result.error ?? t("settings:providers.lmStudio.testConnectionError"),
+			})
+		}
+	}, [
+		apiConfiguration?.lmStudioBaseUrl,
+		apiConfiguration?.lmStudioBypassProxy,
+		apiConfiguration?.lmStudioProxyUrl,
+		t,
+	])
 
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
@@ -54,7 +87,7 @@ export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudi
 	// Refresh models on mount
 	useEffect(() => {
 		// Request fresh models - the handler now flushes cache automatically
-		requestLmStudioModels(initialBaseUrlRef.current)
+		requestLmStudioModels(initialBaseUrlRef.current, initialUseRestApiRef.current)
 	}, [])
 
 	// Check if the selected model exists in the fetched models
@@ -124,6 +157,54 @@ export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudi
 				errorMessage={modelNotAvailableError}
 				hidePricing
 			/>
+			<Checkbox
+				checked={apiConfiguration?.lmStudioUseRestApi === true}
+				onChange={(checked) => {
+					setApiConfigurationField("lmStudioUseRestApi", checked)
+				}}>
+				{t("settings:providers.lmStudio.useRestApi")}
+			</Checkbox>
+			<Checkbox
+				checked={apiConfiguration?.lmStudioBypassProxy === true}
+				onChange={(checked) => {
+					setApiConfigurationField("lmStudioBypassProxy", checked)
+				}}>
+				{t("settings:providers.lmStudio.bypassProxy")}
+			</Checkbox>
+			<div className="text-sm text-vscode-descriptionForeground">
+				{t("settings:providers.lmStudio.bypassProxyDesc")}
+			</div>
+			{apiConfiguration?.lmStudioBypassProxy !== true && (
+				<>
+					<VSCodeTextField
+						value={apiConfiguration?.lmStudioProxyUrl || ""}
+						type="url"
+						onInput={handleInputChange("lmStudioProxyUrl")}
+						placeholder={t("settings:providers.lmStudio.proxyUrlPlaceholder")}
+						className="w-full">
+						<label className="block font-medium mb-1">{t("settings:providers.lmStudio.proxyUrl")}</label>
+					</VSCodeTextField>
+					<div className="text-sm text-vscode-descriptionForeground">
+						{t("settings:providers.lmStudio.proxyUrlDesc")}
+					</div>
+				</>
+			)}
+			<div className="flex items-center gap-2">
+				<VSCodeButton
+					appearance="secondary"
+					disabled={connectionTestState.status === "testing"}
+					onClick={handleTestConnection}>
+					{connectionTestState.status === "testing"
+						? t("settings:providers.lmStudio.testConnectionTesting")
+						: t("settings:providers.lmStudio.testConnection")}
+				</VSCodeButton>
+				{connectionTestState.status === "success" && (
+					<span className="text-sm text-vscode-charts-green">{connectionTestState.message}</span>
+				)}
+				{connectionTestState.status === "error" && (
+					<span className="text-sm text-vscode-errorForeground">{connectionTestState.message}</span>
+				)}
+			</div>
 			<Checkbox
 				checked={apiConfiguration?.lmStudioSpeculativeDecodingEnabled === true}
 				onChange={(checked) => {

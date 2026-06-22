@@ -14,6 +14,7 @@ import { RooIgnoreController } from "../../core/ignore/RooIgnoreController"
 
 import { OpenAiEmbedder } from "./embedders/openai"
 import { CodeIndexOllamaEmbedder } from "./embedders/ollama"
+import { CodeIndexLmStudioEmbedder } from "./embedders/lmstudio"
 import { OpenAICompatibleEmbedder } from "./embedders/openai-compatible"
 import { GeminiEmbedder } from "./embedders/gemini"
 import { MistralEmbedder } from "./embedders/mistral"
@@ -72,6 +73,14 @@ export class CodeIndexServiceFactory {
 			return new CodeIndexOllamaEmbedder({
 				...config.ollamaOptions,
 				ollamaModelId: config.modelId,
+			})
+		} else if (provider === "lmstudio") {
+			if (!config.lmStudioOptions?.lmStudioBaseUrl) {
+				throw new Error(t("embeddings:serviceFactory.lmStudioConfigMissing"))
+			}
+			return new CodeIndexLmStudioEmbedder({
+				...config.lmStudioOptions,
+				lmStudioModelId: config.modelId,
 			})
 		} else if (provider === "openai-compatible") {
 			if (!config.openAiCompatibleOptions?.baseUrl || !config.openAiCompatibleOptions?.apiKey) {
@@ -186,8 +195,12 @@ export class CodeIndexServiceFactory {
 			throw new Error(t("embeddings:serviceFactory.qdrantUrlMissing"))
 		}
 
-		// Assuming constructor is updated: new QdrantVectorStore(workspacePath, url, vectorSize, apiKey?)
-		return new QdrantVectorStore(this.workspacePath, config.qdrantUrl, vectorSize, config.qdrantApiKey)
+		// Reuse the LM Studio "bypass proxy" setting for the Qdrant connection too — it's the only
+		// proxy-bypass toggle exposed in the codebase indexing settings, and a remote/LAN Qdrant
+		// instance is subject to the same system-proxy routing problem as a local LM Studio server.
+		const bypassProxy = config.lmStudioOptions?.lmStudioBypassProxy
+
+		return new QdrantVectorStore(this.workspacePath, config.qdrantUrl, vectorSize, config.qdrantApiKey, bypassProxy)
 	}
 
 	/**

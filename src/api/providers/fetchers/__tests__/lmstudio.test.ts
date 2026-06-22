@@ -3,7 +3,13 @@ import { LMStudioClient, LLMInstanceInfo, LLMInfo } from "@lmstudio/sdk"
 
 import { ModelInfo, lMStudioDefaultModelInfo } from "@roo-code/types"
 
-import { getLMStudioModels, parseLMStudioModel } from "../lmstudio"
+import {
+	getLMStudioModels,
+	parseLMStudioModel,
+	parseOpenAIModelsResponse,
+	parseLMStudioNativeModelsResponse,
+	parseLMStudioV1ModelsResponse,
+} from "../lmstudio"
 
 // Mock axios
 vi.mock("axios")
@@ -437,10 +443,12 @@ describe("LMStudio Fetcher", () => {
 		})
 
 		it("should return an empty object and log error if listDownloadedModels fails", async () => {
-			const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(function () {})
-			const listError = new Error("LMStudio SDK internal error")
+			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(function () {})
+
+			const listError = new Error("Failed to list downloaded models")
 
 			mockedAxios.get.mockResolvedValueOnce({ data: {} })
+			mockListDownloadedModels.mockRejectedValueOnce(listError)
 			mockListLoaded.mockRejectedValueOnce(listError)
 
 			const result = await getLMStudioModels(baseUrl)
@@ -449,11 +457,275 @@ describe("LMStudio Fetcher", () => {
 			expect(MockedLMStudioClientConstructor).toHaveBeenCalledTimes(1)
 			expect(MockedLMStudioClientConstructor).toHaveBeenCalledWith({ baseUrl: lmsUrl })
 			expect(mockListLoaded).toHaveBeenCalledTimes(1)
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				`Error fetching LMStudio models: ${JSON.stringify(listError, Object.getOwnPropertyNames(listError), 2)}`,
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				"Failed to list downloaded models, falling back to loaded models only",
 			)
 			expect(result).toEqual({})
-			consoleErrorSpy.mockRestore()
+			consoleWarnSpy.mockRestore()
+		})
+
+		it("should fall back to OpenAI-compatible REST API when SDK calls fail", async () => {
+			const consoleDebugSpy = vi.spyOn(console, "debug").mockImplementation(function () {})
+			const sdkError = new Error("WebSocket connection failed")
+
+			const openAiModelsResponse = {
+				data: [{ id: "llama-3.1-8b" }, { id: "mistral-7b-instruct" }],
+			}
+
+			mockedAxios.get.mockResolvedValueOnce(openAiModelsResponse)
+			mockListDownloadedModels.mockRejectedValueOnce(sdkError)
+			mockListLoaded.mockRejectedValueOnce(sdkError)
+
+			const result = await getLMStudioModels(baseUrl)
+
+			expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+			expect(MockedLMStudioClientConstructor).toHaveBeenCalledTimes(1)
+			expect(mockListDownloadedModels).toHaveBeenCalledTimes(1)
+			expect(mockListLoaded).toHaveBeenCalledTimes(1)
+			expect(consoleDebugSpy).toHaveBeenCalledWith(
+				"LMStudio SDK returned no models, falling back to OpenAI-compatible /v1/models REST API",
+			)
+			expect(Object.keys(result)).toHaveLength(2)
+			expect(result["llama-3.1-8b"]).toBeDefined()
+			expect(result["mistral-7b-instruct"]).toBeDefined()
+			expect(result["llama-3.1-8b"].description).toBe("llama-3.1-8b")
+			consoleDebugSpy.mockRestore()
+		})
+
+		it("should not fall back to REST API when SDK returns some models", async () => {
+			const consoleDebugSpy = vi.spyOn(console, "debug").mockImplementation(function () {})
+
+			const openAiModelsResponse = {
+				data: [{ id: "rest-model" }],
+			}
+
+			const mockLoadedModel: LLMInstanceInfo = {
+				type: "llm",
+				modelKey: "sdk-model",
+				displayName: "SDK Model",
+				path: "/path/to/sdk-model",
+				maxContextLength: 4096,
+				contextLength: 4096,
+				paramsString: "1B params",
+				vision: false,
+				format: "gguf",
+				sizeBytes: 1000000000,
+				architecture: "llama",
+				identifier: "sdk-model",
+				instanceReference: "ABC123",
+			}
+
+			const mockLlmInstance = {
+				getModelInfo: () => Promise.resolve(mockLoadedModel),
+			}
+
+			mockedAxios.get.mockResolvedValueOnce(openAiModelsResponse)
+			mockListDownloadedModels.mockRejectedValueOnce(new Error("SDK error"))
+			mockListLoaded.mockResolvedValueOnce([mockLlmInstance])
+
+			const result = await getLMStudioModels(baseUrl)
+
+			expect(Object.keys(result)).toHaveLength(1)
+			expect(result["sdk-model"]).toBeDefined()
+			expect(result["rest-model"]).toBeUndefined() // Should NOT include REST models when SDK succeeded
+			expect(consoleDebugSpy).not.toHaveBeenCalled()
+			consoleDebugSpy.mockRestore()
+		})
+	})
+
+	describe("parseLMStudioNativeModelsResponse", () => {
+		it("should parse native /api/v0/models entries into ModelInfo", () => {
+			const body = {
+				data: [
+					{
+						id: "qwen2.5-7b-instruct",
+						object: "model",
+						type: "llm",
+						publisher: "qwen",
+						arch: "qwen2",
+						quantization: "Q4_K_M",
+						state: "loaded",
+						max_context_length: 32768,
+						loaded_context_length: 8192,
+						capabilities: ["tool_use", "vision"],
+					},
+					{
+						id: "text-embedding-nomic-embed-text-v1.5",
+						object: "model",
+						type: "embeddings",
+						max_context_length: 2048,
+					},
+				],
+			}
+
+			const result = parseLMStudioNativeModelsResponse(body)
+
+			expect(Object.keys(result)).toEqual(["qwen2.5-7b-instruct"])
+			expect(result["qwen2.5-7b-instruct"].contextWindow).toBe(8192)
+			expect(result["qwen2.5-7b-instruct"].maxTokens).toBe(8192)
+			expect(result["qwen2.5-7b-instruct"].supportsImages).toBe(true)
+		})
+
+		it("should return an empty object for malformed input", () => {
+			expect(parseLMStudioNativeModelsResponse(undefined)).toEqual({})
+			expect(parseLMStudioNativeModelsResponse({})).toEqual({})
+		})
+
+		it("should include vlm models", () => {
+			const body = {
+				data: [
+					{
+						id: "google/gemma-4-12b-qat",
+						object: "model",
+						type: "vlm",
+						publisher: "google",
+						arch: "gemma4",
+						quantization: "Q4_0",
+						max_context_length: 262144,
+						capabilities: ["tool_use"],
+					},
+				],
+			}
+
+			const result = parseLMStudioNativeModelsResponse(body)
+
+			expect(Object.keys(result)).toEqual(["google/gemma-4-12b-qat"])
+		})
+	})
+
+	describe("parseLMStudioV1ModelsResponse", () => {
+		it("should parse native /api/v1/models entries into ModelInfo", () => {
+			const body = {
+				models: [
+					{
+						type: "embedding",
+						publisher: "mixedbread-ai",
+						key: "text-embedding-mxbai-embed-large-v1",
+						display_name: "Mxbai Embed Large v1",
+						max_context_length: 512,
+						format: "gguf",
+					},
+					{
+						type: "llm",
+						publisher: "unsloth",
+						key: "qwen3.6-35b-a3b-mtp",
+						display_name: "Qwen3.6 35B A3B UD",
+						architecture: "qwen35moe",
+						quantization: { name: "Q4_K_S", bits_per_weight: 4 },
+						size_bytes: 23174624160,
+						params_string: "35B-A3B",
+						loaded_instances: [
+							{
+								id: "qwen3.6-35b-a3b-mtp",
+								config: { context_length: 65535 },
+								remaining_ttl_seconds: 7200,
+							},
+						],
+						max_context_length: 262144,
+						format: "gguf",
+						capabilities: { vision: true, trained_for_tool_use: true },
+					},
+					{
+						type: "llm",
+						publisher: "mradermacher",
+						key: "deepseek-r1-finance-reasoning-14b",
+						display_name: "DeepSeek R1 Finance Reasoning 14B",
+						architecture: "qwen2",
+						quantization: { name: "Q4_K_M", bits_per_weight: 4 },
+						size_bytes: 8988110976,
+						params_string: "14B",
+						loaded_instances: [],
+						max_context_length: 131072,
+						format: "gguf",
+						capabilities: { vision: false, trained_for_tool_use: true },
+					},
+				],
+			}
+
+			const result = parseLMStudioV1ModelsResponse(body)
+
+			expect(Object.keys(result)).toEqual(["qwen3.6-35b-a3b-mtp", "deepseek-r1-finance-reasoning-14b"])
+			// Loaded model uses the runtime context length from loaded_instances.
+			expect(result["qwen3.6-35b-a3b-mtp"].contextWindow).toBe(65535)
+			expect(result["qwen3.6-35b-a3b-mtp"].supportsImages).toBe(true)
+			// Unloaded model falls back to max_context_length.
+			expect(result["deepseek-r1-finance-reasoning-14b"].contextWindow).toBe(131072)
+			expect(result["deepseek-r1-finance-reasoning-14b"].supportsImages).toBe(false)
+		})
+
+		it("should return an empty object for malformed input", () => {
+			expect(parseLMStudioV1ModelsResponse(undefined)).toEqual({})
+			expect(parseLMStudioV1ModelsResponse({})).toEqual({})
+		})
+	})
+
+	describe("getLMStudioModels with useRestApi", () => {
+		const baseUrl = "http://localhost:1234"
+
+		it("should use the native v1 REST endpoint and never open the SDK WebSocket", async () => {
+			mockedAxios.get.mockResolvedValueOnce({
+				data: {
+					models: [
+						{
+							type: "llm",
+							key: "qwen2.5-7b-instruct",
+							max_context_length: 32768,
+						},
+					],
+				},
+			})
+
+			const result = await getLMStudioModels(baseUrl, true)
+
+			expect(mockedAxios.get).toHaveBeenCalledWith(`${baseUrl}/api/v1/models`)
+			expect(MockedLMStudioClientConstructor).not.toHaveBeenCalled()
+			expect(result["qwen2.5-7b-instruct"]).toBeDefined()
+		})
+
+		it("should fall back to /api/v0/models when the v1 endpoint fails", async () => {
+			mockedAxios.get.mockRejectedValueOnce(new Error("v1 endpoint unavailable"))
+			mockedAxios.get.mockResolvedValueOnce({
+				data: {
+					data: [
+						{
+							id: "qwen2.5-7b-instruct",
+							type: "llm",
+							max_context_length: 32768,
+						},
+					],
+				},
+			})
+
+			const result = await getLMStudioModels(baseUrl, true)
+
+			expect(mockedAxios.get).toHaveBeenNthCalledWith(1, `${baseUrl}/api/v1/models`)
+			expect(mockedAxios.get).toHaveBeenNthCalledWith(2, `${baseUrl}/api/v0/models`)
+			expect(MockedLMStudioClientConstructor).not.toHaveBeenCalled()
+			expect(result["qwen2.5-7b-instruct"]).toBeDefined()
+		})
+
+		it("should fall back to /v1/models when both native REST endpoints fail", async () => {
+			mockedAxios.get.mockRejectedValueOnce(new Error("v1 endpoint unavailable"))
+			mockedAxios.get.mockRejectedValueOnce(new Error("v0 endpoint unavailable"))
+			mockedAxios.get.mockResolvedValueOnce({ data: [{ id: "llama-3.1-8b" }] })
+
+			const result = await getLMStudioModels(baseUrl, true)
+
+			expect(mockedAxios.get).toHaveBeenNthCalledWith(1, `${baseUrl}/api/v1/models`)
+			expect(mockedAxios.get).toHaveBeenNthCalledWith(2, `${baseUrl}/api/v0/models`)
+			expect(mockedAxios.get).toHaveBeenNthCalledWith(3, `${baseUrl}/v1/models`)
+			expect(MockedLMStudioClientConstructor).not.toHaveBeenCalled()
+			expect(result["llama-3.1-8b"]).toBeDefined()
+		})
+
+		it("should return an empty object when all REST endpoints fail", async () => {
+			mockedAxios.get.mockRejectedValueOnce(new Error("v1 endpoint unavailable"))
+			mockedAxios.get.mockRejectedValueOnce(new Error("v0 endpoint unavailable"))
+			mockedAxios.get.mockRejectedValueOnce(new Error("v1 (openai) endpoint unavailable"))
+
+			const result = await getLMStudioModels(baseUrl, true)
+
+			expect(result).toEqual({})
 		})
 	})
 })

@@ -42,6 +42,8 @@ export interface ExtensionMessage {
 		| "openAiModels"
 		| "ollamaModels"
 		| "lmStudioModels"
+		| "lmStudioConnectionTestResult"
+		| "codeIndexLmStudioModels"
 		| "vsCodeLmModels"
 		| "vsCodeLmApiAvailable"
 		| "updatePrompt"
@@ -136,6 +138,7 @@ export interface ExtensionMessage {
 	openAiModels?: string[]
 	ollamaModels?: ModelRecord
 	lmStudioModels?: ModelRecord
+	codeIndexLmStudioModels?: string[]
 	vsCodeLmModels?: { vendor?: string; family?: string; version?: string; id?: string }[]
 	mcpServers?: McpServer[]
 	commits?: GitCommit[]
@@ -466,6 +469,8 @@ export interface WebviewMessage {
 		| "requestOpenAiModels"
 		| "requestOllamaModels"
 		| "requestLmStudioModels"
+		| "testLmStudioConnection"
+		| "requestCodeIndexLmStudioModels"
 		| "requestRooModels"
 		| "requestVsCodeLmModels"
 		| "openImage"
@@ -682,6 +687,7 @@ export interface WebviewMessage {
 		codebaseIndexEmbedderProvider:
 			| "openai"
 			| "ollama"
+			| "lmstudio"
 			| "openai-compatible"
 			| "gemini"
 			| "mistral"
@@ -690,6 +696,9 @@ export interface WebviewMessage {
 			| "openrouter"
 			| "semble"
 		codebaseIndexEmbedderBaseUrl?: string
+		codebaseIndexLmStudioBaseUrl?: string
+		codebaseIndexLmStudioUseRestApi?: boolean
+		codebaseIndexLmStudioBypassProxy?: boolean
 		codebaseIndexEmbedderModelId: string
 		codebaseIndexEmbedderModelDimension?: number // Generic dimension for all providers
 		codebaseIndexOpenAiCompatibleBaseUrl?: string
