@@ -50,6 +50,7 @@ import {
 // Default URLs for providers
 const DEFAULT_QDRANT_URL = "http://localhost:6333"
 const DEFAULT_OLLAMA_URL = "http://localhost:11434"
+const DEFAULT_LMSTUDIO_URL = "http://localhost:1234"
 
 interface CodeIndexPopoverProps {
 	children: React.ReactNode
@@ -62,6 +63,9 @@ interface LocalCodeIndexSettings {
 	codebaseIndexQdrantUrl: string
 	codebaseIndexEmbedderProvider: EmbedderProvider
 	codebaseIndexEmbedderBaseUrl?: string
+	codebaseIndexLmStudioBaseUrl?: string
+	codebaseIndexLmStudioUseRestApi?: boolean
+	codebaseIndexLmStudioBypassProxy?: boolean
 	codebaseIndexEmbedderModelId: string
 	codebaseIndexEmbedderModelDimension?: number // Generic dimension for all providers
 	codebaseIndexSearchMaxResults?: number
@@ -109,6 +113,19 @@ const createValidationSchema = (provider: EmbedderProvider, t: any) => {
 					.string()
 					.min(1, t("settings:codeIndex.validation.ollamaBaseUrlRequired"))
 					.url(t("settings:codeIndex.validation.invalidOllamaUrl")),
+				codebaseIndexEmbedderModelId: z.string().min(1, t("settings:codeIndex.validation.modelIdRequired")),
+				codebaseIndexEmbedderModelDimension: z
+					.number()
+					.min(1, t("settings:codeIndex.validation.modelDimensionRequired"))
+					.optional(),
+			})
+
+		case "lmstudio":
+			return baseSchema.extend({
+				codebaseIndexLmStudioBaseUrl: z
+					.string()
+					.min(1, t("settings:codeIndex.validation.lmStudioBaseUrlRequired"))
+					.url(t("settings:codeIndex.validation.invalidLmStudioUrl")),
 				codebaseIndexEmbedderModelId: z.string().min(1, t("settings:codeIndex.validation.modelIdRequired")),
 				codebaseIndexEmbedderModelDimension: z
 					.number()
@@ -194,6 +211,8 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 	const SECRET_PLACEHOLDER = "••••••••••••••••"
 	const { t } = useAppTranslation()
 	const { codebaseIndexConfig, codebaseIndexModels, cwd, apiConfiguration, platform, arch } = useExtensionState()
+
+	const [lmStudioEmbeddingModels, setLmStudioEmbeddingModels] = useState<string[]>([])
 	const [open, setOpen] = useState(false)
 	const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)
 	const [isSetupSettingsOpen, setIsSetupSettingsOpen] = useState(false)
@@ -220,6 +239,9 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 		codebaseIndexQdrantUrl: "",
 		codebaseIndexEmbedderProvider: "openai",
 		codebaseIndexEmbedderBaseUrl: "",
+		codebaseIndexLmStudioBaseUrl: "",
+		codebaseIndexLmStudioUseRestApi: false,
+		codebaseIndexLmStudioBypassProxy: false,
 		codebaseIndexEmbedderModelId: "",
 		codebaseIndexEmbedderModelDimension: undefined,
 		codebaseIndexSearchMaxResults: CODEBASE_INDEX_DEFAULTS.DEFAULT_SEARCH_RESULTS,
@@ -256,6 +278,9 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 				codebaseIndexQdrantUrl: codebaseIndexConfig.codebaseIndexQdrantUrl || "",
 				codebaseIndexEmbedderProvider: codebaseIndexConfig.codebaseIndexEmbedderProvider || "openai",
 				codebaseIndexEmbedderBaseUrl: codebaseIndexConfig.codebaseIndexEmbedderBaseUrl || "",
+				codebaseIndexLmStudioBaseUrl: codebaseIndexConfig.codebaseIndexLmStudioBaseUrl || "",
+				codebaseIndexLmStudioUseRestApi: codebaseIndexConfig.codebaseIndexLmStudioUseRestApi ?? false,
+				codebaseIndexLmStudioBypassProxy: codebaseIndexConfig.codebaseIndexLmStudioBypassProxy ?? false,
 				codebaseIndexEmbedderModelId: codebaseIndexConfig.codebaseIndexEmbedderModelId || "",
 				codebaseIndexEmbedderModelDimension:
 					codebaseIndexConfig.codebaseIndexEmbedderModelDimension || undefined,
@@ -321,6 +346,8 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 						currentItemUnit: event.data.values.currentItemUnit || "items",
 					})
 				}
+			} else if (event.data.type === "codeIndexLmStudioModels") {
+				setLmStudioEmbeddingModels(event.data.codeIndexLmStudioModels ?? [])
 			} else if (event.data.type === "codeIndexSettingsSaved") {
 				if (event.data.success) {
 					setSaveStatus("saved")
@@ -349,6 +376,31 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 		window.addEventListener("message", handleMessage)
 		return () => window.removeEventListener("message", handleMessage)
 	}, [t, cwd])
+
+	// Automatically (re)fetch the LM Studio embedding model list while the popover is open and
+	// LM Studio is the selected embedder provider, debounced on base URL / REST API toggle changes.
+	useEffect(() => {
+		if (!open || currentSettings.codebaseIndexEmbedderProvider !== "lmstudio") {
+			return
+		}
+
+		const timeoutId = setTimeout(() => {
+			vscode.postMessage({
+				type: "requestCodeIndexLmStudioModels",
+				values: {
+					baseUrl: currentSettings.codebaseIndexLmStudioBaseUrl,
+					useRestApi: currentSettings.codebaseIndexLmStudioUseRestApi === true,
+				},
+			})
+		}, 300)
+
+		return () => clearTimeout(timeoutId)
+	}, [
+		open,
+		currentSettings.codebaseIndexEmbedderProvider,
+		currentSettings.codebaseIndexLmStudioBaseUrl,
+		currentSettings.codebaseIndexLmStudioUseRestApi,
+	])
 
 	// Listen for secret status
 	useEffect(() => {
@@ -753,6 +805,9 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 												<SelectItem value="ollama">
 													{t("settings:codeIndex.ollamaProvider")}
 												</SelectItem>
+												<SelectItem value="lmstudio">
+													{t("settings:codeIndex.lmStudioProvider")}
+												</SelectItem>
 												<SelectItem value="openai-compatible">
 													{t("settings:codeIndex.openaiCompatibleProvider")}
 												</SelectItem>
@@ -926,6 +981,202 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 														{formErrors.codebaseIndexEmbedderModelDimension}
 													</p>
 												)}
+											</div>
+										</>
+									)}
+
+									{currentSettings.codebaseIndexEmbedderProvider === "lmstudio" && (
+										<>
+											<div className="space-y-2">
+												<label className="text-sm font-medium">
+													{t("settings:codeIndex.lmStudioBaseUrlLabel")}
+												</label>
+												<VSCodeTextField
+													value={currentSettings.codebaseIndexLmStudioBaseUrl || ""}
+													onInput={(e: any) =>
+														updateSetting("codebaseIndexLmStudioBaseUrl", e.target.value)
+													}
+													onBlur={(e: any) => {
+														// Set default LM Studio URL if field is empty
+														if (!e.target.value.trim()) {
+															e.target.value = DEFAULT_LMSTUDIO_URL
+															updateSetting(
+																"codebaseIndexLmStudioBaseUrl",
+																DEFAULT_LMSTUDIO_URL,
+															)
+														}
+													}}
+													placeholder={t("settings:codeIndex.lmStudioUrlPlaceholder")}
+													className={cn("w-full", {
+														"border-red-500": formErrors.codebaseIndexLmStudioBaseUrl,
+													})}
+												/>
+												{formErrors.codebaseIndexLmStudioBaseUrl && (
+													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
+														{formErrors.codebaseIndexLmStudioBaseUrl}
+													</p>
+												)}
+											</div>
+
+											<div className="space-y-2">
+												<div className="flex items-center justify-between">
+													<label className="text-sm font-medium">
+														{t("settings:codeIndex.modelLabel")}
+													</label>
+													<StandardTooltip content={t("settings:codeIndex.refreshModels")}>
+														<button
+															type="button"
+															onClick={() =>
+																vscode.postMessage({
+																	type: "requestCodeIndexLmStudioModels",
+																	values: {
+																		baseUrl:
+																			currentSettings.codebaseIndexLmStudioBaseUrl,
+																		useRestApi:
+																			currentSettings.codebaseIndexLmStudioUseRestApi ===
+																			true,
+																	},
+																})
+															}
+															className="codicon codicon-refresh text-xs text-vscode-descriptionForeground hover:text-vscode-foreground"
+															aria-label={t("settings:codeIndex.refreshModels")}
+														/>
+													</StandardTooltip>
+												</div>
+												{lmStudioEmbeddingModels.length > 0 ? (
+													<VSCodeDropdown
+														value={currentSettings.codebaseIndexEmbedderModelId}
+														onChange={(e: any) =>
+															updateSetting(
+																"codebaseIndexEmbedderModelId",
+																e.target.value,
+															)
+														}
+														className={cn("w-full", {
+															"border-red-500": formErrors.codebaseIndexEmbedderModelId,
+														})}>
+														<VSCodeOption value="" className="p-2">
+															{t("settings:codeIndex.selectModel")}
+														</VSCodeOption>
+														{Array.from(
+															new Set([
+																...lmStudioEmbeddingModels,
+																...(currentSettings.codebaseIndexEmbedderModelId
+																	? [currentSettings.codebaseIndexEmbedderModelId]
+																	: []),
+															]),
+														).map((modelId) => {
+															const dimension =
+																codebaseIndexModels?.lmstudio?.[modelId]?.dimension
+															return (
+																<VSCodeOption
+																	key={modelId}
+																	value={modelId}
+																	className="p-2">
+																	{modelId}{" "}
+																	{dimension
+																		? t("settings:codeIndex.modelDimensions", {
+																				dimension,
+																			})
+																		: ""}
+																</VSCodeOption>
+															)
+														})}
+													</VSCodeDropdown>
+												) : (
+													<>
+														<VSCodeTextField
+															value={currentSettings.codebaseIndexEmbedderModelId || ""}
+															onInput={(e: any) =>
+																updateSetting(
+																	"codebaseIndexEmbedderModelId",
+																	e.target.value,
+																)
+															}
+															placeholder={t("settings:codeIndex.modelPlaceholder")}
+															className={cn("w-full", {
+																"border-red-500":
+																	formErrors.codebaseIndexEmbedderModelId,
+															})}
+														/>
+														<p className="text-xs text-vscode-descriptionForeground mt-1 mb-0">
+															{t("settings:codeIndex.lmStudioModelsNotFound")}
+														</p>
+													</>
+												)}
+												{formErrors.codebaseIndexEmbedderModelId && (
+													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
+														{formErrors.codebaseIndexEmbedderModelId}
+													</p>
+												)}
+											</div>
+
+											<div className="space-y-2">
+												<label className="text-sm font-medium">
+													{t("settings:codeIndex.modelDimensionLabel")}
+												</label>
+												<VSCodeTextField
+													value={
+														currentSettings.codebaseIndexEmbedderModelDimension?.toString() ||
+														""
+													}
+													onInput={(e: any) => {
+														const value = e.target.value
+															? parseInt(e.target.value, 10) || undefined
+															: undefined
+														updateSetting("codebaseIndexEmbedderModelDimension", value)
+													}}
+													placeholder={t("settings:codeIndex.modelDimensionPlaceholder")}
+													className={cn("w-full", {
+														"border-red-500":
+															formErrors.codebaseIndexEmbedderModelDimension,
+													})}
+												/>
+												{formErrors.codebaseIndexEmbedderModelDimension && (
+													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
+														{formErrors.codebaseIndexEmbedderModelDimension}
+													</p>
+												)}
+											</div>
+
+											<div className="space-y-2">
+												<div className="flex items-center gap-2">
+													<VSCodeCheckbox
+														checked={
+															currentSettings.codebaseIndexLmStudioUseRestApi === true
+														}
+														onChange={(e: any) => {
+															const checked = e.target.checked === true
+															updateSetting("codebaseIndexLmStudioUseRestApi", checked)
+															vscode.postMessage({
+																type: "requestCodeIndexLmStudioModels",
+																values: {
+																	baseUrl:
+																		currentSettings.codebaseIndexLmStudioBaseUrl,
+																	useRestApi: checked,
+																},
+															})
+														}}>
+														{t("settings:providers.lmStudio.useRestApi")}
+													</VSCodeCheckbox>
+												</div>
+												<div className="flex items-center gap-2">
+													<VSCodeCheckbox
+														checked={
+															currentSettings.codebaseIndexLmStudioBypassProxy === true
+														}
+														onChange={(e: any) =>
+															updateSetting(
+																"codebaseIndexLmStudioBypassProxy",
+																e.target.checked === true,
+															)
+														}>
+														{t("settings:providers.lmStudio.bypassProxy")}
+													</VSCodeCheckbox>
+												</div>
+												<p className="text-xs text-vscode-descriptionForeground mt-1 mb-0">
+													{t("settings:providers.lmStudio.bypassProxyDesc")}
+												</p>
 											</div>
 										</>
 									)}

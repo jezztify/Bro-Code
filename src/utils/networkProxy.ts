@@ -40,7 +40,7 @@ let consoleLoggingEnabled = false
 let tlsVerificationOverridden = false
 let originalNodeTlsRejectUnauthorized: string | undefined
 
-function redactProxyUrl(proxyUrl: string | undefined): string {
+export function redactProxyUrl(proxyUrl: string | undefined): string {
 	if (!proxyUrl) {
 		return "(not set)"
 	}

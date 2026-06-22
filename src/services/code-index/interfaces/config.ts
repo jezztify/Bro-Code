@@ -11,6 +11,7 @@ export interface CodeIndexConfig {
 	modelDimension?: number // Generic dimension property for all providers
 	openAiOptions?: ApiHandlerOptions
 	ollamaOptions?: ApiHandlerOptions
+	lmStudioOptions?: ApiHandlerOptions
 	openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
 	geminiOptions?: { apiKey: string }
 	mistralOptions?: { apiKey: string }
@@ -34,6 +35,7 @@ export type PreviousConfigSnapshot = {
 	modelDimension?: number // Generic dimension property
 	openAiKey?: string
 	ollamaBaseUrl?: string
+	lmStudioBaseUrl?: string
 	openAiCompatibleBaseUrl?: string
 	openAiCompatibleApiKey?: string
 	geminiApiKey?: string

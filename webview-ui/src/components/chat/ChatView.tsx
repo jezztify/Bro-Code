@@ -1601,6 +1601,20 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	}
 
 	const areButtonsVisible = showScrollToBottom || primaryButtonText || secondaryButtonText
+	const hasActionButtons = Boolean(primaryButtonText || secondaryButtonText)
+
+	// The approval/retry button bar (e.g. Retry/Start New Task on an api_req_failed error)
+	// renders as a sibling below the Virtuoso list, so it shrinks the list's available
+	// viewport without Virtuoso itself registering a scroll event. If we were already
+	// pinned to the bottom, re-pin after that viewport change so the last row (e.g. the
+	// next "API Request...") isn't left positioned behind the newly-appeared button bar
+	// /chat input. Scoped to the action buttons (not the scroll-to-bottom chevron), which
+	// already has its own click-driven re-anchoring.
+	useEffect(() => {
+		if (isAtBottomRef.current && scrollPhaseRef.current !== "USER_BROWSING_HISTORY") {
+			scrollToBottomAuto()
+		}
+	}, [hasActionButtons, scrollToBottomAuto, isAtBottomRef, scrollPhaseRef])
 
 	return (
 		<div
@@ -1682,7 +1696,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 			{task && (
 				<>
-					<div className="grow flex" ref={scrollContainerRef}>
+					<div className="grow flex min-h-0" ref={scrollContainerRef}>
 						<Virtuoso
 							ref={virtuosoRef}
 							key={task.ts}

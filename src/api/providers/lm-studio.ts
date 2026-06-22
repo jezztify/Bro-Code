@@ -16,6 +16,7 @@ import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { getModelsFromCache } from "./fetchers/modelCache"
 import { handleOpenAIError } from "./utils/error-handler"
+import { getLmStudioFetchConfig } from "./utils/lmstudio-proxy"
 
 export class LmStudioHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
@@ -29,10 +30,23 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 		// LM Studio uses "noop" as a placeholder API key
 		const apiKey = "noop"
 
+		// undici (Node's fetch implementation) defaults headersTimeout/bodyTimeout to 5 minutes,
+		// which silently aborts requests to slow local models well before our own timeoutMs is
+		// reached (e.g. long prompt-processing on large contexts with no bytes sent yet).
+		const { dispatcher, fetch: lmStudioFetch } = getLmStudioFetchConfig(this.options, this.timeoutMs)
+
 		this.client = new OpenAI({
 			baseURL: (this.options.lmStudioBaseUrl || "http://localhost:1234") + "/v1",
 			apiKey: apiKey,
 			timeout: this.timeoutMs,
+			fetchOptions: { dispatcher },
+			// VS Code patches `globalThis.fetch` in the extension host to honor the user's
+			// configured `http.proxy`/system proxy. For a local/LAN LM Studio server that proxy
+			// is often the wrong route (and may reject it outright), so when the user opts in we
+			// bypass it by calling undici's fetch directly instead of the patched global one.
+			// The same bypass is needed when a custom proxy URL is set, so requests are routed
+			// through the user-defined proxy instead of VS Code's system proxy.
+			...(lmStudioFetch ? { fetch: lmStudioFetch } : {}),
 		})
 	}
 
@@ -163,8 +177,9 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				outputTokens,
 			} as const
 		} catch (error) {
+			const reason = error instanceof Error ? error.message : String(error)
 			throw new Error(
-				"Please check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts.",
+				`LM Studio request failed: ${reason}\nPlease check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts.`,
 			)
 		}
 	}
@@ -210,8 +225,9 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 			}
 			return response.choices[0]?.message.content || ""
 		} catch (error) {
+			const reason = error instanceof Error ? error.message : String(error)
 			throw new Error(
-				"Please check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts.",
+				`LM Studio request failed: ${reason}\nPlease check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts.`,
 			)
 		}
 	}

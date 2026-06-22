@@ -243,7 +243,7 @@ describe("webviewMessageHandler - requestLmStudioModels", () => {
 			values: { baseUrl: "http://127.0.0.1:4321" },
 		})
 
-		expect(mockGetLMStudioModels).toHaveBeenCalledWith("http://127.0.0.1:4321")
+		expect(mockGetLMStudioModels).toHaveBeenCalledWith("http://127.0.0.1:4321", undefined)
 		expect(mockGetModels).not.toHaveBeenCalled()
 	})
 
@@ -255,8 +255,40 @@ describe("webviewMessageHandler - requestLmStudioModels", () => {
 			values: { baseUrl: "" },
 		})
 
-		expect(mockGetLMStudioModels).toHaveBeenCalledWith("")
+		expect(mockGetLMStudioModels).toHaveBeenCalledWith("", undefined)
 		expect(mockGetModels).not.toHaveBeenCalled()
+	})
+
+	it("forwards the persisted useRestApi setting to getModels", async () => {
+		mockClineProvider.getState = vi.fn().mockResolvedValue({
+			apiConfiguration: {
+				lmStudioModelId: "model-1",
+				lmStudioBaseUrl: "http://localhost:1234",
+				lmStudioUseRestApi: true,
+			},
+		})
+		mockGetModels.mockResolvedValue({})
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "requestLmStudioModels",
+		})
+
+		expect(mockGetModels).toHaveBeenCalledWith({
+			provider: "lmstudio",
+			baseUrl: "http://localhost:1234",
+			useRestApi: true,
+		})
+	})
+
+	it("forwards an explicit useRestApi request value for preview base URLs", async () => {
+		mockGetLMStudioModels.mockResolvedValue({})
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "requestLmStudioModels",
+			values: { baseUrl: "http://127.0.0.1:4321", useRestApi: true },
+		})
+
+		expect(mockGetLMStudioModels).toHaveBeenCalledWith("http://127.0.0.1:4321", true)
 	})
 })
 

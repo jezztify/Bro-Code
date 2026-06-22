@@ -82,7 +82,9 @@ import { GetModelsOptions } from "../../shared/api"
 import { generateSystemPrompt } from "./generateSystemPrompt"
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../utils/export"
 import { getCommand } from "../../utils/commands"
-import { getLMStudioModels } from "../../api/providers/fetchers/lmstudio"
+import { getLMStudioModels, getLMStudioEmbeddingModels } from "../../api/providers/fetchers/lmstudio"
+import { testLmStudioConnection } from "../../api/providers/utils/lmstudio-proxy"
+import { redactProxyUrl } from "../../utils/networkProxy"
 
 const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
 
@@ -1229,13 +1231,19 @@ export const webviewMessageHandler = async (
 			try {
 				const requestedBaseUrl = message.values?.baseUrl
 				const hasPreviewBaseUrl = typeof requestedBaseUrl === "string"
+				const requestedUseRestApi = message.values?.useRestApi
+				const useRestApi =
+					typeof requestedUseRestApi === "boolean"
+						? requestedUseRestApi
+						: lmStudioApiConfig.lmStudioUseRestApi
 				let lmStudioModels: ModelRecord
 				if (hasPreviewBaseUrl) {
-					lmStudioModels = await getLMStudioModels(requestedBaseUrl)
+					lmStudioModels = await getLMStudioModels(requestedBaseUrl, useRestApi)
 				} else {
 					const lmStudioOptions = {
 						provider: "lmstudio" as const,
 						baseUrl: lmStudioApiConfig.lmStudioBaseUrl,
+						useRestApi,
 					}
 					// Flush cache and refresh to ensure fresh models.
 					await flushModels(lmStudioOptions, true)
@@ -1251,6 +1259,73 @@ export const webviewMessageHandler = async (
 			} catch (error) {
 				// Silently fail - user hasn't configured LM Studio yet.
 				console.debug("LM Studio models fetch failed:", error)
+			}
+			break
+		}
+		case "testLmStudioConnection": {
+			const { apiConfiguration: lmStudioApiConfig } = await provider.getState()
+
+			const baseUrl =
+				typeof message.values?.baseUrl === "string" ? message.values.baseUrl : lmStudioApiConfig.lmStudioBaseUrl
+			const lmStudioBypassProxy =
+				typeof message.values?.lmStudioBypassProxy === "boolean"
+					? message.values.lmStudioBypassProxy
+					: lmStudioApiConfig.lmStudioBypassProxy
+			const lmStudioProxyUrl =
+				typeof message.values?.lmStudioProxyUrl === "string"
+					? message.values.lmStudioProxyUrl
+					: lmStudioApiConfig.lmStudioProxyUrl
+
+			const proxyDescription = lmStudioBypassProxy
+				? "bypassing proxy"
+				: lmStudioProxyUrl
+					? `via proxy ${redactProxyUrl(lmStudioProxyUrl)}`
+					: "via system proxy"
+
+			provider.log(
+				`[LM Studio] Testing connection to ${baseUrl || "http://localhost:1234"} (${proxyDescription})`,
+			)
+
+			const result = await testLmStudioConnection(baseUrl, { lmStudioBypassProxy, lmStudioProxyUrl })
+
+			if (result.success) {
+				provider.log(`[LM Studio] Connection test succeeded (${result.modelCount ?? 0} models found)`)
+			} else {
+				provider.log(`[LM Studio] Connection test failed: ${result.error}`)
+			}
+
+			provider.postMessageToWebview({
+				type: "lmStudioConnectionTestResult",
+				success: result.success,
+				error: result.error,
+				values: { modelCount: result.modelCount },
+			})
+			break
+		}
+		case "requestCodeIndexLmStudioModels": {
+			// Specific handler for the Codebase Indexing embedder's LM Studio model list.
+			try {
+				const codebaseIndexConfig = getGlobalState("codebaseIndexConfig")
+				const requestedBaseUrl = message.values?.baseUrl
+				const baseUrl =
+					typeof requestedBaseUrl === "string" && requestedBaseUrl.trim().length > 0
+						? requestedBaseUrl
+						: codebaseIndexConfig?.codebaseIndexLmStudioBaseUrl
+				const requestedUseRestApi = message.values?.useRestApi
+				const useRestApi =
+					typeof requestedUseRestApi === "boolean"
+						? requestedUseRestApi
+						: (codebaseIndexConfig?.codebaseIndexLmStudioUseRestApi ?? false)
+
+				const codeIndexLmStudioModels = await getLMStudioEmbeddingModels(baseUrl, useRestApi)
+
+				provider.postMessageToWebview({
+					type: "codeIndexLmStudioModels",
+					codeIndexLmStudioModels,
+				})
+			} catch (error) {
+				// Silently fail - user hasn't configured LM Studio yet.
+				console.debug("LM Studio embedding models fetch failed:", error)
 			}
 			break
 		}
@@ -2756,6 +2831,9 @@ export const webviewMessageHandler = async (
 					codebaseIndexQdrantUrl: settings.codebaseIndexQdrantUrl,
 					codebaseIndexEmbedderProvider: settings.codebaseIndexEmbedderProvider,
 					codebaseIndexEmbedderBaseUrl: settings.codebaseIndexEmbedderBaseUrl,
+					codebaseIndexLmStudioBaseUrl: settings.codebaseIndexLmStudioBaseUrl,
+					codebaseIndexLmStudioUseRestApi: settings.codebaseIndexLmStudioUseRestApi,
+					codebaseIndexLmStudioBypassProxy: settings.codebaseIndexLmStudioBypassProxy,
 					codebaseIndexEmbedderModelId: settings.codebaseIndexEmbedderModelId,
 					codebaseIndexEmbedderModelDimension: settings.codebaseIndexEmbedderModelDimension, // Generic dimension
 					codebaseIndexOpenAiCompatibleBaseUrl: settings.codebaseIndexOpenAiCompatibleBaseUrl,

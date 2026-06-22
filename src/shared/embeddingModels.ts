@@ -23,6 +23,15 @@ export const EMBEDDING_MODEL_PROFILES: EmbeddingModelProfiles = {
 		// Add default Ollama model if applicable, e.g.:
 		// 'default': { dimension: 768 } // Assuming a default dimension
 	},
+	lmstudio: {
+		"nomic-embed-text-v1.5": { dimension: 768, scoreThreshold: 0.4 },
+		"nomic-embed-code": {
+			dimension: 3584,
+			scoreThreshold: 0.15,
+			queryPrefix: "Represent this query for searching relevant code: ",
+		},
+		"text-embedding-nomic-embed-text-v1.5": { dimension: 768, scoreThreshold: 0.4 },
+	},
 	"openai-compatible": {
 		"text-embedding-3-small": { dimension: 1536, scoreThreshold: 0.4 },
 		"text-embedding-3-large": { dimension: 3072, scoreThreshold: 0.4 },
@@ -172,6 +181,16 @@ export function getDefaultModelId(provider: EmbedderProvider): string {
 			console.warn("No default Ollama model found in profiles.")
 			// Return a placeholder or throw an error, depending on desired behavior
 			return "unknown-default" // Placeholder specific model ID
+		}
+
+		case "lmstudio": {
+			const lmStudioModels = EMBEDDING_MODEL_PROFILES.lmstudio
+			const defaultLmStudioModel = lmStudioModels && Object.keys(lmStudioModels)[0]
+			if (defaultLmStudioModel) {
+				return defaultLmStudioModel
+			}
+			console.warn("No default LM Studio model found in profiles.")
+			return "unknown-default"
 		}
 
 		case "gemini":

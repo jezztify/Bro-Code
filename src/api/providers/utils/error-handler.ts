@@ -48,7 +48,20 @@ export function handleProviderError(
 
 	if (error instanceof Error) {
 		const anyErr = error as any
-		const msg = anyErr?.error?.metadata?.raw || error.message || ""
+
+		// Walk the `cause` chain to find the deepest underlying reason (e.g. undici wraps
+		// "fetch failed" around the real OS-level error like ECONNRESET or UND_ERR_BODY_TIMEOUT).
+		const causeParts: string[] = []
+		let current: unknown = anyErr.cause
+		while (current instanceof Error) {
+			const code = (current as any).code
+			causeParts.push(code && !current.message.includes(code) ? `${current.message} [${code}]` : current.message)
+			current = (current as any).cause
+		}
+
+		const baseMsg = anyErr?.error?.metadata?.raw || error.message || ""
+		const causeSuffix = causeParts.filter((part) => !baseMsg.includes(part)).join(" -> ")
+		const msg = causeSuffix ? `${baseMsg} (${causeSuffix})` : baseMsg
 
 		// Log the original error details for debugging
 		console.error(`[${providerName}] API error:`, {

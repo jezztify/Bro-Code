@@ -16,6 +16,7 @@ export class CodeIndexConfigManager {
 	private modelDimension?: number
 	private openAiOptions?: ApiHandlerOptions
 	private ollamaOptions?: ApiHandlerOptions
+	private lmStudioOptions?: ApiHandlerOptions
 	private openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
 	private geminiOptions?: { apiKey: string }
 	private mistralOptions?: { apiKey: string }
@@ -67,6 +68,9 @@ export class CodeIndexConfigManager {
 			codebaseIndexSearchMaxResults,
 		} = codebaseIndexConfig
 
+		const lmStudioBaseUrl = codebaseIndexConfig.codebaseIndexLmStudioBaseUrl ?? ""
+		const lmStudioUseRestApi = codebaseIndexConfig.codebaseIndexLmStudioUseRestApi ?? false
+		const lmStudioBypassProxy = codebaseIndexConfig.codebaseIndexLmStudioBypassProxy ?? false
 		const openAiKey = this.contextProxy?.getSecret("codeIndexOpenAiKey") ?? ""
 		const qdrantApiKey = this.contextProxy?.getSecret("codeIndexQdrantApiKey") ?? ""
 		// Fix: Read OpenAI Compatible settings from the correct location within codebaseIndexConfig
@@ -108,6 +112,8 @@ export class CodeIndexConfigManager {
 		// Set embedder provider with support for openai-compatible
 		if (codebaseIndexEmbedderProvider === "ollama") {
 			this.embedderProvider = "ollama"
+		} else if (codebaseIndexEmbedderProvider === "lmstudio") {
+			this.embedderProvider = "lmstudio"
 		} else if (codebaseIndexEmbedderProvider === "openai-compatible") {
 			this.embedderProvider = "openai-compatible"
 		} else if (codebaseIndexEmbedderProvider === "gemini") {
@@ -130,6 +136,12 @@ export class CodeIndexConfigManager {
 
 		this.ollamaOptions = {
 			ollamaBaseUrl: codebaseIndexEmbedderBaseUrl,
+		}
+
+		this.lmStudioOptions = {
+			lmStudioBaseUrl: lmStudioBaseUrl,
+			lmStudioUseRestApi: lmStudioUseRestApi,
+			lmStudioBypassProxy: lmStudioBypassProxy,
 		}
 
 		this.openAiCompatibleOptions =
@@ -164,6 +176,7 @@ export class CodeIndexConfigManager {
 			modelDimension?: number
 			openAiOptions?: ApiHandlerOptions
 			ollamaOptions?: ApiHandlerOptions
+			lmStudioOptions?: ApiHandlerOptions
 			openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
 			geminiOptions?: { apiKey: string }
 			mistralOptions?: { apiKey: string }
@@ -185,6 +198,7 @@ export class CodeIndexConfigManager {
 			modelDimension: this.modelDimension,
 			openAiKey: this.openAiOptions?.openAiNativeApiKey ?? "",
 			ollamaBaseUrl: this.ollamaOptions?.ollamaBaseUrl ?? "",
+			lmStudioBaseUrl: this.lmStudioOptions?.lmStudioBaseUrl ?? "",
 			openAiCompatibleBaseUrl: this.openAiCompatibleOptions?.baseUrl ?? "",
 			openAiCompatibleApiKey: this.openAiCompatibleOptions?.apiKey ?? "",
 			geminiApiKey: this.geminiOptions?.apiKey ?? "",
@@ -215,6 +229,7 @@ export class CodeIndexConfigManager {
 				modelDimension: this.modelDimension,
 				openAiOptions: this.openAiOptions,
 				ollamaOptions: this.ollamaOptions,
+				lmStudioOptions: this.lmStudioOptions,
 				openAiCompatibleOptions: this.openAiCompatibleOptions,
 				geminiOptions: this.geminiOptions,
 				mistralOptions: this.mistralOptions,
@@ -247,6 +262,11 @@ export class CodeIndexConfigManager {
 			const ollamaBaseUrl = this.ollamaOptions?.ollamaBaseUrl
 			const qdrantUrl = this.qdrantUrl
 			return !!(ollamaBaseUrl && qdrantUrl)
+		} else if (this.embedderProvider === "lmstudio") {
+			// LM Studio model ID has a default, so only base URL is strictly required for config
+			const lmStudioBaseUrl = this.lmStudioOptions?.lmStudioBaseUrl
+			const qdrantUrl = this.qdrantUrl
+			return !!(lmStudioBaseUrl && qdrantUrl)
 		} else if (this.embedderProvider === "openai-compatible") {
 			const baseUrl = this.openAiCompatibleOptions?.baseUrl
 			const apiKey = this.openAiCompatibleOptions?.apiKey
@@ -308,6 +328,7 @@ export class CodeIndexConfigManager {
 		const prevProvider = prev?.embedderProvider ?? "openai"
 		const prevOpenAiKey = prev?.openAiKey ?? ""
 		const prevOllamaBaseUrl = prev?.ollamaBaseUrl ?? ""
+		const prevLmStudioBaseUrl = prev?.lmStudioBaseUrl ?? ""
 		const prevOpenAiCompatibleBaseUrl = prev?.openAiCompatibleBaseUrl ?? ""
 		const prevOpenAiCompatibleApiKey = prev?.openAiCompatibleApiKey ?? ""
 		const prevModelDimension = prev?.modelDimension
@@ -350,6 +371,7 @@ export class CodeIndexConfigManager {
 		// Authentication changes (API keys)
 		const currentOpenAiKey = this.openAiOptions?.openAiNativeApiKey ?? ""
 		const currentOllamaBaseUrl = this.ollamaOptions?.ollamaBaseUrl ?? ""
+		const currentLmStudioBaseUrl = this.lmStudioOptions?.lmStudioBaseUrl ?? ""
 		const currentOpenAiCompatibleBaseUrl = this.openAiCompatibleOptions?.baseUrl ?? ""
 		const currentOpenAiCompatibleApiKey = this.openAiCompatibleOptions?.apiKey ?? ""
 		const currentModelDimension = this.modelDimension
@@ -368,6 +390,10 @@ export class CodeIndexConfigManager {
 		}
 
 		if (prevOllamaBaseUrl !== currentOllamaBaseUrl) {
+			return true
+		}
+
+		if (prevLmStudioBaseUrl !== currentLmStudioBaseUrl) {
 			return true
 		}
 
@@ -457,6 +483,7 @@ export class CodeIndexConfigManager {
 			modelDimension: this.modelDimension,
 			openAiOptions: this.openAiOptions,
 			ollamaOptions: this.ollamaOptions,
+			lmStudioOptions: this.lmStudioOptions,
 			openAiCompatibleOptions: this.openAiCompatibleOptions,
 			geminiOptions: this.geminiOptions,
 			mistralOptions: this.mistralOptions,

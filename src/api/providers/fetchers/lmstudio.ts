@@ -9,7 +9,19 @@ const modelsWithLoadedDetails = new Set<string>()
 
 export const hasLoadedFullDetails = (modelId: string): boolean => modelsWithLoadedDetails.has(modelId)
 
-export const forceFullModelDetailsLoad = async (baseUrl: string, modelId: string): Promise<void> => {
+export const forceFullModelDetailsLoad = async (
+	baseUrl: string,
+	modelId: string,
+	useRestApi = false,
+): Promise<void> => {
+	if (useRestApi) {
+		// REST-only mode never opens the LM Studio SDK's WebSocket connection, so there's no
+		// equivalent of "loading" a model's runtime details - just refresh the REST-derived cache.
+		await flushModels({ provider: "lmstudio", baseUrl, useRestApi }, true)
+		modelsWithLoadedDetails.add(modelId)
+		return
+	}
+
 	try {
 		// Test the connection to LM Studio first
 		// Crrors will be caught further down.
@@ -49,11 +61,157 @@ export const parseLMStudioModel = (rawModel: LLMInstanceInfo | LLMInfo): ModelIn
 	return modelInfo
 }
 
-export async function getLMStudioModels(baseUrl = "http://localhost:1234"): Promise<Record<string, ModelInfo>> {
+/**
+ * Parses an OpenAI-compatible /v1/models REST response into ModelInfo objects.
+ * Used as a fallback when the LMStudio SDK WebSocket connection fails (e.g. remote servers).
+ */
+export const parseOpenAIModelsResponse = (response: any): Record<string, ModelInfo> => {
+	const models: Record<string, ModelInfo> = {}
+
+	if (!response?.data || !Array.isArray(response.data)) {
+		return models
+	}
+
+	for (const rawModel of response.data) {
+		const modelId = rawModel.id
+		if (!modelId) continue
+
+		models[modelId] = Object.assign({}, lMStudioDefaultModelInfo, {
+			description: modelId,
+			contextWindow: undefined,
+			supportsPromptCache: true,
+			supportsImages: false,
+			maxTokens: undefined,
+		})
+	}
+
+	return models
+}
+
+/**
+ * Parses LM Studio's native /api/v0/models REST response into ModelInfo objects.
+ * Unlike the OpenAI-compatible endpoint, this includes context length and capability data,
+ * so it doesn't need the SDK's WebSocket connection to produce useful model info.
+ */
+export const parseLMStudioNativeModelsResponse = (body: any): Record<string, ModelInfo> => {
+	const models: Record<string, ModelInfo> = {}
+	const rawModels = Array.isArray(body?.data) ? body.data : []
+
+	for (const rawModel of rawModels) {
+		if (rawModel?.type === "embeddings") continue
+
+		const modelId = rawModel?.id
+		if (!modelId) continue
+
+		const contextWindow = rawModel.loaded_context_length ?? rawModel.max_context_length
+
+		models[modelId] = Object.assign({}, lMStudioDefaultModelInfo, {
+			description:
+				[rawModel.publisher, rawModel.arch, rawModel.quantization].filter(Boolean).join(" - ") || modelId,
+			contextWindow: contextWindow ?? lMStudioDefaultModelInfo.contextWindow,
+			maxTokens: contextWindow ?? lMStudioDefaultModelInfo.maxTokens,
+			supportsPromptCache: true,
+			supportsImages: Array.isArray(rawModel.capabilities) && rawModel.capabilities.includes("vision"),
+		})
+	}
+
+	return models
+}
+
+/**
+ * Parses LM Studio's native /api/v1/models REST response into ModelInfo objects.
+ * This supersedes /api/v0/models and carries context-length/capability data under a
+ * different shape (top-level "models" array, "key" as the model id, structured
+ * "capabilities" and "quantization" objects, and runtime context length under
+ * loaded_instances[].config.context_length when the model is loaded).
+ */
+export const parseLMStudioV1ModelsResponse = (body: any): Record<string, ModelInfo> => {
+	const models: Record<string, ModelInfo> = {}
+	const rawModels = Array.isArray(body?.models) ? body.models : []
+
+	for (const rawModel of rawModels) {
+		if (rawModel?.type !== "llm") continue
+
+		const modelId = rawModel?.key
+		if (!modelId) continue
+
+		const loadedContextLength = rawModel.loaded_instances?.[0]?.config?.context_length
+		const contextWindow = loadedContextLength ?? rawModel.max_context_length
+
+		models[modelId] = Object.assign({}, lMStudioDefaultModelInfo, {
+			description:
+				rawModel.description ||
+				[rawModel.publisher, rawModel.architecture, rawModel.quantization?.name].filter(Boolean).join(" - ") ||
+				modelId,
+			contextWindow: contextWindow ?? lMStudioDefaultModelInfo.contextWindow,
+			maxTokens: contextWindow ?? lMStudioDefaultModelInfo.maxTokens,
+			supportsPromptCache: true,
+			supportsImages: rawModel.capabilities?.vision === true,
+		})
+	}
+
+	return models
+}
+
+/**
+ * Fetches LM Studio models over plain HTTP only, mirroring how the lmstudio-vscode-extension
+ * talks to LM Studio: no WebSocket SDK connection, just REST. Tries the native v1 API first
+ * since it carries context-length/capability data, falls back to the older native v0 API,
+ * and finally falls back to the OpenAI-compatible endpoint.
+ */
+async function getLMStudioModelsViaRestApi(baseUrl: string): Promise<Record<string, ModelInfo>> {
+	try {
+		const v1Response = await axios.get(`${baseUrl}/api/v1/models`)
+		const v1Models = parseLMStudioV1ModelsResponse(v1Response.data)
+
+		if (Object.keys(v1Models).length > 0) {
+			return v1Models
+		}
+	} catch (error) {
+		console.debug("LMStudio native /api/v1/models endpoint unavailable, falling back to /api/v0/models")
+	}
+
+	try {
+		const nativeResponse = await axios.get(`${baseUrl}/api/v0/models`)
+		const nativeModels = parseLMStudioNativeModelsResponse(nativeResponse.data)
+
+		if (Object.keys(nativeModels).length > 0) {
+			return nativeModels
+		}
+	} catch (error) {
+		console.debug("LMStudio native /api/v0/models endpoint unavailable, falling back to /v1/models")
+	}
+
+	try {
+		const openAiModelsResponse = await axios.get(`${baseUrl}/v1/models`)
+		return parseOpenAIModelsResponse(openAiModelsResponse)
+	} catch (error) {
+		if (error.code === "ECONNREFUSED") {
+			console.warn(`Error connecting to LMStudio at ${baseUrl}`)
+		} else {
+			console.error(
+				`Error fetching LMStudio models via REST API: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
+			)
+		}
+		return {}
+	}
+}
+
+export async function getLMStudioModels(
+	baseUrl = "http://localhost:1234",
+	useRestApi = false,
+): Promise<Record<string, ModelInfo>> {
 	// clear the set of models that have full details loaded
 	modelsWithLoadedDetails.clear()
 	// clearing the input can leave an empty string; use the default in that case
 	baseUrl = baseUrl === "" ? "http://localhost:1234" : baseUrl
+
+	if (useRestApi) {
+		if (!URL.canParse(baseUrl)) {
+			return {}
+		}
+		return getLMStudioModelsViaRestApi(baseUrl)
+	}
 
 	const models: Record<string, ModelInfo> = {}
 	// ws is required to connect using the LMStudio library
@@ -64,11 +222,13 @@ export async function getLMStudioModels(baseUrl = "http://localhost:1234"): Prom
 			return models
 		}
 
-		// test the connection to LM Studio first
-		// errors will be caught further down
-		await axios.get(`${baseUrl}/v1/models`)
+		// Fetch the OpenAI-compatible /v1/models response first — this works for both local and remote LM Studio.
+		// We store it to use as a fallback if the WebSocket SDK calls fail below.
+		const openAiModelsResponse = await axios.get(`${baseUrl}/v1/models`)
 
 		const client = new LMStudioClient({ baseUrl: lmsUrl })
+
+		let sdkSucceeded = false
 
 		// First, try to get all downloaded models
 		try {
@@ -77,14 +237,24 @@ export async function getLMStudioModels(baseUrl = "http://localhost:1234"): Prom
 				// Use the model path as the key since that's what users select
 				models[model.path] = parseLMStudioModel(model)
 			}
+			sdkSucceeded = true
 		} catch (error) {
 			console.warn("Failed to list downloaded models, falling back to loaded models only")
 		}
 
 		// Get loaded models for their runtime info (context size)
-		const loadedModels = (await client.llm.listLoaded().then((models: LLM[]) => {
-			return Promise.all(models.map((m) => m.getModelInfo()))
-		})) as Array<LLMInstanceInfo>
+		let loadedModels: Array<LLMInstanceInfo> = []
+		try {
+			loadedModels = (await client.llm.listLoaded().then((models: LLM[]) => {
+				return Promise.all(models.map((m) => m.getModelInfo()))
+			})) as Array<LLMInstanceInfo>
+
+			if (loadedModels.length > 0) {
+				sdkSucceeded = true
+			}
+		} catch (error) {
+			console.warn("Failed to list loaded models, SDK connection may be unavailable")
+		}
 
 		// Deduplicate: For each loaded model, check if any downloaded model path contains the loaded model's key
 		// This handles cases like loaded "llama-3.1" matching downloaded "Meta/Llama-3.1/Something"
@@ -115,6 +285,14 @@ export async function getLMStudioModels(baseUrl = "http://localhost:1234"): Prom
 			models[lmstudioModel.modelKey] = parseLMStudioModel(lmstudioModel)
 			modelsWithLoadedDetails.add(lmstudioModel.modelKey)
 		}
+
+		// If the SDK calls failed entirely (common for remote LM Studio instances),
+		// fall back to parsing the OpenAI-compatible REST response.
+		if (!sdkSucceeded && Object.keys(models).length === 0) {
+			console.debug("LMStudio SDK returned no models, falling back to OpenAI-compatible /v1/models REST API")
+			const fallbackModels = parseOpenAIModelsResponse(openAiModelsResponse)
+			Object.assign(models, fallbackModels)
+		}
 	} catch (error) {
 		if (error.code === "ECONNREFUSED") {
 			console.warn(`Error connecting to LMStudio at ${baseUrl}`)
@@ -126,4 +304,95 @@ export async function getLMStudioModels(baseUrl = "http://localhost:1234"): Prom
 	}
 
 	return models
+}
+
+/**
+ * Parses LM Studio's native /api/v0/models REST response, keeping only embedding models
+ * (the inverse of parseLMStudioNativeModelsResponse, which is built for chat/LLM models).
+ */
+export const parseLMStudioNativeEmbeddingModelsResponse = (body: any): string[] => {
+	const rawModels = Array.isArray(body?.data) ? body.data : []
+	return rawModels
+		.filter((rawModel: any) => rawModel?.type === "embeddings" && rawModel?.id)
+		.map((rawModel: any) => rawModel.id)
+}
+
+/**
+ * Parses LM Studio's native /api/v1/models REST response, keeping only embedding models
+ * (the inverse of parseLMStudioV1ModelsResponse, which is built for chat/LLM models).
+ */
+export const parseLMStudioV1EmbeddingModelsResponse = (body: any): string[] => {
+	const rawModels = Array.isArray(body?.models) ? body.models : []
+	return rawModels
+		.filter((rawModel: any) => rawModel?.type === "embedding" && rawModel?.key)
+		.map((rawModel: any) => rawModel.key)
+}
+
+/**
+ * Fetches the list of embedding-capable model IDs from a local/remote LM Studio instance.
+ * Tries the native v1 and v0 REST APIs first since they carry model-type metadata, and falls
+ * back to the OpenAI-compatible /v1/models endpoint (which has no type info, so every model
+ * is returned) when neither native endpoint is available.
+ *
+ * When `useRestApi` is true, the native LM-Studio-specific endpoints are skipped entirely and
+ * only the generic OpenAI-compatible /v1/models endpoint is queried - useful when a remote or
+ * proxied LM Studio instance only exposes the standard REST surface.
+ */
+export async function getLMStudioEmbeddingModels(
+	baseUrl = "http://localhost:1234",
+	useRestApi = false,
+): Promise<string[]> {
+	baseUrl = baseUrl === "" ? "http://localhost:1234" : baseUrl
+
+	if (!URL.canParse(baseUrl)) {
+		return []
+	}
+
+	if (useRestApi) {
+		try {
+			const openAiModelsResponse = await axios.get(`${baseUrl}/v1/models`)
+			return Object.keys(parseOpenAIModelsResponse(openAiModelsResponse.data))
+		} catch (error) {
+			if (error.code === "ECONNREFUSED") {
+				console.warn(`Error connecting to LMStudio at ${baseUrl}`)
+			} else {
+				console.debug("LMStudio /v1/models endpoint unavailable")
+			}
+			return []
+		}
+	}
+
+	try {
+		const v1Response = await axios.get(`${baseUrl}/api/v1/models`)
+		const v1Models = parseLMStudioV1EmbeddingModelsResponse(v1Response.data)
+
+		if (v1Models.length > 0) {
+			return v1Models
+		}
+	} catch (error) {
+		console.debug("LMStudio native /api/v1/models endpoint unavailable, falling back to /api/v0/models")
+	}
+
+	try {
+		const nativeResponse = await axios.get(`${baseUrl}/api/v0/models`)
+		const nativeModels = parseLMStudioNativeEmbeddingModelsResponse(nativeResponse.data)
+
+		if (nativeModels.length > 0) {
+			return nativeModels
+		}
+	} catch (error) {
+		console.debug("LMStudio native /api/v0/models endpoint unavailable, falling back to /v1/models")
+	}
+
+	try {
+		const openAiModelsResponse = await axios.get(`${baseUrl}/v1/models`)
+		return Object.keys(parseOpenAIModelsResponse(openAiModelsResponse.data))
+	} catch (error) {
+		if (error.code === "ECONNREFUSED") {
+			console.warn(`Error connecting to LMStudio at ${baseUrl}`)
+		} else {
+			console.debug("LMStudio /v1/models endpoint unavailable")
+		}
+		return []
+	}
 }
