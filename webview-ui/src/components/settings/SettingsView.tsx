@@ -874,6 +874,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 								maxGitStatusFiles={maxGitStatusFiles}
 								customSupportPrompts={customSupportPrompts || {}}
 								setCustomSupportPrompts={setCustomSupportPromptsField}
+								condensingApiConfigId={extensionState.condensingApiConfigId}
+								setCondensingApiConfigId={extensionState.setCondensingApiConfigId}
 								setCachedStateField={setCachedStateField}
 							/>
 						)}

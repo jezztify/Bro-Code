@@ -46,6 +46,8 @@ type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	maxGitStatusFiles?: number
 	customSupportPrompts: Record<string, string | undefined>
 	setCustomSupportPrompts: (prompts: Record<string, string | undefined>) => void
+	condensingApiConfigId?: string
+	setCondensingApiConfigId?: (value: string) => void
 	setCachedStateField: SetCachedStateField<
 		| "autoCondenseContext"
 		| "autoCondenseContextPercent"
@@ -87,6 +89,8 @@ export const ContextManagementSettings = ({
 	maxGitStatusFiles,
 	customSupportPrompts,
 	setCustomSupportPrompts,
+	condensingApiConfigId,
+	setCondensingApiConfigId,
 	className,
 	...props
 }: ContextManagementSettingsProps) => {
@@ -499,6 +503,45 @@ export const ContextManagementSettings = ({
 						className="w-full"
 						data-testid="condense-prompt-textarea"
 					/>
+				</SearchableSetting>
+
+				{/* Condensing API Configuration */}
+				<SearchableSetting
+					settingId="context-condense-api-config"
+					section="contextManagement"
+					label={t("settings:contextManagement.condensingApiConfig.label")}>
+					<label className="block font-medium mb-1">
+						{t("settings:contextManagement.condensingApiConfig.label")}
+					</label>
+					<Select
+						value={condensingApiConfigId || "-"}
+						onValueChange={(value) => {
+							const newConfigId = value === "-" ? "" : value
+							setCondensingApiConfigId?.(newConfigId)
+							vscode.postMessage({
+								type: "condensingApiConfigId",
+								text: newConfigId,
+							})
+						}}>
+						<SelectTrigger data-testid="condensing-api-config-select" className="w-full">
+							<SelectValue
+								placeholder={t("settings:contextManagement.condensingApiConfig.useCurrentConfig")}
+							/>
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="-">
+								{t("settings:contextManagement.condensingApiConfig.useCurrentConfig")}
+							</SelectItem>
+							{(listApiConfigMeta || []).map((config) => (
+								<SelectItem key={config.id} value={config.id} data-testid={`${config.id}-option`}>
+									{config.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					<div className="text-vscode-descriptionForeground text-sm mt-1">
+						{t("settings:contextManagement.condensingApiConfig.description")}
+					</div>
 				</SearchableSetting>
 
 				{/* Auto Condense Context */}
