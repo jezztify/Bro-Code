@@ -1,6 +1,12 @@
 import React, { useState } from "react"
 import { Trans } from "react-i18next"
-import { VSCodeLink, VSCodePanels, VSCodePanelTab, VSCodePanelView } from "@vscode/webview-ui-toolkit/react"
+import {
+	VSCodeCheckbox,
+	VSCodeLink,
+	VSCodePanels,
+	VSCodePanelTab,
+	VSCodePanelView,
+} from "@vscode/webview-ui-toolkit/react"
 
 import type { McpServer } from "@roo-code/types"
 
@@ -248,6 +254,20 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 		setShowDeleteConfirm(false)
 	}
 
+	const enabledTools = (server.tools ?? []).filter((tool) => tool.enabledForPrompt ?? true)
+	const allToolsAlwaysAllowed = enabledTools.length > 0 && enabledTools.every((tool) => tool.alwaysAllow)
+
+	const handleAllowAllToolsChange = () => {
+		if (enabledTools.length === 0) return
+		vscode.postMessage({
+			type: "toggleToolsAlwaysAllow",
+			serverName: server.name,
+			source: server.source || "global",
+			toolNames: enabledTools.map((tool) => tool.name),
+			alwaysAllow: !allToolsAlwaysAllowed,
+		})
+	}
+
 	return (
 		<div style={{ marginBottom: "10px" }}>
 			<div
@@ -361,6 +381,24 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 												gap: "8px",
 												width: "100%",
 											}}>
+											{alwaysAllowMcp && enabledTools.length > 0 && (
+												<div
+													style={{
+														display: "flex",
+														justifyContent: "flex-end",
+														paddingBottom: "4px",
+														borderBottom: "1px solid var(--vscode-panel-border)",
+													}}>
+													<VSCodeCheckbox
+														checked={allToolsAlwaysAllowed}
+														onChange={handleAllowAllToolsChange}
+														className="text-xs">
+														<span className="text-vscode-descriptionForeground whitespace-nowrap">
+															{t("mcp:tool.allowAll")}
+														</span>
+													</VSCodeCheckbox>
+												</div>
+											)}
 											{server.tools.map((tool) => (
 												<McpToolRow
 													key={`${tool.name}-${server.name}-${server.source || "global"}`}
