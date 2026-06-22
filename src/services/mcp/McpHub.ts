@@ -2300,7 +2300,7 @@ export class McpHub {
 	private async updateServerToolList(
 		serverName: string,
 		source: "global" | "project",
-		toolName: string,
+		toolNames: string | string[],
 		listName: "alwaysAllow" | "disabledTools",
 		addTool: boolean,
 	): Promise<void> {
@@ -2349,13 +2349,16 @@ export class McpHub {
 			config.mcpServers[serverName][listName] = []
 		}
 
-		const targetList = config.mcpServers[serverName][listName]
-		const toolIndex = targetList.indexOf(toolName)
+		const targetList: string[] = config.mcpServers[serverName][listName]
 
-		if (addTool && toolIndex === -1) {
-			targetList.push(toolName)
-		} else if (!addTool && toolIndex !== -1) {
-			targetList.splice(toolIndex, 1)
+		for (const toolName of Array.isArray(toolNames) ? toolNames : [toolNames]) {
+			const toolIndex = targetList.indexOf(toolName)
+
+			if (addTool && toolIndex === -1) {
+				targetList.push(toolName)
+			} else if (!addTool && toolIndex !== -1) {
+				targetList.splice(toolIndex, 1)
+			}
 		}
 
 		// Set flag to prevent file watcher from triggering server restart
@@ -2390,6 +2393,23 @@ export class McpHub {
 		} catch (error) {
 			this.showErrorMessage(
 				`Failed to toggle always allow for tool "${toolName}" on server "${serverName}" with source "${source}"`,
+				error,
+			)
+			throw error
+		}
+	}
+
+	async toggleToolsAlwaysAllow(
+		serverName: string,
+		source: "global" | "project",
+		toolNames: string[],
+		shouldAllow: boolean,
+	): Promise<void> {
+		try {
+			await this.updateServerToolList(serverName, source, toolNames, "alwaysAllow", shouldAllow)
+		} catch (error) {
+			this.showErrorMessage(
+				`Failed to toggle always allow for tools on server "${serverName}" with source "${source}"`,
 				error,
 			)
 			throw error
