@@ -3,7 +3,7 @@
 	"displayName": "%extension.displayName%",
 	"description": "%extension.description%",
 	"publisher": "ZooCodeOrganization",
-	"version": "3.62.19",
+	"version": "3.62.23",
 	"icon": "assets/icons/icon.png",
 	"galleryBanner": {
 		"color": "#617A91",
@@ -98,7 +98,11 @@
 			{
 				"command": "zoo-code.openInNewTab",
 				"title": "%command.openInNewTab.title%",
-				"category": "%configuration.title%"
+				"category": "%configuration.title%",
+				"icon": {
+					"light": "assets/icons/panel_light.png",
+					"dark": "assets/icons/panel_dark.png"
+				}
 			},
 			{
 				"command": "zoo-code.explainCode",
@@ -240,6 +244,11 @@
 				}
 			],
 			"editor/title": [
+				{
+					"command": "zoo-code.openInNewTab",
+					"group": "navigation@1",
+					"when": "activeWebviewPanelId != zoo-code.TabPanelProvider"
+				},
 				{
 					"command": "zoo-code.plusButtonClicked",
 					"group": "navigation@1",

@@ -1520,6 +1520,38 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 	}
 
+	/**
+	 * Resolves the API handler to use for context condensing. If a dedicated
+	 * `condensingApiConfigId` profile is configured (and still exists), builds a handler from it;
+	 * otherwise falls back to the task's main API handler.
+	 */
+	private async getCondensingApiHandler(
+		state: Awaited<ReturnType<ClineProvider["getState"]>> | undefined,
+	): Promise<ApiHandler> {
+		const provider = this.providerRef.deref()
+		const condensingApiConfigId = state?.condensingApiConfigId
+
+		if (
+			provider &&
+			condensingApiConfigId &&
+			state?.listApiConfigMeta?.some((config) => config.id === condensingApiConfigId)
+		) {
+			try {
+				const { name: _name, ...providerSettings } = await provider.providerSettingsManager.getProfile({
+					id: condensingApiConfigId,
+				})
+
+				if (providerSettings.apiProvider) {
+					return buildApiHandler(providerSettings)
+				}
+			} catch (error) {
+				console.error("[Task] Failed to build condensing API handler, falling back to main config:", error)
+			}
+		}
+
+		return this.api
+	}
+
 	public async condenseContext(): Promise<void> {
 		// CRITICAL: Flush any pending tool results before condensing
 		// to ensure tool_use/tool_result pairs are complete in history
@@ -1531,6 +1563,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const state = await this.providerRef.deref()?.getState()
 		const customCondensingPrompt = state?.customSupportPrompts?.CONDENSE
 		const { mode, apiConfiguration } = state ?? {}
+		const condensingApiHandler = await this.getCondensingApiHandler(state)
 
 		const { contextTokens: prevContextTokens } = this.getTokenUsage()
 
@@ -1585,7 +1618,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			condenseId,
 		} = await summarizeConversation({
 			messages: this.apiConversationHistory,
-			apiHandler: this.api,
+			apiHandler: condensingApiHandler,
 			systemPrompt,
 			taskId: this.taskId,
 			isAutomaticTrigger: false,
@@ -4026,13 +4059,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					? await this.getFilesReadByRooSafely("attemptApiRequest")
 					: undefined
 
+			// Only build the (possibly dedicated) condensing API handler when condensing will actually run
+			const contextMgmtApiHandler =
+				contextManagementWillRun && autoCondenseContext ? await this.getCondensingApiHandler(state) : this.api
+
 			try {
 				const truncateResult = await manageContext({
 					messages: this.apiConversationHistory,
 					totalTokens: contextTokens,
 					maxTokens,
 					contextWindow,
-					apiHandler: this.api,
+					apiHandler: contextMgmtApiHandler,
 					autoCondenseContext,
 					autoCondenseContextPercent,
 					systemPrompt,

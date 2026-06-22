@@ -784,6 +784,11 @@
 				"description": "Lower thresholds make file edits more resilient to formatting and whitespace variations. A threshold of 100% requires an exact match."
 			}
 		},
+		"condensingApiConfig": {
+			"label": "API configuration for condensing",
+			"useCurrentConfig": "Use current configuration",
+			"description": "Choose a saved API configuration profile (provider + model) to use specifically for context condensing. Leave as \"Use current configuration\" to condense with whatever profile is active for the task."
+		},
 		"condensingThreshold": {
 			"label": "Condensing Trigger Threshold",
 			"selectProfile": "Configure threshold for profile",

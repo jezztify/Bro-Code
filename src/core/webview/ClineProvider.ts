@@ -662,17 +662,48 @@ export class ClineProvider
 	public static getVisibleInstance(): ClineProvider | undefined {
 		const visibleInstances = Array.from(this.activeInstances).filter((instance) => instance.view?.visible === true)
 
-		// Multiple tabs can report `visible === true` at once when more than one Zoo-Code
-		// tab is open across split editor groups. In that case prefer the one that's also
-		// `active` (focused within its group) - that's the tab the user actually clicked the
-		// title-bar button on. Sidebar webviews have no `.active` concept, so this falls
-		// through to the previous "last visible" behavior for them.
+		// `WebviewPanel.active` is the authoritative focus signal and is what VS Code itself
+		// uses to decide whether to show the editor-tab title button (`when: activeWebviewPanelId
+		// == ...`), so when a tab panel reports active it's the one the user actually clicked on.
+		// It correctly excludes the sidebar too, since `WebviewView` has no `.active` concept -
+		// the sidebar's title button is only shown/clickable when the sidebar itself has focus.
 		const activeInstance = findLast(
 			visibleInstances,
 			(instance) => (instance.view as vscode.WebviewPanel | undefined)?.active === true,
 		)
 
-		return activeInstance ?? visibleInstances[visibleInstances.length - 1]
+		if (activeInstance) {
+			return activeInstance
+		}
+
+		// No editor tab reports `.active`. The sidebar webview has no `.active` concept of its
+		// own - but unlike `vscode.window.tabGroups.activeTabGroup` (which keeps pointing at
+		// whichever editor tab was last focused even after focus moves to the Side Bar),
+		// `WebviewView.visible` only stays true while the user has actually navigated the Side
+		// Bar to the Zoo Code view. So if it's visible here - no tab claimed focus - it's the
+		// most reliable signal that the Side Bar, not a stale editor tab, is what the user is
+		// interacting with.
+		const sidebarInstance = visibleInstances.find(
+			(instance) => instance.view !== undefined && !("viewColumn" in instance.view),
+		)
+
+		if (sidebarInstance) {
+			return sidebarInstance
+		}
+
+		// No sidebar in play either - disambiguate among multiple visible editor tabs (e.g. split
+		// groups) using `vscode.window.tabGroups.activeTabGroup`, which reflects the editor group
+		// the user just clicked into, for cases where the view-state-change event for the click
+		// hasn't been observed yet.
+		const activeColumn = vscode.window.tabGroups.activeTabGroup?.viewColumn
+		const activeColumnInstance =
+			activeColumn !== undefined
+				? visibleInstances.find(
+						(instance) => (instance.view as vscode.WebviewPanel | undefined)?.viewColumn === activeColumn,
+					)
+				: undefined
+
+		return activeColumnInstance ?? visibleInstances[visibleInstances.length - 1]
 	}
 
 	public static getAllInstances(): ClineProvider[] {
@@ -1562,6 +1593,11 @@ export class ClineProvider
 		providerSettings: ProviderSettings,
 		activate: boolean = true,
 	): Promise<string | undefined> {
+		// TEMP DEBUG: remove after diagnosing condensing API config bug
+		console.error(
+			`[TEMP DEBUG] ClineProvider.upsertProviderProfile -> name="${name}" activate=${activate}\n${new Error().stack}`,
+		)
+
 		try {
 			// TODO: Do we need to be calling `activateProfile`? It's not
 			// clear to me what the source of truth should be; in some cases
@@ -1667,6 +1703,11 @@ export class ClineProvider
 		args: { name: string } | { id: string },
 		options?: { persistModeConfig?: boolean; persistTaskHistory?: boolean },
 	) {
+		// TEMP DEBUG: remove after diagnosing condensing API config bug
+		console.error(
+			`[TEMP DEBUG] ClineProvider.activateProviderProfile -> args=${JSON.stringify(args)}\n${new Error().stack}`,
+		)
+
 		const { name, id, ...providerSettings } = await this.providerSettingsManager.activateProfile(args)
 
 		const persistModeConfig = options?.persistModeConfig ?? true
@@ -2262,6 +2303,7 @@ export class ClineProvider
 			customModePrompts,
 			customSupportPrompts,
 			enhancementApiConfigId,
+			condensingApiConfigId,
 			autoApprovalEnabled,
 			customModes,
 			experiments,
@@ -2420,6 +2462,7 @@ export class ClineProvider
 			customModePrompts: customModePrompts ?? {},
 			customSupportPrompts: customSupportPrompts ?? {},
 			enhancementApiConfigId,
+			condensingApiConfigId,
 			autoApprovalEnabled: autoApprovalEnabled ?? false,
 			customModes,
 			experiments: experiments ?? experimentDefault,
@@ -2637,6 +2680,7 @@ export class ClineProvider
 			customModePrompts: stateValues.customModePrompts ?? {},
 			customSupportPrompts: stateValues.customSupportPrompts ?? {},
 			enhancementApiConfigId: stateValues.enhancementApiConfigId,
+			condensingApiConfigId: stateValues.condensingApiConfigId,
 			experiments: stateValues.experiments ?? experimentDefault,
 			autoApprovalEnabled: stateValues.autoApprovalEnabled ?? false,
 			customModes,

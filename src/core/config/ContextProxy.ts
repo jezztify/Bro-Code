@@ -536,6 +536,13 @@ export class ContextProxy {
 	 */
 
 	public async setValue<K extends RooCodeSettingsKey>(key: K, value: RooCodeSettings[K]) {
+		// TEMP DEBUG: remove after diagnosing condensing API config bug
+		if ((key as string) === "currentApiConfigName") {
+			console.error(
+				`[TEMP DEBUG] ContextProxy.setValue("currentApiConfigName", "${value}")\n${new Error().stack}`,
+			)
+		}
+
 		return isSecretStateKey(key)
 			? this.storeSecret(key as SecretStateKey, value as string)
 			: this.updateGlobalState(key as GlobalStateKey, value)
