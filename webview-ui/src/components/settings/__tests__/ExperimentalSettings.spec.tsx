@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react"
 
-import { experimentDefault } from "@roo/experiments"
+import { experimentDefault } from "@bro/experiments"
 
 import { ExperimentalSettings } from "../ExperimentalSettings"
 
