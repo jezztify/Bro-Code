@@ -183,7 +183,7 @@ const dynamicProviderExtras = {
 	requesty: {} as { apiKey?: string; baseUrl?: string },
 	unbound: {} as { apiKey?: string },
 	ollama: {} as {}, // eslint-disable-line @typescript-eslint/no-empty-object-type
-	lmstudio: {} as { useRestApi?: boolean },
+	lmstudio: {} as { useRestApi?: boolean; lmStudioBypassProxy?: boolean; lmStudioProxyUrl?: string },
 	poe: {} as { apiKey?: string; baseUrl?: string },
 	deepseek: {} as { apiKey?: string; baseUrl?: string },
 	"opencode-go": {} as { apiKey?: string },

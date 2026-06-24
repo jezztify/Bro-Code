@@ -50,6 +50,34 @@ export interface LmStudioConnectionTestResult {
 }
 
 /**
+ * Issues a GET request to an LM Studio endpoint using the same proxy/bypass rules as the chat
+ * completion handler and the connection test, so model-listing requests actually reach the same
+ * place a real chat request would (e.g. a remote/Tailscale host that's only reachable through a
+ * configured proxy).
+ */
+export async function lmStudioFetch(
+	url: string,
+	proxyOptions: LmStudioProxyOptions,
+	timeoutMs = 10_000,
+): Promise<Response> {
+	const { dispatcher, fetch: lmStudioFetchImpl } = getLmStudioFetchConfig(proxyOptions, timeoutMs)
+	const doFetch = lmStudioFetchImpl ?? (globalThis.fetch as typeof fetch)
+
+	const controller = new AbortController()
+	const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+	try {
+		return await doFetch(url, {
+			signal: controller.signal,
+			// `dispatcher` is an undici-specific fetch option not present in the DOM fetch types.
+			...({ dispatcher } as Record<string, unknown>),
+		})
+	} finally {
+		clearTimeout(timeout)
+	}
+}
+
+/**
  * Hits LM Studio's OpenAI-compatible `/v1/models` endpoint using the same proxy/bypass rules as
  * the chat completion handler, so the result reflects what an actual request would do.
  */
@@ -64,30 +92,16 @@ export async function testLmStudioConnection(
 		return { success: false, error: `Invalid base URL: ${url}` }
 	}
 
-	const { dispatcher, fetch: lmStudioFetch } = getLmStudioFetchConfig(proxyOptions, timeoutMs)
-	const doFetch = lmStudioFetch ?? (globalThis.fetch as typeof fetch)
-
 	try {
-		const controller = new AbortController()
-		const timeout = setTimeout(() => controller.abort(), timeoutMs)
+		const response = await lmStudioFetch(`${url}/v1/models`, proxyOptions, timeoutMs)
 
-		try {
-			const response = await doFetch(`${url}/v1/models`, {
-				signal: controller.signal,
-				// `dispatcher` is an undici-specific fetch option not present in the DOM fetch types.
-				...({ dispatcher } as Record<string, unknown>),
-			})
-
-			if (!response.ok) {
-				return { success: false, error: `HTTP ${response.status} ${response.statusText}` }
-			}
-
-			const body = await response.json()
-			const modelCount = Array.isArray(body?.data) ? body.data.length : undefined
-			return { success: true, modelCount }
-		} finally {
-			clearTimeout(timeout)
+		if (!response.ok) {
+			return { success: false, error: `HTTP ${response.status} ${response.statusText}` }
 		}
+
+		const body = await response.json()
+		const modelCount = Array.isArray(body?.data) ? body.data.length : undefined
+		return { success: true, modelCount }
 	} catch (error) {
 		return { success: false, error: describeFetchError(error) }
 	}

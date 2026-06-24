@@ -17,6 +17,10 @@ export async function getUnboundModels(apiKey?: string | null): Promise<Record<s
 		const response = await axios.get("https://api.getunbound.ai/models", { headers })
 		const rawModels = response.data?.data ?? response.data
 
+		if (!Array.isArray(rawModels)) {
+			throw new Error(`Unexpected response shape from Unbound models endpoint: ${JSON.stringify(response.data)}`)
+		}
+
 		for (const rawModel of rawModels) {
 			const modelInfo: ModelInfo = {
 				maxTokens: rawModel.max_output_tokens ?? 8192,

@@ -453,9 +453,6 @@ export class ProviderSettingsManager {
 	): Promise<ProviderSettingsWithId & { name: string }> {
 		const { name, ...providerSettings } = await this.getProfile(params)
 
-		// TEMP DEBUG: remove after diagnosing condensing API config bug
-		console.error(`[TEMP DEBUG] ProviderSettingsManager.activateProfile -> name="${name}"\n${new Error().stack}`)
-
 		try {
 			return await this.lock(async () => {
 				const providerProfiles = await this.load()
