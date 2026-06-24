@@ -6,7 +6,7 @@ import { act } from "@testing-library/react"
 
 import { vscode } from "@/utils/vscode"
 import { ExtensionStateContextProvider } from "@/context/ExtensionStateContext"
-import { DEFAULT_CHECKPOINT_TIMEOUT_SECONDS } from "@roo-code/types"
+import { DEFAULT_CHECKPOINT_TIMEOUT_SECONDS } from "@bro-code/types"
 
 import SettingsView from "../SettingsView"
 

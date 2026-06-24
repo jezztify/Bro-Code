@@ -3,7 +3,7 @@ import React from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { VSCodeCheckbox, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
 import { FoldVertical } from "lucide-react"
-import { DEFAULT_DIFF_FUZZY_THRESHOLD } from "@roo-code/types"
+import { DEFAULT_DIFF_FUZZY_THRESHOLD } from "@bro-code/types"
 
 import { supportPrompt } from "@bro/support-prompt"
 
