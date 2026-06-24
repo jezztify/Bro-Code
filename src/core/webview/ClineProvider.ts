@@ -3568,6 +3568,21 @@ export class ClineProvider
 			startTask: false,
 		})
 
+		// 4b) Optimistically notify the webview that the child is now current, so the UI
+		//     switches to the subtask view immediately instead of waiting on the parent's
+		//     delegation metadata to be persisted to disk (step 5) and on child.start() (step 6).
+		//     This only pushes UI state (currentTaskId, empty clineMessages) and intentionally
+		//     omits taskHistory, so it does not race with the metadata write below.
+		try {
+			await this.postStateToWebviewWithoutTaskHistory()
+		} catch (error) {
+			this.log(
+				`[delegateParentAndOpenChild] Failed to post optimistic state for child ${child.taskId} (non-fatal): ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			)
+		}
+
 		// 5) Persist parent delegation metadata BEFORE the child starts writing.
 		try {
 			const { historyItem } = await this.getTaskWithId(parentTaskId)
