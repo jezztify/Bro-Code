@@ -5,7 +5,7 @@ import { VSCodeCheckbox, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react
 import { FoldVertical } from "lucide-react"
 import { DEFAULT_DIFF_FUZZY_THRESHOLD } from "@roo-code/types"
 
-import { supportPrompt } from "@roo/support-prompt"
+import { supportPrompt } from "@bro/support-prompt"
 
 import { cn } from "@/lib/utils"
 import {
@@ -32,7 +32,7 @@ type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	listApiConfigMeta: any[]
 	maxOpenTabsContext: number
 	maxWorkspaceFiles: number
-	showRooIgnoredFiles?: boolean
+	showBroIgnoredFiles?: boolean
 	enableSubfolderRules?: boolean
 	maxImageFileSize?: number
 	maxTotalImageSize?: number
@@ -53,7 +53,7 @@ type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
 		| "autoCondenseContextPercent"
 		| "maxOpenTabsContext"
 		| "maxWorkspaceFiles"
-		| "showRooIgnoredFiles"
+		| "showBroIgnoredFiles"
 		| "enableSubfolderRules"
 		| "maxImageFileSize"
 		| "maxTotalImageSize"
@@ -74,7 +74,7 @@ export const ContextManagementSettings = ({
 	listApiConfigMeta,
 	maxOpenTabsContext,
 	maxWorkspaceFiles,
-	showRooIgnoredFiles,
+	showBroIgnoredFiles,
 	enableSubfolderRules,
 	setCachedStateField,
 	maxImageFileSize,
@@ -221,19 +221,19 @@ export const ContextManagementSettings = ({
 				</SearchableSetting>
 
 				<SearchableSetting
-					settingId="context-show-rooignored-files"
+					settingId="context-show-broignored-files"
 					section="contextManagement"
-					label={t("settings:contextManagement.rooignore.label")}>
+					label={t("settings:contextManagement.broignore.label")}>
 					<VSCodeCheckbox
-						checked={showRooIgnoredFiles}
-						onChange={(e: any) => setCachedStateField("showRooIgnoredFiles", e.target.checked)}
-						data-testid="show-rooignored-files-checkbox">
+						checked={showBroIgnoredFiles}
+						onChange={(e: any) => setCachedStateField("showBroIgnoredFiles", e.target.checked)}
+						data-testid="show-broignored-files-checkbox">
 						<label className="block font-medium mb-1">
-							{t("settings:contextManagement.rooignore.label")}
+							{t("settings:contextManagement.broignore.label")}
 						</label>
 					</VSCodeCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
-						{t("settings:contextManagement.rooignore.description")}
+						{t("settings:contextManagement.broignore.description")}
 					</div>
 				</SearchableSetting>
 

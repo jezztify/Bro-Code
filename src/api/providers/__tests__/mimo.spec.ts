@@ -33,7 +33,7 @@ vi.mock("openai", () => {
 })
 
 import type { Anthropic } from "@anthropic-ai/sdk"
-import { mimoDefaultModelId, mimoModels } from "@roo-code/types"
+import { mimoDefaultModelId, mimoModels } from "@bro-code/types"
 import type { ApiHandlerOptions } from "../../../shared/api"
 import { MimoHandler } from "../mimo"
 import { convertToR1Format } from "../../transform/r1-format"

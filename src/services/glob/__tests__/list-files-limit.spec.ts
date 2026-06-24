@@ -23,7 +23,7 @@ vi.mock("../../../utils/path", () => ({
 	arePathsEqual: vi.fn().mockReturnValue(false),
 }))
 
-vi.mock("../../../services/roo-config", () => ({
+vi.mock("../../../services/bro-config", () => ({
 	directoryExists: vi.fn().mockResolvedValue(true),
 }))
 

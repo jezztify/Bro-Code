@@ -1,8 +1,8 @@
 import axios from "axios"
 import { z } from "zod"
 
-import type { ModelInfo } from "@roo-code/types"
-import { VERCEL_AI_GATEWAY_VISION_ONLY_MODELS, VERCEL_AI_GATEWAY_VISION_AND_TOOLS_MODELS } from "@roo-code/types"
+import type { ModelInfo } from "@bro-code/types"
+import { VERCEL_AI_GATEWAY_VISION_ONLY_MODELS, VERCEL_AI_GATEWAY_VISION_AND_TOOLS_MODELS } from "@bro-code/types"
 
 import type { ApiHandlerOptions } from "../../../shared/api"
 import { parseApiPrice } from "../../../shared/cost"
@@ -26,7 +26,7 @@ const vercelAiGatewayPricingSchema = z.object({
 const vercelAiGatewayModelSchema = z.object({
 	id: z.string(),
 	object: z.string(),
-	// Zoo Gateway / Bedrock catalog entries omit these; they are not used for routing.
+	// Bro Gateway / Bedrock catalog entries omit these; they are not used for routing.
 	created: z.number().optional(),
 	owned_by: z.string(),
 	name: z.string(),

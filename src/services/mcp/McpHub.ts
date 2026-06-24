@@ -26,7 +26,7 @@ import type {
 	McpServer,
 	McpTool,
 	McpToolCallResponse,
-} from "@roo-code/types"
+} from "@bro-code/types"
 
 import { t } from "../../i18n"
 
@@ -385,7 +385,7 @@ export class McpHub {
 		}
 
 		const workspaceFolder = this.providerRef.deref()?.cwd ?? getWorkspacePath()
-		const projectMcpPattern = new vscode.RelativePattern(workspaceFolder, ".roo/mcp.json")
+		const projectMcpPattern = new vscode.RelativePattern(workspaceFolder, ".bro/mcp.json")
 
 		// Create a file system watcher for the project MCP file pattern
 		this.projectMcpWatcher = vscode.workspace.createFileSystemWatcher(projectMcpPattern)
@@ -602,7 +602,7 @@ export class McpHub {
 	// Get project-level MCP configuration path
 	private async getProjectMcpPath(): Promise<string | null> {
 		const workspacePath = this.providerRef.deref()?.cwd ?? getWorkspacePath()
-		const projectMcpDir = path.join(workspacePath, ".roo")
+		const projectMcpDir = path.join(workspacePath, ".bro")
 		const projectMcpPath = path.join(projectMcpDir, "mcp.json")
 
 		try {
@@ -696,7 +696,7 @@ export class McpHub {
 		try {
 			const client = new Client(
 				{
-					name: "Roo Code",
+					name: "Bro Code",
 					version: this.providerRef.deref()?.context.extension?.packageJSON?.version ?? "1.0.0",
 				},
 				{

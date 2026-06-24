@@ -9,8 +9,8 @@ import {
 	type ModelInfo,
 	type ReasoningEffortExtended,
 	ApiProviderError,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@bro-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
 
 import { shouldUseReasoningBudget, shouldUseReasoningEffort, type ApiHandlerOptions } from "../../shared/api"
 

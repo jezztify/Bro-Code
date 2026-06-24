@@ -52,7 +52,7 @@ vi.mock("@/i18n/TranslationContext", () => {
 	}
 })
 
-vi.mock("@roo/package", () => ({
+vi.mock("@bro/package", () => ({
 	Package: {
 		version: "1.0.0",
 		sha: "abc12345",
@@ -84,7 +84,7 @@ describe("About", () => {
 		await act(async () => {
 			window.dispatchEvent(
 				new MessageEvent("message", {
-					data: { type: "rooHistoryImportProgress", rooHistoryImportProgress: progress },
+					data: { type: "broHistoryImportProgress", broHistoryImportProgress: progress },
 				}),
 			)
 		})
@@ -162,20 +162,20 @@ describe("About", () => {
 		expect(screen.getByText("settings:footer.settings.reset")).toBeInTheDocument()
 	})
 
-	it("posts the Roo history import message when clicking the import button", () => {
+	it("posts the Bro history import message when clicking the import button", () => {
 		renderAbout()
 
-		fireEvent.click(screen.getByRole("button", { name: "settings:about.rooHistoryImport.buttonIdle" }))
+		fireEvent.click(screen.getByRole("button", { name: "settings:about.broHistoryImport.buttonIdle" }))
 
-		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "importRooHistory" })
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "importBroHistory" })
 	})
 
-	it("shows Roo history import progress while the import is running", async () => {
+	it("shows Bro history import progress while the import is running", async () => {
 		renderAbout()
 
-		fireEvent.click(screen.getByRole("button", { name: "settings:about.rooHistoryImport.buttonIdle" }))
+		fireEvent.click(screen.getByRole("button", { name: "settings:about.broHistoryImport.buttonIdle" }))
 
-		expect(screen.getByRole("button", { name: "settings:about.rooHistoryImport.buttonImporting" })).toBeDisabled()
+		expect(screen.getByRole("button", { name: "settings:about.broHistoryImport.buttonImporting" })).toBeDisabled()
 
 		await dispatchImportProgress({
 			status: "copying",
@@ -185,19 +185,19 @@ describe("About", () => {
 			totalTaskCount: 3,
 		})
 
-		expect(screen.getByText("settings:about.rooHistoryImport.statusImporting")).toBeInTheDocument()
+		expect(screen.getByText("settings:about.broHistoryImport.statusImporting")).toBeInTheDocument()
 		expect(screen.getByText("25%")).toBeInTheDocument()
 		expect(
-			screen.getByRole("progressbar", { name: "settings:about.rooHistoryImport.progressAriaLabel" }),
+			screen.getByRole("progressbar", { name: "settings:about.broHistoryImport.progressAriaLabel" }),
 		).toHaveAttribute("aria-valuenow", "25")
-		expect(screen.getByText("settings:about.rooHistoryImport.summaryCopied")).toBeInTheDocument()
-		expect(screen.getByText("settings:about.rooHistoryImport.detailTasksImported")).toBeInTheDocument()
+		expect(screen.getByText("settings:about.broHistoryImport.summaryCopied")).toBeInTheDocument()
+		expect(screen.getByText("settings:about.broHistoryImport.detailTasksImported")).toBeInTheDocument()
 	})
 
-	it("keeps a failed Roo history state visible and re-enables retry after failure", async () => {
+	it("keeps a failed Bro history state visible and re-enables retry after failure", async () => {
 		renderAbout()
 
-		fireEvent.click(screen.getByRole("button", { name: "settings:about.rooHistoryImport.buttonIdle" }))
+		fireEvent.click(screen.getByRole("button", { name: "settings:about.broHistoryImport.buttonIdle" }))
 
 		await dispatchImportProgress({
 			status: "failed",
@@ -207,14 +207,14 @@ describe("About", () => {
 			totalTaskCount: 2,
 		})
 
-		expect(screen.getByText("settings:about.rooHistoryImport.statusFailed")).toBeInTheDocument()
+		expect(screen.getByText("settings:about.broHistoryImport.statusFailed")).toBeInTheDocument()
 		expect(screen.getByText("25%")).toBeInTheDocument()
-		expect(screen.getByText("settings:about.rooHistoryImport.summaryFailedWithFiles")).toBeInTheDocument()
-		expect(screen.getByText("settings:about.rooHistoryImport.detailFailed")).toBeInTheDocument()
-		expect(screen.getByRole("button", { name: "settings:about.rooHistoryImport.buttonIdle" })).toBeEnabled()
+		expect(screen.getByText("settings:about.broHistoryImport.summaryFailedWithFiles")).toBeInTheDocument()
+		expect(screen.getByText("settings:about.broHistoryImport.detailFailed")).toBeInTheDocument()
+		expect(screen.getByRole("button", { name: "settings:about.broHistoryImport.buttonIdle" })).toBeEnabled()
 	})
 
-	it("keeps a completed Roo history progress summary after the import finishes", async () => {
+	it("keeps a completed Bro history progress summary after the import finishes", async () => {
 		renderAbout()
 
 		await dispatchImportProgress({
@@ -225,16 +225,16 @@ describe("About", () => {
 			totalTaskCount: 1,
 		})
 
-		expect(screen.getByText("settings:about.rooHistoryImport.statusComplete")).toBeInTheDocument()
+		expect(screen.getByText("settings:about.broHistoryImport.statusComplete")).toBeInTheDocument()
 		expect(screen.getByText("100%")).toBeInTheDocument()
-		expect(screen.getByText("settings:about.rooHistoryImport.summaryCopied")).toBeInTheDocument()
-		expect(screen.getByRole("button", { name: "settings:about.rooHistoryImport.buttonIdle" })).toBeEnabled()
+		expect(screen.getByText("settings:about.broHistoryImport.summaryCopied")).toBeInTheDocument()
+		expect(screen.getByRole("button", { name: "settings:about.broHistoryImport.buttonIdle" })).toBeEnabled()
 	})
 
 	it("clears stale failure UI when a new import starts and only shows the latest success state", async () => {
 		renderAbout()
 
-		fireEvent.click(screen.getByRole("button", { name: "settings:about.rooHistoryImport.buttonIdle" }))
+		fireEvent.click(screen.getByRole("button", { name: "settings:about.broHistoryImport.buttonIdle" }))
 
 		await dispatchImportProgress({
 			status: "failed",
@@ -244,15 +244,15 @@ describe("About", () => {
 			totalTaskCount: 2,
 		})
 
-		expect(screen.getByText("settings:about.rooHistoryImport.statusFailed")).toBeInTheDocument()
-		expect(screen.getByText("settings:about.rooHistoryImport.detailFailed")).toBeInTheDocument()
+		expect(screen.getByText("settings:about.broHistoryImport.statusFailed")).toBeInTheDocument()
+		expect(screen.getByText("settings:about.broHistoryImport.detailFailed")).toBeInTheDocument()
 
-		fireEvent.click(screen.getByRole("button", { name: "settings:about.rooHistoryImport.buttonIdle" }))
+		fireEvent.click(screen.getByRole("button", { name: "settings:about.broHistoryImport.buttonIdle" }))
 
-		expect(screen.getByRole("button", { name: "settings:about.rooHistoryImport.buttonImporting" })).toBeDisabled()
-		expect(screen.getByText("settings:about.rooHistoryImport.statusImporting")).toBeInTheDocument()
-		expect(screen.queryByText("settings:about.rooHistoryImport.statusFailed")).not.toBeInTheDocument()
-		expect(screen.queryByText("settings:about.rooHistoryImport.detailFailed")).not.toBeInTheDocument()
+		expect(screen.getByRole("button", { name: "settings:about.broHistoryImport.buttonImporting" })).toBeDisabled()
+		expect(screen.getByText("settings:about.broHistoryImport.statusImporting")).toBeInTheDocument()
+		expect(screen.queryByText("settings:about.broHistoryImport.statusFailed")).not.toBeInTheDocument()
+		expect(screen.queryByText("settings:about.broHistoryImport.detailFailed")).not.toBeInTheDocument()
 
 		await dispatchImportProgress({
 			status: "finished",
@@ -262,11 +262,11 @@ describe("About", () => {
 			totalTaskCount: 2,
 		})
 
-		expect(screen.getByText("settings:about.rooHistoryImport.statusComplete")).toBeInTheDocument()
+		expect(screen.getByText("settings:about.broHistoryImport.statusComplete")).toBeInTheDocument()
 		expect(screen.getByText("100%")).toBeInTheDocument()
-		expect(screen.getByText("settings:about.rooHistoryImport.summaryCopied")).toBeInTheDocument()
-		expect(screen.getByText("settings:about.rooHistoryImport.detailTasksImported")).toBeInTheDocument()
-		expect(screen.queryByText("settings:about.rooHistoryImport.statusFailed")).not.toBeInTheDocument()
-		expect(screen.queryByText("settings:about.rooHistoryImport.detailFailed")).not.toBeInTheDocument()
+		expect(screen.getByText("settings:about.broHistoryImport.summaryCopied")).toBeInTheDocument()
+		expect(screen.getByText("settings:about.broHistoryImport.detailTasksImported")).toBeInTheDocument()
+		expect(screen.queryByText("settings:about.broHistoryImport.statusFailed")).not.toBeInTheDocument()
+		expect(screen.queryByText("settings:about.broHistoryImport.detailFailed")).not.toBeInTheDocument()
 	})
 })

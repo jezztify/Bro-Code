@@ -12,13 +12,13 @@ import {
 	isProviderName,
 	type GlobalSettings,
 	type ProviderSettingsWithId,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@bro-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
 
 import { ProviderSettingsManager, providerProfilesSchema } from "./ProviderSettingsManager"
 import { ContextProxy } from "./ContextProxy"
 import { CustomModesManager } from "./CustomModesManager"
-import { downgradeLegacyRooConfig, ROUTER_REMOVAL_IMPORT_WARNING } from "./routerRemoval"
+import { downgradeLegacyBroConfig, ROUTER_REMOVAL_IMPORT_WARNING } from "./routerRemoval"
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../utils/export"
 import { t } from "../../i18n"
 
@@ -48,7 +48,7 @@ function sanitizeProviderConfig(configName: string, apiConfig: unknown): { confi
 		return { config: apiConfig }
 	}
 
-	const { config, migrated } = downgradeLegacyRooConfig(apiConfig as Record<string, unknown>)
+	const { config, migrated } = downgradeLegacyBroConfig(apiConfig as Record<string, unknown>)
 
 	if (migrated) {
 		return {
@@ -106,8 +106,8 @@ function sanitizeGlobalSettings(rawGlobalSettings: unknown): {
 
 		let valueToValidate = rawValue
 
-		if (key === "imageGenerationProvider" && rawValue === "roo") {
-			warnings.push(`Setting "${path}" used unsupported value "roo" and was cleared during import.`)
+		if (key === "imageGenerationProvider" && rawValue === "bro") {
+			warnings.push(`Setting "${path}" used unsupported value "bro" and was cleared during import.`)
 			valueToValidate = undefined
 		}
 
@@ -270,7 +270,7 @@ export async function importSettingsFromPath(
  */
 export const importSettings = async ({ providerSettingsManager, contextProxy, customModesManager }: ImportOptions) => {
 	// Use the last export path as a sensible default, falling back to Downloads
-	const defaultUri = resolveDefaultSaveUri(contextProxy, "lastSettingsExportPath", "roo-code-settings.json", {
+	const defaultUri = resolveDefaultSaveUri(contextProxy, "lastSettingsExportPath", "bro-code-settings.json", {
 		useWorkspace: false,
 		fallbackDir: path.join(os.homedir(), "Downloads"),
 	})
@@ -310,7 +310,7 @@ export const importSettingsFromFile = async (
 }
 
 export const exportSettings = async ({ providerSettingsManager, contextProxy }: ExportOptions) => {
-	const defaultUri = await resolveDefaultSaveUri(contextProxy, "lastSettingsExportPath", "roo-code-settings.json", {
+	const defaultUri = await resolveDefaultSaveUri(contextProxy, "lastSettingsExportPath", "bro-code-settings.json", {
 		useWorkspace: false,
 		fallbackDir: path.join(os.homedir(), "Downloads"),
 	})

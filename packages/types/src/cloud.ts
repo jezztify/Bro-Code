@@ -2,7 +2,7 @@ import EventEmitter from "events"
 
 import { z } from "zod"
 
-import { RooCodeEventName } from "./events.js"
+import { BroCodeEventName } from "./events.js"
 import { TaskStatus, taskMetadataSchema } from "./task.js"
 import { globalSettingsSchema } from "./global-settings.js"
 import { providerSettingsWithIdSchema } from "./provider-settings.js"
@@ -95,7 +95,7 @@ export const organizationDefaultSettingsSchema = globalSettingsSchema
 		enableCheckpoints: true,
 		maxOpenTabsContext: true,
 		maxWorkspaceFiles: true,
-		showRooIgnoredFiles: true,
+		showBroIgnoredFiles: true,
 		terminalCommandDelay: true,
 		terminalShellIntegrationDisabled: true,
 		terminalShellIntegrationTimeout: true,
@@ -429,9 +429,9 @@ export type ExtensionInstance = z.infer<typeof extensionInstanceSchema>
  */
 
 export enum TaskBridgeEventName {
-	Message = RooCodeEventName.Message,
-	TaskModeSwitched = RooCodeEventName.TaskModeSwitched,
-	TaskInteractive = RooCodeEventName.TaskInteractive,
+	Message = BroCodeEventName.Message,
+	TaskModeSwitched = BroCodeEventName.TaskModeSwitched,
+	TaskInteractive = BroCodeEventName.TaskInteractive,
 }
 
 export const taskBridgeEventSchema = z.discriminatedUnion("type", [

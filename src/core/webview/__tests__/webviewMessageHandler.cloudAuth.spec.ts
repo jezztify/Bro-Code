@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@bro-code/cloud", () => ({
 	CloudService: {
 		hasInstance: vi.fn(),
 		instance: {
@@ -10,7 +10,7 @@ vi.mock("@roo-code/cloud", () => ({
 	},
 }))
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@bro-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureEvent: vi.fn(),
@@ -27,7 +27,7 @@ vi.mock("vscode", () => ({
 
 import * as vscode from "vscode"
 
-import { CloudService } from "@roo-code/cloud"
+import { CloudService } from "@bro-code/cloud"
 
 import { webviewMessageHandler } from "../webviewMessageHandler"
 
@@ -52,13 +52,13 @@ describe("webviewMessageHandler cloud auth fallbacks", () => {
 		vi.mocked(CloudService.hasInstance).mockReturnValue(false)
 
 		await webviewMessageHandler(mockProvider, {
-			type: "rooCloudSignIn",
+			type: "broCloudSignIn",
 			useProviderSignup: true,
 		} as any)
 
 		expect(CloudService.instance.login).not.toHaveBeenCalled()
 		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-			"Roo Code Cloud sign-in is currently unavailable. Configure another provider to continue.",
+			"Bro Code Cloud sign-in is currently unavailable. Configure another provider to continue.",
 		)
 	})
 
@@ -66,13 +66,13 @@ describe("webviewMessageHandler cloud auth fallbacks", () => {
 		vi.mocked(CloudService.hasInstance).mockReturnValue(false)
 
 		await webviewMessageHandler(mockProvider, {
-			type: "rooCloudManualUrl",
-			text: "vscode://ZooCodeOrganization.zoo-code/auth/clerk/callback?code=test-code&state=test-state",
+			type: "broCloudManualUrl",
+			text: "vscode://BroCodeOrganization.bro-code/auth/clerk/callback?code=test-code&state=test-state",
 		} as any)
 
 		expect(CloudService.instance.handleAuthCallback).not.toHaveBeenCalled()
 		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-			"Roo Code Cloud sign-in is currently unavailable. Configure another provider to continue.",
+			"Bro Code Cloud sign-in is currently unavailable. Configure another provider to continue.",
 		)
 	})
 })

@@ -36,12 +36,12 @@ import {
 	type ProviderSettings,
 	type ExperimentId,
 	type TelemetrySetting,
-	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
-	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
-	DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
+	DEFAULT_AUTO_CLOSE_BRO_OPENED_FILES,
+	DEFAULT_AUTO_CLOSE_BRO_OPENED_FILES_AFTER_USER_EDITED,
+	DEFAULT_AUTO_CLOSE_BRO_OPENED_NEW_FILES,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	ImageGenerationProvider,
-} from "@roo-code/types"
+} from "@bro-code/types"
 
 import { vscode } from "@src/utils/vscode"
 import { cn } from "@src/lib/utils"
@@ -193,7 +193,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		terminalProfile,
 		writeDelayMs,
 		diffFuzzyThreshold,
-		showRooIgnoredFiles,
+		showBroIgnoredFiles,
 		enableSubfolderRules,
 		maxImageFileSize,
 		maxTotalImageSize,
@@ -213,9 +213,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		includeCurrentTime,
 		includeCurrentCost,
 		maxGitStatusFiles,
-		autoCloseZooOpenedFiles,
-		autoCloseZooOpenedFilesAfterUserEdited,
-		autoCloseZooOpenedNewFiles,
+		autoCloseBroOpenedFiles,
+		autoCloseBroOpenedFilesAfterUserEdited,
+		autoCloseBroOpenedNewFiles,
 	} = cachedState
 
 	const apiConfiguration = useMemo(() => cachedState.apiConfiguration ?? {}, [cachedState.apiConfiguration])
@@ -418,7 +418,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					mcpEnabled,
 					maxOpenTabsContext: Math.min(Math.max(0, maxOpenTabsContext ?? 20), 500),
 					maxWorkspaceFiles: Math.min(Math.max(0, maxWorkspaceFiles ?? 200), 500),
-					showRooIgnoredFiles: showRooIgnoredFiles ?? true,
+					showBroIgnoredFiles: showBroIgnoredFiles ?? true,
 					enableSubfolderRules: enableSubfolderRules ?? false,
 					maxImageFileSize: maxImageFileSize ?? 5,
 					maxTotalImageSize: maxTotalImageSize ?? 20,
@@ -435,10 +435,10 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					includeCurrentTime: includeCurrentTime ?? true,
 					includeCurrentCost: includeCurrentCost ?? true,
 					maxGitStatusFiles: maxGitStatusFiles ?? 0,
-					autoCloseZooOpenedFiles: autoCloseZooOpenedFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
-					autoCloseZooOpenedFilesAfterUserEdited:
-						autoCloseZooOpenedFilesAfterUserEdited ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
-					autoCloseZooOpenedNewFiles: autoCloseZooOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
+					autoCloseBroOpenedFiles: autoCloseBroOpenedFiles ?? DEFAULT_AUTO_CLOSE_BRO_OPENED_FILES,
+					autoCloseBroOpenedFilesAfterUserEdited:
+						autoCloseBroOpenedFilesAfterUserEdited ?? DEFAULT_AUTO_CLOSE_BRO_OPENED_FILES_AFTER_USER_EDITED,
+					autoCloseBroOpenedNewFiles: autoCloseBroOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_BRO_OPENED_NEW_FILES,
 					profileThresholds,
 					imageGenerationProvider,
 					openRouterImageApiKey,
@@ -860,7 +860,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 								listApiConfigMeta={listApiConfigMeta ?? []}
 								maxOpenTabsContext={maxOpenTabsContext}
 								maxWorkspaceFiles={maxWorkspaceFiles ?? 200}
-								showRooIgnoredFiles={showRooIgnoredFiles}
+								showBroIgnoredFiles={showBroIgnoredFiles}
 								enableSubfolderRules={enableSubfolderRules}
 								maxImageFileSize={maxImageFileSize}
 								maxTotalImageSize={maxTotalImageSize}
@@ -925,9 +925,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 								reasoningBlockCollapsed={reasoningBlockCollapsed ?? true}
 								enterBehavior={enterBehavior ?? "send"}
 								chatFontSize={chatFontSize ?? undefined}
-								autoCloseZooOpenedFiles={autoCloseZooOpenedFiles}
-								autoCloseZooOpenedFilesAfterUserEdited={autoCloseZooOpenedFilesAfterUserEdited}
-								autoCloseZooOpenedNewFiles={autoCloseZooOpenedNewFiles}
+								autoCloseBroOpenedFiles={autoCloseBroOpenedFiles}
+								autoCloseBroOpenedFilesAfterUserEdited={autoCloseBroOpenedFilesAfterUserEdited}
+								autoCloseBroOpenedNewFiles={autoCloseBroOpenedNewFiles}
 								setCachedStateField={setCachedStateField}
 							/>
 						)}

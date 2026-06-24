@@ -1,6 +1,6 @@
 import { render } from "ink-testing-library"
 
-import type { TodoItem } from "@roo-code/types"
+import type { TodoItem } from "@bro-code/types"
 
 import TodoDisplay from "../TodoDisplay.js"
 import { resetNerdFontCache } from "../Icon.js"
@@ -8,12 +8,12 @@ import { resetNerdFontCache } from "../Icon.js"
 describe("TodoDisplay", () => {
 	beforeEach(() => {
 		// Use fallback icons in tests so they render as visible characters
-		process.env.ROOCODE_NERD_FONT = "0"
+		process.env.BROCODE_NERD_FONT = "0"
 		resetNerdFontCache()
 	})
 
 	afterEach(() => {
-		delete process.env.ROOCODE_NERD_FONT
+		delete process.env.BROCODE_NERD_FONT
 		resetNerdFontCache()
 	})
 

@@ -1,8 +1,8 @@
 {
-	"name": "zoo-code",
+	"name": "bro-code",
 	"displayName": "%extension.displayName%",
 	"description": "%extension.description%",
-	"publisher": "ZooCodeOrganization",
+	"publisher": "BroCodeOrganization",
 	"version": "3.66.0",
 	"icon": "assets/icons/icon.png",
 	"galleryBanner": {
@@ -14,13 +14,13 @@
 		"node": "20.20.2"
 	},
 	"author": {
-		"name": "Zoo Code"
+		"name": "Bro Code"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Zoo-Code-Org/Zoo-Code"
+		"url": "https://github.com/Bro-Code-Org/Bro-Code"
 	},
-	"homepage": "https://zoocode.dev",
+	"homepage": "https://brocode.dev",
 	"categories": [
 		"AI",
 		"Chat",
@@ -42,8 +42,8 @@
 		"sonnet",
 		"ai",
 		"llama",
-		"zoo code",
-		"zoocode"
+		"bro code",
+		"brocode"
 	],
 	"activationEvents": [
 		"onLanguage",
@@ -54,49 +54,49 @@
 		"viewsContainers": {
 			"activitybar": [
 				{
-					"id": "zoo-code-ActivityBar",
+					"id": "bro-code-ActivityBar",
 					"title": "%views.activitybar.title%",
 					"icon": "assets/icons/icon.svg"
 				}
 			]
 		},
 		"views": {
-			"zoo-code-ActivityBar": [
+			"bro-code-ActivityBar": [
 				{
 					"type": "webview",
-					"id": "zoo-code.SidebarProvider",
+					"id": "bro-code.SidebarProvider",
 					"name": "%views.sidebar.name%"
 				}
 			]
 		},
 		"commands": [
 			{
-				"command": "zoo-code.plusButtonClicked",
+				"command": "bro-code.plusButtonClicked",
 				"title": "%command.newTask.title%",
 				"icon": "$(edit)"
 			},
 			{
-				"command": "zoo-code.historyButtonClicked",
+				"command": "bro-code.historyButtonClicked",
 				"title": "%command.history.title%",
 				"icon": "$(history)"
 			},
 			{
-				"command": "zoo-code.marketplaceButtonClicked",
+				"command": "bro-code.marketplaceButtonClicked",
 				"title": "%command.marketplace.title%",
 				"icon": "$(extensions)"
 			},
 			{
-				"command": "zoo-code.popoutButtonClicked",
+				"command": "bro-code.popoutButtonClicked",
 				"title": "%command.openInEditor.title%",
 				"icon": "$(link-external)"
 			},
 			{
-				"command": "zoo-code.settingsButtonClicked",
+				"command": "bro-code.settingsButtonClicked",
 				"title": "%command.settings.title%",
 				"icon": "$(settings-gear)"
 			},
 			{
-				"command": "zoo-code.openInNewTab",
+				"command": "bro-code.openInNewTab",
 				"title": "%command.openInNewTab.title%",
 				"category": "%configuration.title%",
 				"icon": {
@@ -105,72 +105,72 @@
 				}
 			},
 			{
-				"command": "zoo-code.explainCode",
+				"command": "bro-code.explainCode",
 				"title": "%command.explainCode.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.fixCode",
+				"command": "bro-code.fixCode",
 				"title": "%command.fixCode.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.improveCode",
+				"command": "bro-code.improveCode",
 				"title": "%command.improveCode.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.addToContext",
+				"command": "bro-code.addToContext",
 				"title": "%command.addToContext.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.newTask",
+				"command": "bro-code.newTask",
 				"title": "%command.newTask.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.terminalAddToContext",
+				"command": "bro-code.terminalAddToContext",
 				"title": "%command.terminal.addToContext.title%",
 				"category": "Terminal"
 			},
 			{
-				"command": "zoo-code.terminalFixCommand",
+				"command": "bro-code.terminalFixCommand",
 				"title": "%command.terminal.fixCommand.title%",
 				"category": "Terminal"
 			},
 			{
-				"command": "zoo-code.terminalExplainCommand",
+				"command": "bro-code.terminalExplainCommand",
 				"title": "%command.terminal.explainCommand.title%",
 				"category": "Terminal"
 			},
 			{
-				"command": "zoo-code.setCustomStoragePath",
+				"command": "bro-code.setCustomStoragePath",
 				"title": "%command.setCustomStoragePath.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.importSettings",
+				"command": "bro-code.importSettings",
 				"title": "%command.importSettings.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.focusInput",
+				"command": "bro-code.focusInput",
 				"title": "%command.focusInput.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.acceptInput",
+				"command": "bro-code.acceptInput",
 				"title": "%command.acceptInput.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.showRipgrepDiagnostic",
+				"command": "bro-code.showRipgrepDiagnostic",
 				"title": "%command.showRipgrepDiagnostic.title%",
 				"category": "%configuration.title%"
 			},
 			{
-				"command": "zoo-code.toggleAutoApprove",
+				"command": "bro-code.toggleAutoApprove",
 				"title": "%command.toggleAutoApprove.title%",
 				"category": "%configuration.title%"
 			}
@@ -178,107 +178,107 @@
 		"menus": {
 			"editor/context": [
 				{
-					"submenu": "zoo-code.contextMenu",
+					"submenu": "bro-code.contextMenu",
 					"group": "1"
 				}
 			],
-			"zoo-code.contextMenu": [
+			"bro-code.contextMenu": [
 				{
-					"command": "zoo-code.addToContext",
+					"command": "bro-code.addToContext",
 					"group": "1_actions@1"
 				},
 				{
-					"command": "zoo-code.explainCode",
+					"command": "bro-code.explainCode",
 					"group": "1_actions@2"
 				},
 				{
-					"command": "zoo-code.improveCode",
+					"command": "bro-code.improveCode",
 					"group": "1_actions@3"
 				}
 			],
 			"terminal/context": [
 				{
-					"submenu": "zoo-code.terminalMenu",
+					"submenu": "bro-code.terminalMenu",
 					"group": "2"
 				}
 			],
-			"zoo-code.terminalMenu": [
+			"bro-code.terminalMenu": [
 				{
-					"command": "zoo-code.terminalAddToContext",
+					"command": "bro-code.terminalAddToContext",
 					"group": "1_actions@1"
 				},
 				{
-					"command": "zoo-code.terminalFixCommand",
+					"command": "bro-code.terminalFixCommand",
 					"group": "1_actions@2"
 				},
 				{
-					"command": "zoo-code.terminalExplainCommand",
+					"command": "bro-code.terminalExplainCommand",
 					"group": "1_actions@3"
 				}
 			],
 			"view/title": [
 				{
-					"command": "zoo-code.plusButtonClicked",
+					"command": "bro-code.plusButtonClicked",
 					"group": "navigation@1",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == bro-code.SidebarProvider"
 				},
 				{
-					"command": "zoo-code.settingsButtonClicked",
+					"command": "bro-code.settingsButtonClicked",
 					"group": "navigation@2",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == bro-code.SidebarProvider"
 				},
 				{
-					"command": "zoo-code.marketplaceButtonClicked",
+					"command": "bro-code.marketplaceButtonClicked",
 					"group": "navigation@3",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == bro-code.SidebarProvider"
 				},
 				{
-					"command": "zoo-code.historyButtonClicked",
+					"command": "bro-code.historyButtonClicked",
 					"group": "overflow@1",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == bro-code.SidebarProvider"
 				},
 				{
-					"command": "zoo-code.popoutButtonClicked",
+					"command": "bro-code.popoutButtonClicked",
 					"group": "overflow@2",
-					"when": "view == zoo-code.SidebarProvider"
+					"when": "view == bro-code.SidebarProvider"
 				}
 			],
 			"editor/title": [
 				{
-					"command": "zoo-code.openInNewTab",
+					"command": "bro-code.openInNewTab",
 					"group": "navigation@1",
-					"when": "activeWebviewPanelId != zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId != bro-code.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.plusButtonClicked",
+					"command": "bro-code.plusButtonClicked",
 					"group": "navigation@1",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == bro-code.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.settingsButtonClicked",
+					"command": "bro-code.settingsButtonClicked",
 					"group": "navigation@2",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == bro-code.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.marketplaceButtonClicked",
+					"command": "bro-code.marketplaceButtonClicked",
 					"group": "navigation@3",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == bro-code.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.historyButtonClicked",
+					"command": "bro-code.historyButtonClicked",
 					"group": "overflow@1",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == bro-code.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.popoutButtonClicked",
+					"command": "bro-code.popoutButtonClicked",
 					"group": "overflow@2",
-					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+					"when": "activeWebviewPanelId == bro-code.TabPanelProvider"
 				}
 			]
 		},
 		"keybindings": [
 			{
-				"command": "zoo-code.addToContext",
+				"command": "bro-code.addToContext",
 				"key": "cmd+k cmd+a",
 				"mac": "cmd+k cmd+a",
 				"win": "ctrl+k ctrl+a",
@@ -286,7 +286,7 @@
 				"when": "editorTextFocus && editorHasSelection"
 			},
 			{
-				"command": "zoo-code.toggleAutoApprove",
+				"command": "bro-code.toggleAutoApprove",
 				"key": "cmd+alt+a",
 				"mac": "cmd+alt+a",
 				"win": "ctrl+alt+a",
@@ -295,18 +295,18 @@
 		],
 		"submenus": [
 			{
-				"id": "zoo-code.contextMenu",
+				"id": "bro-code.contextMenu",
 				"label": "%views.contextMenu.label%"
 			},
 			{
-				"id": "zoo-code.terminalMenu",
+				"id": "bro-code.terminalMenu",
 				"label": "%views.terminalMenu.label%"
 			}
 		],
 		"configuration": {
 			"title": "%configuration.title%",
 			"properties": {
-				"zoo-code.allowedCommands": {
+				"bro-code.allowedCommands": {
 					"type": "array",
 					"items": {
 						"type": "string"
@@ -318,7 +318,7 @@
 					],
 					"description": "%commands.allowedCommands.description%"
 				},
-				"zoo-code.deniedCommands": {
+				"bro-code.deniedCommands": {
 					"type": "array",
 					"items": {
 						"type": "string"
@@ -326,14 +326,14 @@
 					"default": [],
 					"description": "%commands.deniedCommands.description%"
 				},
-				"zoo-code.commandExecutionTimeout": {
+				"bro-code.commandExecutionTimeout": {
 					"type": "number",
 					"default": 0,
 					"minimum": 0,
 					"maximum": 600,
 					"description": "%commands.commandExecutionTimeout.description%"
 				},
-				"zoo-code.commandTimeoutAllowlist": {
+				"bro-code.commandTimeoutAllowlist": {
 					"type": "array",
 					"items": {
 						"type": "string"
@@ -341,12 +341,12 @@
 					"default": [],
 					"description": "%commands.commandTimeoutAllowlist.description%"
 				},
-				"zoo-code.preventCompletionWithOpenTodos": {
+				"bro-code.preventCompletionWithOpenTodos": {
 					"type": "boolean",
 					"default": false,
 					"description": "%commands.preventCompletionWithOpenTodos.description%"
 				},
-				"zoo-code.vsCodeLmModelSelector": {
+				"bro-code.vsCodeLmModelSelector": {
 					"type": "object",
 					"properties": {
 						"vendor": {
@@ -360,76 +360,76 @@
 					},
 					"description": "%settings.vsCodeLmModelSelector.description%"
 				},
-				"zoo-code.customStoragePath": {
+				"bro-code.customStoragePath": {
 					"type": "string",
 					"default": "",
 					"description": "%settings.customStoragePath.description%"
 				},
-				"zoo-code.enableCodeActions": {
+				"bro-code.enableCodeActions": {
 					"type": "boolean",
 					"default": true,
 					"description": "%settings.enableCodeActions.description%"
 				},
-				"zoo-code.autoImportSettingsPath": {
+				"bro-code.autoImportSettingsPath": {
 					"type": "string",
 					"default": "",
 					"description": "%settings.autoImportSettingsPath.description%"
 				},
-				"zoo-code.maximumIndexedFilesForFileSearch": {
+				"bro-code.maximumIndexedFilesForFileSearch": {
 					"type": "number",
 					"default": 10000,
 					"minimum": 5000,
 					"maximum": 500000,
 					"description": "%settings.maximumIndexedFilesForFileSearch.description%"
 				},
-				"zoo-code.useAgentRules": {
+				"bro-code.useAgentRules": {
 					"type": "boolean",
 					"default": true,
 					"description": "%settings.useAgentRules.description%"
 				},
-				"zoo-code.apiRequestTimeout": {
+				"bro-code.apiRequestTimeout": {
 					"type": "integer",
 					"default": 600,
 					"minimum": 1,
 					"maximum": 3600,
 					"description": "%settings.apiRequestTimeout.description%"
 				},
-				"zoo-code.newTaskRequireTodos": {
+				"bro-code.newTaskRequireTodos": {
 					"type": "boolean",
 					"default": false,
 					"description": "%settings.newTaskRequireTodos.description%"
 				},
-				"zoo-code.codeIndex.embeddingBatchSize": {
+				"bro-code.codeIndex.embeddingBatchSize": {
 					"type": "number",
 					"default": 60,
 					"minimum": 1,
 					"maximum": 200,
 					"description": "%settings.codeIndex.embeddingBatchSize.description%"
 				},
-				"zoo-code.debug": {
+				"bro-code.debug": {
 					"type": "boolean",
 					"default": false,
 					"description": "%settings.debug.description%"
 				},
-				"zoo-code.debugProxy.enabled": {
+				"bro-code.debugProxy.enabled": {
 					"type": "boolean",
 					"default": false,
 					"description": "%settings.debugProxy.enabled.description%",
 					"markdownDescription": "%settings.debugProxy.enabled.description%"
 				},
-				"zoo-code.debugProxy.serverUrl": {
+				"bro-code.debugProxy.serverUrl": {
 					"type": "string",
 					"default": "http://127.0.0.1:8888",
 					"description": "%settings.debugProxy.serverUrl.description%",
 					"markdownDescription": "%settings.debugProxy.serverUrl.description%"
 				},
-				"zoo-code.debugProxy.tlsInsecure": {
+				"bro-code.debugProxy.tlsInsecure": {
 					"type": "boolean",
 					"default": false,
 					"description": "%settings.debugProxy.tlsInsecure.description%",
 					"markdownDescription": "%settings.debugProxy.tlsInsecure.description%"
 				},
-				"zoo-code.workspace.rootResolution": {
+				"bro-code.workspace.rootResolution": {
 					"type": "string",
 					"enum": [
 						"activeEditor",
@@ -458,8 +458,8 @@
 		"bundle": "node esbuild.mjs",
 		"vscode:prepublish": "pnpm bundle --production",
 		"vsix": "mkdirp ../bin && vsce package --no-dependencies --out ../bin",
-		"publish:vsce": "npx @vscode/vsce publish --packagePath ../bin/zoo-code-$npm_package_version.vsix",
-		"publish:ovsx": "pnpm exec ovsx publish ../bin/zoo-code-$npm_package_version.vsix --skip-duplicate",
+		"publish:vsce": "npx @vscode/vsce publish --packagePath ../bin/bro-code-$npm_package_version.vsix",
+		"publish:ovsx": "pnpm exec ovsx publish ../bin/bro-code-$npm_package_version.vsix --skip-duplicate",
 		"publish:marketplace": "pnpm vsix && pnpm publish:vsce && pnpm publish:ovsx",
 		"watch:bundle": "pnpm bundle --watch",
 		"watch:tsc": "cd .. && tsc --noEmit --watch --project src/tsconfig.json",
@@ -475,11 +475,12 @@
 		"@mistralai/mistralai": "^1.9.18",
 		"@modelcontextprotocol/sdk": "1.29.0",
 		"@qdrant/js-client-rest": "^1.14.0",
-		"@roo-code/cloud": "workspace:^",
-		"@roo-code/core": "workspace:^",
-		"@roo-code/ipc": "workspace:^",
-		"@roo-code/telemetry": "workspace:^",
-		"@roo-code/types": "workspace:^",
+		"@bro-code/cloud": "workspace:^",
+		"@bro-code/core": "workspace:^",
+		"@bro-code/ipc": "workspace:^",
+		"@bro-code/telemetry": "workspace:^",
+		"@bro-code/types": "workspace:^",
+		"@vscode/codicons": "^0.0.36",
 		"ai-sdk-provider-poe": "2.0.18",
 		"async-mutex": "^0.5.0",
 		"axios": "^1.12.0",
@@ -534,9 +535,9 @@
 	},
 	"devDependencies": {
 		"@ai-sdk/openai-compatible": "2.0.51",
-		"@roo-code/build": "workspace:^",
-		"@roo-code/config-eslint": "workspace:^",
-		"@roo-code/config-typescript": "workspace:^",
+		"@bro-code/build": "workspace:^",
+		"@bro-code/config-eslint": "workspace:^",
+		"@bro-code/config-typescript": "workspace:^",
 		"@types/clone-deep": "4.0.4",
 		"@types/diff": "5.2.3",
 		"@types/lodash.debounce": "4.0.9",

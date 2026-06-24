@@ -182,7 +182,7 @@ export function createHistoryTrigger(config: HistoryTriggerConfig): Autocomplete
 }
 
 /**
- * Convert HistoryItem from @roo-code/types to HistoryResult.
+ * Convert HistoryItem from @bro-code/types to HistoryResult.
  * Use this to adapt history items from the store to the trigger's expected type.
  */
 export function toHistoryResult(item: {

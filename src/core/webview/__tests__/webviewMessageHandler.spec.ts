@@ -4,8 +4,8 @@ import type { Mock } from "vitest"
 
 // Mock dependencies - must come before imports
 vi.mock("../../../api/providers/fetchers/modelCache")
-vi.mock("../../../services/zoo-code-auth", () => ({
-	disconnectZooCode: vi.fn().mockResolvedValue(undefined),
+vi.mock("../../../services/bro-code-auth", () => ({
+	disconnectBroCode: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock("../../../api/providers/fetchers/lmstudio", () => ({
 	getLMStudioModels: vi.fn(),
@@ -51,7 +51,7 @@ vi.mock("../rulesMessageHandler", () => ({
 	handleOpenRulesDirectory: vi.fn(),
 }))
 
-import type { ModelRecord } from "@roo-code/types"
+import type { ModelRecord } from "@bro-code/types"
 
 import { webviewMessageHandler } from "../webviewMessageHandler"
 import type { ClineProvider } from "../ClineProvider"
@@ -176,7 +176,7 @@ import * as fsUtils from "../../../utils/fs"
 import { getWorkspacePath } from "../../../utils/path"
 import { ensureSettingsDirectoryExists } from "../../../utils/globalContext"
 import { generateErrorDiagnostics } from "../diagnosticsHandler"
-import type { ModeConfig } from "@roo-code/types"
+import type { ModeConfig } from "@bro-code/types"
 
 vi.mock("../../../utils/fs")
 vi.mock("../../../utils/path")
@@ -314,7 +314,7 @@ describe("webviewMessageHandler - image mentions", () => {
 		const mockHandleWebviewAskResponse = vi.fn()
 		vi.mocked(mockClineProvider.getCurrentTask).mockReturnValue({
 			cwd: "/mock/workspace",
-			rooIgnoreController: undefined,
+			broIgnoreController: undefined,
 			handleWebviewAskResponse: mockHandleWebviewAskResponse,
 		} as any)
 
@@ -434,7 +434,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				requesty: mockModels,
 				unbound: mockModels,
 				"vercel-ai-gateway": mockModels,
-				"zoo-gateway": mockModels,
+				"bro-gateway": mockModels,
 				litellm: mockModels,
 				ollama: {},
 				lmstudio: {},
@@ -585,7 +585,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				requesty: mockModels,
 				unbound: mockModels,
 				"vercel-ai-gateway": mockModels,
-				"zoo-gateway": mockModels,
+				"bro-gateway": mockModels,
 				litellm: {},
 				ollama: {},
 				lmstudio: {},
@@ -613,7 +613,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty
 			.mockResolvedValueOnce(mockModels) // unbound
 			.mockResolvedValueOnce(mockModels) // vercel-ai-gateway
-			.mockResolvedValueOnce(mockModels) // zoo-gateway
+			.mockResolvedValueOnce(mockModels) // bro-gateway
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
 			.mockResolvedValueOnce(mockModels) // opencode-go
 
@@ -644,7 +644,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				requesty: {},
 				unbound: mockModels,
 				"vercel-ai-gateway": mockModels,
-				"zoo-gateway": mockModels,
+				"bro-gateway": mockModels,
 				litellm: {},
 				ollama: {},
 				lmstudio: {},
@@ -663,7 +663,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty
 			.mockRejectedValueOnce(new Error("Unbound error")) // unbound
 			.mockRejectedValueOnce(new Error("Vercel AI Gateway error")) // vercel-ai-gateway
-			.mockRejectedValueOnce(new Error("Zoo Gateway error")) // zoo-gateway
+			.mockRejectedValueOnce(new Error("Bro Gateway error")) // bro-gateway
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
 
 		await webviewMessageHandler(mockClineProvider, {
@@ -707,16 +707,16 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		})
 	})
 
-	it("returns an explicit removal error for requestRooModels", async () => {
+	it("returns an explicit removal error for requestBroModels", async () => {
 		await webviewMessageHandler(mockClineProvider, {
-			type: "requestRooModels",
+			type: "requestBroModels",
 		})
 
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "singleRouterModelFetchResponse",
 			success: false,
-			error: "Roo Code Router has been removed. Please select and configure a different provider.",
-			values: { provider: "roo" },
+			error: "Bro Code Router has been removed. Please select and configure a different provider.",
+			values: { provider: "bro" },
 		})
 	})
 
@@ -783,12 +783,12 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 		vi.clearAllMocks()
 		vi.mocked(getWorkspacePath).mockReturnValue("/mock/workspace")
 		vi.mocked(vscode.window.showErrorMessage).mockResolvedValue(undefined)
-		vi.mocked(ensureSettingsDirectoryExists).mockResolvedValue("/mock/global/storage/.roo")
+		vi.mocked(ensureSettingsDirectoryExists).mockResolvedValue("/mock/global/storage/.bro")
 	})
 
 	it("should delete a project mode and its rules folder", async () => {
 		const slug = "test-project-mode"
-		const rulesFolderPath = path.join("/mock/workspace", ".roo", `rules-${slug}`)
+		const rulesFolderPath = path.join("/mock/workspace", ".bro", `rules-${slug}`)
 
 		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
 			{
@@ -813,7 +813,7 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 	it("should delete a global mode and its rules folder", async () => {
 		const slug = "test-global-mode"
 		const homeDir = os.homedir()
-		const rulesFolderPath = path.join(homeDir, ".roo", `rules-${slug}`)
+		const rulesFolderPath = path.join(homeDir, ".bro", `rules-${slug}`)
 
 		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
 			{
@@ -859,7 +859,7 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 
 	it("should handle errors when deleting rules folder", async () => {
 		const slug = "test-mode-error"
-		const rulesFolderPath = path.join("/mock/workspace", ".roo", `rules-${slug}`)
+		const rulesFolderPath = path.join("/mock/workspace", ".bro", `rules-${slug}`)
 		const error = new Error("Permission denied")
 
 		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
@@ -1141,21 +1141,21 @@ describe("webviewMessageHandler - requestCommands", () => {
 			{
 				name: "skill-slug-entry",
 				description: "Primary skill slug",
-				path: "/mock/.roo/skills/skill-slug-entry/SKILL.md",
+				path: "/mock/.bro/skills/skill-slug-entry/SKILL.md",
 				source: "project",
 				modeSlugs: ["code"],
 			},
 			{
 				name: "skill-slug-entry",
 				description: "Duplicate skill slug",
-				path: "/mock/.roo/skills/duplicate-skill/SKILL.md",
+				path: "/mock/.bro/skills/duplicate-skill/SKILL.md",
 				source: "global",
 				modeSlugs: ["code"],
 			},
 			{
 				name: "another-skill-slug",
 				description: "Another skill-generated command",
-				path: "/mock/.roo/skills/another-skill-slug/SKILL.md",
+				path: "/mock/.bro/skills/another-skill-slug/SKILL.md",
 				source: "global",
 				modeSlugs: ["code"],
 			},
@@ -1178,13 +1178,13 @@ describe("webviewMessageHandler - requestCommands", () => {
 				{
 					name: "skill-slug-entry",
 					source: "project",
-					filePath: "/mock/.roo/skills/skill-slug-entry/SKILL.md",
+					filePath: "/mock/.bro/skills/skill-slug-entry/SKILL.md",
 					description: "Primary skill slug",
 				},
 				{
 					name: "another-skill-slug",
 					source: "global",
-					filePath: "/mock/.roo/skills/another-skill-slug/SKILL.md",
+					filePath: "/mock/.bro/skills/another-skill-slug/SKILL.md",
 					description: "Another skill-generated command",
 				},
 			]),
@@ -1199,7 +1199,7 @@ describe("webviewMessageHandler - requestCommands", () => {
 				name: "deploy",
 				content: "existing command",
 				source: "project",
-				filePath: "/mock/workspace/.roo/commands/deploy.md",
+				filePath: "/mock/workspace/.bro/commands/deploy.md",
 				description: "Deploy command",
 				argumentHint: "staging | production",
 			},
@@ -1215,14 +1215,14 @@ describe("webviewMessageHandler - requestCommands", () => {
 			{
 				name: "deploy",
 				description: "Deploy skill",
-				path: "/mock/.roo/skills/deploy/SKILL.md",
+				path: "/mock/.bro/skills/deploy/SKILL.md",
 				source: "global",
 				modeSlugs: ["code"],
 			},
 			{
 				name: "skill-only",
 				description: "Skill-generated command",
-				path: "/mock/.roo/skills/skill-only/SKILL.md",
+				path: "/mock/.bro/skills/skill-only/SKILL.md",
 				source: "project",
 				modeSlugs: ["code"],
 			},
@@ -1242,14 +1242,14 @@ describe("webviewMessageHandler - requestCommands", () => {
 				{
 					name: "deploy",
 					source: "project",
-					filePath: "/mock/workspace/.roo/commands/deploy.md",
+					filePath: "/mock/workspace/.bro/commands/deploy.md",
 					description: "Deploy command",
 					argumentHint: "staging | production",
 				},
 				{
 					name: "skill-only",
 					source: "project",
-					filePath: "/mock/.roo/skills/skill-only/SKILL.md",
+					filePath: "/mock/.bro/skills/skill-only/SKILL.md",
 					description: "Skill-generated command",
 				},
 			]),
@@ -1392,52 +1392,52 @@ describe("webviewMessageHandler - downloadErrorDiagnostics", () => {
 	})
 })
 
-describe("zooCodeSignOut", () => {
+describe("broCodeSignOut", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 	})
 
-	it("disconnects Zoo Code and clears tokens from all zoo-gateway profiles", async () => {
-		const { disconnectZooCode } = await import("../../../services/zoo-code-auth")
+	it("disconnects Bro Code and clears tokens from all bro-gateway profiles", async () => {
+		const { disconnectBroCode } = await import("../../../services/bro-code-auth")
 		const upsertProviderProfile = vi.fn().mockResolvedValue(undefined)
 		const saveConfig = vi.fn().mockResolvedValue(undefined)
 
 		;(mockClineProvider as any).contextProxy = {
 			...mockClineProvider.contextProxy,
-			getProviderSettings: vi.fn().mockReturnValue({ apiProvider: "zoo-gateway" }),
-			getValues: vi.fn().mockReturnValue({ currentApiConfigName: "Zoo Gateway" }),
+			getProviderSettings: vi.fn().mockReturnValue({ apiProvider: "bro-gateway" }),
+			getValues: vi.fn().mockReturnValue({ currentApiConfigName: "Bro Gateway" }),
 		}
 		;(mockClineProvider as any).providerSettingsManager = {
 			listConfig: vi.fn().mockResolvedValue([
-				{ name: "Zoo Gateway", apiProvider: "zoo-gateway" },
-				{ name: "Backup Zoo", apiProvider: "zoo-gateway" },
+				{ name: "Bro Gateway", apiProvider: "bro-gateway" },
+				{ name: "Backup Bro", apiProvider: "bro-gateway" },
 			]),
 			getProfile: vi
 				.fn()
 				.mockResolvedValueOnce({
-					apiProvider: "zoo-gateway",
-					zooSessionToken: "token-active",
-					zooGatewayModelId: "anthropic/claude-sonnet-4",
+					apiProvider: "bro-gateway",
+					broSessionToken: "token-active",
+					broGatewayModelId: "anthropic/claude-sonnet-4",
 				})
 				.mockResolvedValueOnce({
-					apiProvider: "zoo-gateway",
-					zooSessionToken: "token-backup",
+					apiProvider: "bro-gateway",
+					broSessionToken: "token-backup",
 				}),
 			saveConfig,
 		}
 		;(mockClineProvider as any).upsertProviderProfile = upsertProviderProfile
 
-		await webviewMessageHandler(mockClineProvider, { type: "zooCodeSignOut" })
+		await webviewMessageHandler(mockClineProvider, { type: "broCodeSignOut" })
 
-		expect(disconnectZooCode).toHaveBeenCalled()
+		expect(disconnectBroCode).toHaveBeenCalled()
 		expect(upsertProviderProfile).toHaveBeenCalledWith(
-			"Zoo Gateway",
-			expect.not.objectContaining({ zooSessionToken: expect.anything() }),
+			"Bro Gateway",
+			expect.not.objectContaining({ broSessionToken: expect.anything() }),
 			true,
 		)
 		expect(saveConfig).toHaveBeenCalledWith(
-			"Backup Zoo",
-			expect.not.objectContaining({ zooSessionToken: expect.anything() }),
+			"Backup Bro",
+			expect.not.objectContaining({ broSessionToken: expect.anything() }),
 		)
 		expect(mockClineProvider.postStateToWebview).toHaveBeenCalled()
 	})
@@ -1447,24 +1447,24 @@ describe("zooCodeSignOut", () => {
 
 		;(mockClineProvider as any).contextProxy = {
 			...mockClineProvider.contextProxy,
-			getProviderSettings: vi.fn().mockReturnValue({ apiProvider: "zoo-gateway" }),
-			getValues: vi.fn().mockReturnValue({ currentApiConfigName: "Zoo Gateway" }),
+			getProviderSettings: vi.fn().mockReturnValue({ apiProvider: "bro-gateway" }),
+			getValues: vi.fn().mockReturnValue({ currentApiConfigName: "Bro Gateway" }),
 		}
 		;(mockClineProvider as any).providerSettingsManager = {
-			listConfig: vi.fn().mockResolvedValue([{ name: "Zoo Gateway", apiProvider: "zoo-gateway" }]),
+			listConfig: vi.fn().mockResolvedValue([{ name: "Bro Gateway", apiProvider: "bro-gateway" }]),
 			getProfile: vi.fn().mockResolvedValue({
-				apiProvider: "zoo-gateway",
-				zooGatewayModelId: "anthropic/claude-sonnet-4",
+				apiProvider: "bro-gateway",
+				broGatewayModelId: "anthropic/claude-sonnet-4",
 			}),
 			saveConfig: vi.fn(),
 		}
 		;(mockClineProvider as any).upsertProviderProfile = upsertProviderProfile
 
-		await webviewMessageHandler(mockClineProvider, { type: "zooCodeSignOut" })
+		await webviewMessageHandler(mockClineProvider, { type: "broCodeSignOut" })
 
 		expect(upsertProviderProfile).toHaveBeenCalledWith(
-			"Zoo Gateway",
-			expect.not.objectContaining({ zooSessionToken: expect.anything() }),
+			"Bro Gateway",
+			expect.not.objectContaining({ broSessionToken: expect.anything() }),
 			true,
 		)
 	})

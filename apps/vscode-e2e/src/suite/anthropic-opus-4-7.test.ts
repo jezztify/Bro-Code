@@ -1,7 +1,7 @@
 import * as assert from "assert"
 import { createServer, type IncomingMessage, type ServerResponse } from "http"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { BroCodeEventName, type ClineMessage } from "@bro-code/types"
 
 import { setDefaultSuiteTimeout } from "./test-utils"
 
@@ -212,7 +212,7 @@ suite("Claude Opus 4.7 (Anthropic)", function () {
 
 				const messages: ClineMessage[] = []
 
-				api.on(RooCodeEventName.Message, ({ message }) => {
+				api.on(BroCodeEventName.Message, ({ message }) => {
 					if (message.type === "say" && message.partial === false) {
 						messages.push(message)
 					}
@@ -231,8 +231,8 @@ suite("Claude Opus 4.7 (Anthropic)", function () {
 
 					const cleanup = () => {
 						clearTimeout(timer)
-						api.off(RooCodeEventName.TaskCompleted, onCompleted)
-						api.off(RooCodeEventName.TaskAborted, onAborted)
+						api.off(BroCodeEventName.TaskCompleted, onCompleted)
+						api.off(BroCodeEventName.TaskAborted, onAborted)
 					}
 
 					const onCompleted = (completedId: string) => {
@@ -249,8 +249,8 @@ suite("Claude Opus 4.7 (Anthropic)", function () {
 						}
 					}
 
-					api.on(RooCodeEventName.TaskCompleted, onCompleted)
-					api.on(RooCodeEventName.TaskAborted, onAborted)
+					api.on(BroCodeEventName.TaskCompleted, onCompleted)
+					api.on(BroCodeEventName.TaskAborted, onAborted)
 				})
 
 				const firstRequest = requests[0]

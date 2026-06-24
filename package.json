@@ -1,5 +1,5 @@
 {
-	"name": "roo-code",
+	"name": "bro-code",
 	"packageManager": "pnpm@10.8.1",
 	"engines": {
 		"node": "20.20.2"
@@ -25,12 +25,12 @@
 		"code-server:install": "node scripts/code-server.js",
 		"changeset:version": "cp CHANGELOG.md src/CHANGELOG.md && changeset version && cp -vf src/CHANGELOG.md .",
 		"knip": "knip",
-		"npm:publish:types": "pnpm --filter @roo-code/types npm:publish"
+		"npm:publish:types": "pnpm --filter @bro-code/types npm:publish"
 	},
 	"devDependencies": {
 		"@changesets/cli": "2.29.7",
 		"@dotenvx/dotenvx": "1.66.0",
-		"@roo-code/config-typescript": "workspace:^",
+		"@bro-code/config-typescript": "workspace:^",
 		"@types/node": "20.19.43",
 		"@vscode/vsce": "3.9.2",
 		"esbuild": "0.28.1",

@@ -1,4 +1,4 @@
-# @roo-code/types
+# @bro-code/types
 
 ## 0.0.1
 

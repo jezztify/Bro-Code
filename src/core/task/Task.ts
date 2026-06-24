@@ -36,7 +36,7 @@ import {
 	type ModelInfo,
 	type ClineApiReqCancelReason,
 	type ClineApiReqInfo,
-	RooCodeEventName,
+	BroCodeEventName,
 	TelemetryEventName,
 	TaskStatus,
 	TodoItem,
@@ -54,9 +54,9 @@ import {
 	ConsecutiveMistakeError,
 	MAX_MCP_TOOLS_THRESHOLD,
 	countEnabledMcpTools,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
-import { CloudService } from "@roo-code/cloud"
+} from "@bro-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
+import { CloudService } from "@bro-code/cloud"
 
 // api
 import { ApiHandler, ApiHandlerCreateMessageMetadata, buildApiHandler } from "../../api"
@@ -82,7 +82,7 @@ import { RepoPerTaskCheckpointService } from "../../services/checkpoints"
 // integrations
 import { DiffViewProvider } from "../../integrations/editor/DiffViewProvider"
 import { findToolName } from "../../integrations/misc/export-markdown"
-import { RooTerminalProcess } from "../../integrations/terminal/types"
+import { BroTerminalProcess } from "../../integrations/terminal/types"
 import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
 import { OutputInterceptor } from "../../integrations/terminal/OutputInterceptor"
 
@@ -101,8 +101,8 @@ import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
 import { restoreTodoListForTask } from "../tools/UpdateTodoListTool"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
-import { RooIgnoreController } from "../ignore/RooIgnoreController"
-import { RooProtectedController } from "../protect/RooProtectedController"
+import { BroIgnoreController } from "../ignore/BroIgnoreController"
+import { BroProtectedController } from "../protect/BroProtectedController"
 import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
 import { NativeToolCallParser } from "../assistant-message/NativeToolCallParser"
 import { manageContext, willManageContext } from "../context-management"
@@ -291,10 +291,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private autoApprovalHandler: AutoApprovalHandler
 
 	toolRepetitionDetector: ToolRepetitionDetector
-	rooIgnoreController?: RooIgnoreController
-	rooProtectedController?: RooProtectedController
+	broIgnoreController?: BroIgnoreController
+	broProtectedController?: BroProtectedController
 	fileContextTracker: FileContextTracker
-	terminalProcess?: RooTerminalProcess
+	terminalProcess?: BroTerminalProcess
 
 	// Editing
 	diffViewProvider: DiffViewProvider
@@ -496,12 +496,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.instanceId = crypto.randomUUID().slice(0, 8)
 		this.taskNumber = -1
 
-		this.rooIgnoreController = new RooIgnoreController(this.cwd)
-		this.rooProtectedController = new RooProtectedController(this.cwd)
+		this.broIgnoreController = new BroIgnoreController(this.cwd)
+		this.broProtectedController = new BroProtectedController(this.cwd)
 		this.fileContextTracker = new FileContextTracker(provider, this.taskId)
 
-		this.rooIgnoreController.initialize().catch((error) => {
-			console.error("Failed to initialize RooIgnoreController:", error)
+		this.broIgnoreController.initialize().catch((error) => {
+			console.error("Failed to initialize BroIgnoreController:", error)
 		})
 
 		this.apiConfiguration = apiConfiguration
@@ -543,8 +543,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.messageQueueService = new MessageQueueService()
 
 		this.messageQueueStateChangedHandler = () => {
-			this.emit(RooCodeEventName.TaskUserMessage, this.taskId)
-			this.emit(RooCodeEventName.QueuedMessagesUpdated, this.taskId, this.messageQueueService.messages)
+			this.emit(BroCodeEventName.TaskUserMessage, this.taskId)
+			this.emit(BroCodeEventName.QueuedMessagesUpdated, this.taskId, this.messageQueueService.messages)
 			void this.providerRef
 				.deref()
 				?.postStateToWebviewWithoutTaskHistory()
@@ -582,7 +582,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				const toolChanged = hasToolUsageChanged(toolUsage, this.toolUsageSnapshot)
 
 				if (tokenChanged || toolChanged) {
-					this.emit(RooCodeEventName.TaskTokenUsageUpdated, this.taskId, tokenUsage, toolUsage)
+					this.emit(BroCodeEventName.TaskTokenUsageUpdated, this.taskId, tokenUsage, toolUsage)
 					this.tokenUsageSnapshot = tokenUsage
 					this.tokenUsageSnapshotAt = this.clineMessages.at(-1)?.ts
 					// Deep copy tool usage for snapshot
@@ -712,7 +712,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 		}
 
-		provider.on(RooCodeEventName.ProviderProfileChanged, this.providerProfileChangeListener)
+		provider.on(BroCodeEventName.ProviderProfileChanged, this.providerProfileChangeListener)
 	}
 
 	/**
@@ -1046,7 +1046,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Avoid resending large, mostly-static fields (notably taskHistory) on every chat message update.
 		// taskHistory is maintained in-memory in the webview and updated via taskHistoryItemUpdated.
 		await provider?.postStateToWebviewWithoutTaskHistory()
-		this.emit(RooCodeEventName.Message, { action: "created", message })
+		this.emit(BroCodeEventName.Message, { action: "created", message })
 		await this.saveClineMessages()
 
 		const shouldCaptureMessage = message.partial !== true && CloudService.isEnabled()
@@ -1079,7 +1079,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private async updateClineMessage(message: ClineMessage) {
 		const provider = this.providerRef.deref()
 		await provider?.postMessageToWebview({ type: "messageUpdated", clineMessage: message })
-		this.emit(RooCodeEventName.Message, { action: "updated", message })
+		this.emit(BroCodeEventName.Message, { action: "updated", message })
 
 		// Check if we should sync to cloud and haven't already synced this message
 		const shouldCaptureMessage = message.partial !== true && CloudService.isEnabled()
@@ -1132,7 +1132,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			await provider?.updateTaskHistory(existingStatus ? { ...historyItem, status: existingStatus } : historyItem)
 			return true
 		} catch (error) {
-			console.error("Failed to save Roo messages:", error)
+			console.error("Failed to save Bro messages:", error)
 			return false
 		}
 	}
@@ -1166,7 +1166,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// simply removes the reference to this instance, but the instance is
 		// still alive until this promise resolves or rejects.)
 		if (this.abort) {
-			throw new Error(`[RooCode#ask] task ${this.taskId}.${this.instanceId} aborted`)
+			throw new Error(`[BroCode#ask] task ${this.taskId}.${this.instanceId} aborted`)
 		}
 
 		let askTs: number
@@ -1200,7 +1200,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// saves, and only post parts of partial message instead of
 					// whole array in new listener.
 					// Fire-and-forget: the webview post is internally guarded, but
-					// the `RooCodeEventName.Message` emit can synchronously throw
+					// the `BroCodeEventName.Message` emit can synchronously throw
 					// if any consumer-attached listener does, which would surface
 					// here as an unhandled rejection. Log it instead.
 					this.updateClineMessage(lastMessage).catch((error) => {
@@ -1320,7 +1320,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 						if (message) {
 							this.interactiveAsk = message
-							this.emit(RooCodeEventName.TaskInteractive, this.taskId)
+							this.emit(BroCodeEventName.TaskInteractive, this.taskId)
 							/* v8 ignore next 3 -- fires inside 2s timer after ask() resolves; not reachable in unit tests */
 							void provider?.postMessageToWebview({ type: "interactionRequired" }).catch((error) => {
 								console.error("[Task#ask] postMessageToWebview interactionRequired failed:", error)
@@ -1335,7 +1335,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 						if (message) {
 							this.resumableAsk = message
-							this.emit(RooCodeEventName.TaskResumable, this.taskId)
+							this.emit(BroCodeEventName.TaskResumable, this.taskId)
 						}
 					}, statusMutationTimeout),
 				)
@@ -1346,7 +1346,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 						if (message) {
 							this.idleAsk = message
-							this.emit(RooCodeEventName.TaskIdle, this.taskId)
+							this.emit(BroCodeEventName.TaskIdle, this.taskId)
 						}
 					}, statusMutationTimeout),
 				)
@@ -1416,10 +1416,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.idleAsk = undefined
 			this.resumableAsk = undefined
 			this.interactiveAsk = undefined
-			this.emit(RooCodeEventName.TaskActive, this.taskId)
+			this.emit(BroCodeEventName.TaskActive, this.taskId)
 		}
 
-		this.emit(RooCodeEventName.TaskAskResponded)
+		this.emit(BroCodeEventName.TaskAskResponded)
 		return result
 	}
 
@@ -1541,7 +1541,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					}
 				}
 
-				this.emit(RooCodeEventName.TaskUserMessage, this.taskId)
+				this.emit(BroCodeEventName.TaskUserMessage, this.taskId)
 
 				// Handle the message directly instead of routing through the webview.
 				// This avoids a race condition where the webview's message state hasn't
@@ -1563,11 +1563,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 	}
 
-	private async getFilesReadByRooSafely(context: string): Promise<string[] | undefined> {
+	private async getFilesReadByBroSafely(context: string): Promise<string[] | undefined> {
 		try {
-			return await this.fileContextTracker.getFilesReadByRoo()
+			return await this.fileContextTracker.getFilesReadByBro()
 		} catch (error) {
-			console.error(`[Task#${context}] Failed to get files read by Roo:`, error)
+			console.error(`[Task#${context}] Failed to get files read by Bro:`, error)
 			return undefined
 		}
 	}
@@ -1658,7 +1658,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Generate environment details to include in the condensed summary
 		const environmentDetails = await getEnvironmentDetails(this, true)
 
-		const filesReadByRoo = await this.getFilesReadByRooSafely("condenseContext")
+		const filesReadByBro = await this.getFilesReadByBroSafely("condenseContext")
 
 		const {
 			messages,
@@ -1677,9 +1677,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			customCondensingPrompt,
 			metadata,
 			environmentDetails,
-			filesReadByRoo,
+			filesReadByBro,
 			cwd: this.cwd,
-			rooIgnoreController: this.rooIgnoreController,
+			broIgnoreController: this.broIgnoreController,
 		})
 		if (error) {
 			await this.say(
@@ -1731,7 +1731,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		contextTruncation?: ContextTruncation,
 	): Promise<undefined> {
 		if (this.abort) {
-			throw new Error(`[RooCode#say] task ${this.taskId}.${this.instanceId} aborted`)
+			throw new Error(`[BroCode#say] task ${this.taskId}.${this.instanceId} aborted`)
 		}
 
 		if (partial !== undefined) {
@@ -1748,7 +1748,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					lastMessage.partial = partial
 					lastMessage.progressStatus = progressStatus
 					// Fire-and-forget: webview post is internally guarded, but the
-					// `RooCodeEventName.Message` emit can synchronously throw via a
+					// `BroCodeEventName.Message` emit can synchronously throw via a
 					// consumer-attached listener. Surface that as a log, not an
 					// unhandled rejection.
 					this.updateClineMessage(lastMessage).catch((error) => {
@@ -1844,7 +1844,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	async sayAndCreateMissingParamError(toolName: ToolName, paramName: string, relPath?: string) {
 		await this.say(
 			"error",
-			`Roo tried to use ${toolName}${
+			`Bro tried to use ${toolName}${
 				relPath ? ` for '${relPath.toPosix()}'` : ""
 			} without value for required parameter '${paramName}'. Retrying...`,
 		)
@@ -2074,7 +2074,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// Removing or merging it would destroy this metadata, causing all condensed
 					// messages to become "orphaned" and restored to active status — effectively
 					// undoing the condensation and sending the full history to the API.
-					// See: https://github.com/RooCodeInc/Roo-Code/issues/11487
+					// See: https://github.com/BroCodeInc/Bro-Code/issues/11487
 					modifiedApiConversationHistory = [...existingApiConversationHistory]
 					modifiedOldUserContent = []
 				} else if (lastMessage.role === "assistant") {
@@ -2245,7 +2245,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Force final token usage update before abort event
 		this.emitFinalTokenUsageUpdate()
 
-		this.emit(RooCodeEventName.TaskAborted)
+		this.emit(BroCodeEventName.TaskAborted)
 
 		try {
 			this.dispose() // Call the centralized dispose method
@@ -2277,7 +2277,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			if (this.providerProfileChangeListener) {
 				const provider = this.providerRef.deref()
 				if (provider) {
-					provider.off(RooCodeEventName.ProviderProfileChanged, this.providerProfileChangeListener)
+					provider.off(BroCodeEventName.ProviderProfileChanged, this.providerProfileChangeListener)
 				}
 				this.providerProfileChangeListener = undefined
 			}
@@ -2323,12 +2323,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			})
 
 		try {
-			if (this.rooIgnoreController) {
-				this.rooIgnoreController.dispose()
-				this.rooIgnoreController = undefined
+			if (this.broIgnoreController) {
+				this.broIgnoreController.dispose()
+				this.broIgnoreController = undefined
 			}
 		} catch (error) {
-			console.error("Error disposing RooIgnoreController:", error)
+			console.error("Error disposing BroIgnoreController:", error)
 			// This is the critical one for the leak fix.
 		}
 
@@ -2396,7 +2396,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Mark as initialized and active
 		this.isInitialized = true
-		this.emit(RooCodeEventName.TaskActive, this.taskId)
+		this.emit(BroCodeEventName.TaskActive, this.taskId)
 
 		// Load conversation history if not already loaded
 		if (this.apiConversationHistory.length === 0) {
@@ -2454,7 +2454,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		let nextUserContent = userContent
 		let includeFileDetails = true
 
-		this.emit(RooCodeEventName.TaskStarted)
+		this.emit(BroCodeEventName.TaskStarted)
 
 		while (!this.abort) {
 			const didEndLoop = await this.recursivelyMakeClineRequests(nextUserContent, includeFileDetails)
@@ -2500,7 +2500,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const currentIncludeFileDetails = currentItem.includeFileDetails
 
 			if (this.abort) {
-				throw new Error(`[RooCode#recursivelyMakeRooRequests] task ${this.taskId}.${this.instanceId} aborted`)
+				throw new Error(`[BroCode#recursivelyMakeBroRequests] task ${this.taskId}.${this.instanceId} aborted`)
 			}
 
 			if (this.consecutiveMistakeLimit > 0 && this.consecutiveMistakeCount >= this.consecutiveMistakeLimit) {
@@ -2573,7 +2573,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const provider = this.providerRef.deref()
 			const state = provider ? await provider.getState() : undefined
 
-			const showRooIgnoredFiles = state?.showRooIgnoredFiles ?? false
+			const showBroIgnoredFiles = state?.showBroIgnoredFiles ?? false
 			const includeDiagnosticMessages = state?.includeDiagnosticMessages ?? true
 			const maxDiagnosticMessages = state?.maxDiagnosticMessages ?? 50
 			const currentMode = state?.mode ?? defaultModeSlug
@@ -2582,8 +2582,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				userContent: currentUserContent,
 				cwd: this.cwd,
 				fileContextTracker: this.fileContextTracker,
-				rooIgnoreController: this.rooIgnoreController,
-				showRooIgnoredFiles,
+				broIgnoreController: this.broIgnoreController,
+				showBroIgnoredFiles,
 				includeDiagnosticMessages,
 				maxDiagnosticMessages,
 				skillsManager: provider?.getSkillsManager(),
@@ -3311,7 +3311,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// Need to call here in case the stream was aborted.
 				if (this.abort || this.abandoned) {
 					throw new Error(
-						`[RooCode#recursivelyMakeRooRequests] task ${this.taskId}.${this.instanceId} aborted`,
+						`[BroCode#recursivelyMakeBroRequests] task ${this.taskId}.${this.instanceId} aborted`,
 					)
 				}
 
@@ -3598,7 +3598,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 					if (this.abort || this.abandoned) {
 						throw new Error(
-							`[RooCode#recursivelyMakeRooRequests] task ${this.taskId}.${this.instanceId} aborted`,
+							`[BroCode#recursivelyMakeBroRequests] task ${this.taskId}.${this.instanceId} aborted`,
 						)
 					}
 
@@ -3779,7 +3779,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			})
 		}
 
-		const rooIgnoreInstructions = this.rooIgnoreController?.getInstructions()
+		const broIgnoreInstructions = this.broIgnoreController?.getInstructions()
 
 		const state = await this.providerRef.deref()?.getState()
 
@@ -3815,7 +3815,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				customInstructions,
 				experiments,
 				language,
-				rooIgnoreInstructions,
+				broIgnoreInstructions,
 				{
 					todoListEnabled: apiConfiguration?.todoListEnabled ?? true,
 					useAgentRules:
@@ -4139,10 +4139,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				? await getEnvironmentDetails(this, true)
 				: undefined
 
-			// Get files read by Roo for code folding - only when context management will run
-			const contextMgmtFilesReadByRoo =
+			// Get files read by Bro for code folding - only when context management will run
+			const contextMgmtFilesReadByBro =
 				contextManagementWillRun && autoCondenseContext
-					? await this.getFilesReadByRooSafely("attemptApiRequest")
+					? await this.getFilesReadByBroSafely("attemptApiRequest")
 					: undefined
 
 			// Only build the (possibly dedicated) condensing API handler when condensing will actually run
@@ -4165,9 +4165,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					currentProfileId,
 					metadata: contextMgmtMetadata,
 					environmentDetails: contextMgmtEnvironmentDetails,
-					filesReadByRoo: contextMgmtFilesReadByRoo,
+					filesReadByBro: contextMgmtFilesReadByBro,
 					cwd: this.cwd,
-					rooIgnoreController: this.rooIgnoreController,
+					broIgnoreController: this.broIgnoreController,
 					useAvailableInputForContextPercent,
 				})
 				if (truncateResult.messages !== this.apiConversationHistory) {
@@ -4689,7 +4689,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.toolUsage[toolName].failures++
 
 		if (error) {
-			this.emit(RooCodeEventName.TaskToolFailed, this.taskId, toolName, error)
+			this.emit(BroCodeEventName.TaskToolFailed, this.taskId, toolName, error)
 		}
 	}
 

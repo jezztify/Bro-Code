@@ -6,9 +6,9 @@ import { pbkdf2Sync } from "crypto"
 import NodeCache from "node-cache"
 import { z } from "zod"
 
-import type { ProviderName, ModelRecord } from "@roo-code/types"
-import { modelInfoSchema, TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import type { ProviderName, ModelRecord } from "@bro-code/types"
+import { modelInfoSchema, TelemetryEventName } from "@bro-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
 
 import { safeWriteJson } from "../../../utils/safeWriteJson"
 
@@ -28,7 +28,7 @@ import { getOllamaModels } from "./ollama"
 import { getLMStudioModels } from "./lmstudio"
 import { getPoeModels } from "./poe"
 import { getDeepSeekModels } from "./deepseek"
-import { getZooGatewayModels } from "./zoo-gateway"
+import { getBroGatewayModels } from "./bro-gateway"
 
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 
@@ -44,7 +44,7 @@ const inFlightRefresh = new Map<string, Promise<ModelRecord>>()
 // allowlists or org policies). For these we MUST NOT cache results on disk or
 // in memory: a sign-in/out cycle could otherwise serve a previous user's model
 // list to the next user, and stale data could mask backend allowlist updates.
-const AUTH_SCOPED_PROVIDERS: ReadonlySet<RouterName> = new Set(["zoo-gateway"])
+const AUTH_SCOPED_PROVIDERS: ReadonlySet<RouterName> = new Set(["bro-gateway"])
 
 // Providers whose model list is determined by the server URL, not just by the provider name.
 // Each unique baseUrl must be cached independently so that switching endpoints never serves
@@ -220,8 +220,8 @@ async function fetchModelsFromProvider(options: GetModelsOptions): Promise<Model
 		case "deepseek":
 			models = await getDeepSeekModels(options.baseUrl, options.apiKey)
 			break
-		case "zoo-gateway":
-			models = await getZooGatewayModels({ zooSessionToken: options.apiKey, zooGatewayBaseUrl: options.baseUrl })
+		case "bro-gateway":
+			models = await getBroGatewayModels({ broSessionToken: options.apiKey, broGatewayBaseUrl: options.baseUrl })
 			break
 		default: {
 			// Ensures router is exhaustively checked if RouterName is a strict union.
@@ -355,9 +355,9 @@ export const refreshModels = async (options: GetModelsOptions): Promise<ModelRec
 			return models
 		} catch (error) {
 			// Log the error for debugging, then return existing cache if available (graceful degradation).
-			// For auth-scoped providers (zoo-gateway) we MUST NOT return cached models from a prior
-			// session, since they could belong to a different user -- return empty instead.
-			console.error(`[refreshModels] Failed to refresh ${cacheKey} models:`, error)
+			// For auth-scoped providers (bro-gateway) we MUST NOT return cached models from a prior
+			// session, since they could belong to a different user — return empty instead.
+			console.error(`[refreshModels] Failed to refresh ${provider} models:`, error)
 			if (shouldSkipCache) {
 				return {}
 			}
@@ -436,7 +436,7 @@ export const flushModels = async (options: GetModelsOptions, refresh: boolean = 
 export function getModelsFromCache(
 	options: GetModelsOptions | ProviderName,
 ): ModelRecord | undefined {
-	// Auth-scoped providers (e.g. zoo-gateway) must never be served from cache --
+	// Auth-scoped providers (e.g. bro-gateway) must never be served from cache --
 	// their model lists are user-specific and a stale file left over from a previous
 	// session could leak another user's list. Mirror the guards in getModels/refreshModels.
 	const providerName = typeof options === "string" ? options : options.provider

@@ -7,7 +7,7 @@ import type { ExtensionContext } from "vscode"
 
 import { WebAuthService } from "../WebAuthService.js"
 import { RefreshTimer } from "../RefreshTimer.js"
-import { getClerkBaseUrl, getRooCodeApiUrl } from "../config.js"
+import { getClerkBaseUrl, getBroCodeApiUrl } from "../config.js"
 import { getUserAgent } from "../utils.js"
 
 vi.mock("crypto")
@@ -84,8 +84,8 @@ describe("WebAuthService", () => {
 			extension: {
 				packageJSON: {
 					version: "1.0.0",
-					publisher: "RooVeterinaryInc",
-					name: "roo-cline",
+					publisher: "BroVeterinaryInc",
+					name: "bro-cline",
 				},
 			},
 		}
@@ -102,11 +102,11 @@ describe("WebAuthService", () => {
 		})
 
 		// Setup config mocks - use production URL by default to maintain existing test behavior
-		vi.mocked(getClerkBaseUrl).mockReturnValue("https://clerk.roocode.com")
-		vi.mocked(getRooCodeApiUrl).mockReturnValue("https://api.test.com")
+		vi.mocked(getClerkBaseUrl).mockReturnValue("https://clerk.brocode.com")
+		vi.mocked(getBroCodeApiUrl).mockReturnValue("https://api.test.com")
 
 		// Setup utils mock
-		vi.mocked(getUserAgent).mockReturnValue("Zoo-Code 1.0.0")
+		vi.mocked(getUserAgent).mockReturnValue("Bro-Code 1.0.0")
 
 		// Setup crypto mock
 		vi.mocked(crypto.randomBytes).mockReturnValue(Buffer.from("test-random-bytes") as never)
@@ -271,7 +271,7 @@ describe("WebAuthService", () => {
 			await authService.login()
 
 			const expectedUrl =
-				"https://api.test.com/extension/sign-in?state=746573742d72616e646f6d2d6279746573&auth_redirect=vscode%3A%2F%2FRooVeterinaryInc.roo-cline"
+				"https://api.test.com/extension/sign-in?state=746573742d72616e646f6d2d6279746573&auth_redirect=vscode%3A%2F%2FBroVeterinaryInc.bro-cline"
 			expect(mockOpenExternal).toHaveBeenCalledWith(
 				expect.objectContaining({
 					toString: expect.any(Function),
@@ -291,7 +291,7 @@ describe("WebAuthService", () => {
 			await authService.login(undefined, true)
 
 			const expectedUrl =
-				"https://api.test.com/extension/provider-sign-up?state=746573742d72616e646f6d2d6279746573&auth_redirect=vscode%3A%2F%2FRooVeterinaryInc.roo-cline"
+				"https://api.test.com/extension/provider-sign-up?state=746573742d72616e646f6d2d6279746573&auth_redirect=vscode%3A%2F%2FBroVeterinaryInc.bro-cline"
 			expect(mockOpenExternal).toHaveBeenCalledWith(
 				expect.objectContaining({
 					toString: expect.any(Function),
@@ -308,8 +308,8 @@ describe("WebAuthService", () => {
 				throw new Error("Crypto error")
 			})
 
-			await expect(authService.login()).rejects.toThrow("Failed to initiate Roo Code Cloud authentication")
-			expect(mockLog).toHaveBeenCalledWith("[auth] Error initiating Roo Code Cloud auth: Error: Crypto error")
+			await expect(authService.login()).rejects.toThrow("Failed to initiate Bro Code Cloud authentication")
+			expect(mockLog).toHaveBeenCalledWith("[auth] Error initiating Bro Code Cloud auth: Error: Crypto error")
 		})
 	})
 
@@ -324,17 +324,17 @@ describe("WebAuthService", () => {
 			vi.mocked(vscode.window.showInformationMessage).mockImplementation(mockShowInfo)
 
 			await authService.handleCallback(null, "state")
-			expect(mockShowInfo).toHaveBeenCalledWith("Invalid Roo Code Cloud sign in url")
+			expect(mockShowInfo).toHaveBeenCalledWith("Invalid Bro Code Cloud sign in url")
 
 			await authService.handleCallback("code", null)
-			expect(mockShowInfo).toHaveBeenCalledWith("Invalid Roo Code Cloud sign in url")
+			expect(mockShowInfo).toHaveBeenCalledWith("Invalid Bro Code Cloud sign in url")
 		})
 
 		it("should validate state parameter", async () => {
 			mockContext.globalState.get.mockReturnValue("stored-state")
 
 			await expect(authService.handleCallback("code", "different-state")).rejects.toThrow(
-				"Failed to handle Roo Code Cloud callback",
+				"Failed to handle Bro Code Cloud callback",
 			)
 			expect(mockLog).toHaveBeenCalledWith("[auth] State mismatch in callback")
 		})
@@ -370,7 +370,7 @@ describe("WebAuthService", () => {
 					organizationId: null,
 				}),
 			)
-			expect(mockShowInfo).toHaveBeenCalledWith("Successfully authenticated with Roo Code Cloud")
+			expect(mockShowInfo).toHaveBeenCalledWith("Successfully authenticated with Bro Code Cloud")
 		})
 
 		it("should store provider model when provided in callback", async () => {
@@ -396,8 +396,8 @@ describe("WebAuthService", () => {
 
 			await authService.handleCallback("auth-code", storedState, null, "xai/grok-code-fast-1")
 
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("roo-provider-model", "xai/grok-code-fast-1")
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("roo-auth-skip-model", undefined)
+			expect(mockContext.globalState.update).toHaveBeenCalledWith("bro-provider-model", "xai/grok-code-fast-1")
+			expect(mockContext.globalState.update).toHaveBeenCalledWith("bro-auth-skip-model", undefined)
 			expect(mockLog).toHaveBeenCalledWith("[auth] Stored provider model: xai/grok-code-fast-1")
 		})
 
@@ -425,7 +425,7 @@ describe("WebAuthService", () => {
 			// Call without provider model
 			await authService.handleCallback("auth-code", storedState, null)
 
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("roo-auth-skip-model", true)
+			expect(mockContext.globalState.update).toHaveBeenCalledWith("bro-auth-skip-model", true)
 			expect(mockLog).toHaveBeenCalledWith("[auth] No provider model selected during signup")
 		})
 
@@ -443,7 +443,7 @@ describe("WebAuthService", () => {
 			authService.on("auth-state-changed", authStateChangedSpy)
 
 			await expect(authService.handleCallback("auth-code", storedState)).rejects.toThrow(
-				"Failed to handle Roo Code Cloud callback",
+				"Failed to handle Bro Code Cloud callback",
 			)
 			expect(authStateChangedSpy).toHaveBeenCalled()
 		})
@@ -476,7 +476,7 @@ describe("WebAuthService", () => {
 			expect(mockContext.secrets.delete).toHaveBeenCalledWith("clerk-auth-credentials")
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("clerk-auth-state", undefined)
 			expect(mockFetch).toHaveBeenCalledWith(
-				"https://clerk.roocode.com/v1/client/sessions/test-session/remove",
+				"https://clerk.brocode.com/v1/client/sessions/test-session/remove",
 				expect.objectContaining({
 					method: "POST",
 					headers: expect.objectContaining({
@@ -484,7 +484,7 @@ describe("WebAuthService", () => {
 					}),
 				}),
 			)
-			expect(mockShowInfo).toHaveBeenCalledWith("Logged out from Roo Code Cloud")
+			expect(mockShowInfo).toHaveBeenCalledWith("Logged out from Bro Code Cloud")
 		})
 
 		it("should handle logout without credentials", async () => {
@@ -496,7 +496,7 @@ describe("WebAuthService", () => {
 
 			expect(mockContext.secrets.delete).toHaveBeenCalled()
 			expect(mockFetch).not.toHaveBeenCalled()
-			expect(mockShowInfo).toHaveBeenCalledWith("Logged out from Roo Code Cloud")
+			expect(mockShowInfo).toHaveBeenCalledWith("Logged out from Bro Code Cloud")
 		})
 
 		it("should handle Clerk logout errors gracefully", async () => {
@@ -519,7 +519,7 @@ describe("WebAuthService", () => {
 			await authService.logout()
 
 			expect(mockLog).toHaveBeenCalledWith("[auth] Error calling clerkLogout:", expect.any(Error))
-			expect(mockShowInfo).toHaveBeenCalledWith("Logged out from Roo Code Cloud")
+			expect(mockShowInfo).toHaveBeenCalledWith("Logged out from Bro Code Cloud")
 		})
 	})
 
@@ -1091,7 +1091,7 @@ describe("WebAuthService", () => {
 			})
 
 			await expect(authService.handleCallback("auth-code", storedState)).rejects.toThrow(
-				"Failed to handle Roo Code Cloud callback",
+				"Failed to handle Bro Code Cloud callback",
 			)
 		})
 	})
@@ -1119,7 +1119,7 @@ describe("WebAuthService", () => {
 	describe("auth credentials key scoping", () => {
 		it("should use default key when getClerkBaseUrl returns production URL", async () => {
 			// Mock getClerkBaseUrl to return production URL
-			vi.mocked(getClerkBaseUrl).mockReturnValue("https://clerk.roocode.com")
+			vi.mocked(getClerkBaseUrl).mockReturnValue("https://clerk.brocode.com")
 
 			const service = new WebAuthService(mockContext as unknown as ExtensionContext, mockLog)
 			const credentials = {

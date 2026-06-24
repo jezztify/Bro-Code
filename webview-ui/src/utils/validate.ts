@@ -11,15 +11,15 @@ import {
 	isDynamicProvider,
 	isFauxProvider,
 	isCustomProvider,
-} from "@roo-code/types"
+} from "@bro-code/types"
 
 export function validateApiConfiguration(
 	apiConfiguration: ProviderSettings,
 	routerModels?: RouterModels,
 	organizationAllowList?: OrganizationAllowList,
-	zooCodeIsAuthenticated?: boolean,
+	broCodeIsAuthenticated?: boolean,
 ): string | undefined {
-	const keysAndIdsPresentErrorMessage = validateModelsAndKeysProvided(apiConfiguration, zooCodeIsAuthenticated)
+	const keysAndIdsPresentErrorMessage = validateModelsAndKeysProvided(apiConfiguration, broCodeIsAuthenticated)
 
 	if (keysAndIdsPresentErrorMessage) {
 		return keysAndIdsPresentErrorMessage
@@ -39,7 +39,7 @@ export function validateApiConfiguration(
 
 function validateModelsAndKeysProvided(
 	apiConfiguration: ProviderSettings,
-	zooCodeIsAuthenticated?: boolean,
+	broCodeIsAuthenticated?: boolean,
 ): string | undefined {
 	switch (apiConfiguration.apiProvider) {
 		case "openrouter":
@@ -137,9 +137,9 @@ function validateModelsAndKeysProvided(
 				return i18next.t("settings:validation.apiKey")
 			}
 			break
-		case "zoo-gateway":
-			if (!apiConfiguration.zooSessionToken && !zooCodeIsAuthenticated) {
-				return i18next.t("settings:validation.zooGatewaySignIn")
+		case "bro-gateway":
+			if (!apiConfiguration.broSessionToken && !broCodeIsAuthenticated) {
+				return i18next.t("settings:validation.broGatewaySignIn")
 			}
 			break
 		case "baseten":
@@ -297,9 +297,9 @@ export function getModelValidationError(
  * This is used for the general API error display to prevent duplication
  * when model errors are shown in the model selector.
  *
- * Zoo Gateway's sign-in error is rendered inline by the `ZooGateway` provider
+ * Bro Gateway's sign-in error is rendered inline by the `BroGateway` provider
  * component, so we skip the keys/sign-in check here. Organization provider
- * restrictions still need to be enforced for zoo-gateway, so the org allowlist
+ * restrictions still need to be enforced for bro-gateway, so the org allowlist
  * check below runs for every provider.
  */
 export function validateApiConfigurationExcludingModelErrors(
@@ -307,7 +307,7 @@ export function validateApiConfigurationExcludingModelErrors(
 	_routerModels?: RouterModels, // Keeping this for compatibility with the old function.
 	organizationAllowList?: OrganizationAllowList,
 ): string | undefined {
-	if (apiConfiguration.apiProvider !== "zoo-gateway") {
+	if (apiConfiguration.apiProvider !== "bro-gateway") {
 		const keysAndIdsPresentErrorMessage = validateModelsAndKeysProvided(apiConfiguration)
 
 		if (keysAndIdsPresentErrorMessage) {

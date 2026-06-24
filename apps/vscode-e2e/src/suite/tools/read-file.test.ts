@@ -4,12 +4,12 @@ import * as path from "path"
 import * as os from "os"
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { BroCodeEventName, type ClineMessage } from "@bro-code/types"
 
 import { waitFor, sleep } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
 
-suite("Roo Code read_file Tool", function () {
+suite("Bro Code read_file Tool", function () {
 	setDefaultSuiteTimeout(this)
 
 	let tempDir: string
@@ -24,7 +24,7 @@ suite("Roo Code read_file Tool", function () {
 
 	// Create a temporary directory and test files
 	suiteSetup(async () => {
-		tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "roo-test-read-"))
+		tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "bro-test-read-"))
 
 		// Create test files in VSCode workspace directory
 		const workspaceDir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || tempDir
@@ -142,7 +142,7 @@ suite("Roo Code read_file Tool", function () {
 				console.log("AI response:", message.text?.substring(0, 200))
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task events
 		const taskStartedHandler = (id: string) => {
@@ -151,7 +151,7 @@ suite("Roo Code read_file Tool", function () {
 				console.log("Task started:", id)
 			}
 		}
-		api.on(RooCodeEventName.TaskStarted, taskStartedHandler)
+		api.on(BroCodeEventName.TaskStarted, taskStartedHandler)
 
 		const taskCompletedHandler = (id: string) => {
 			if (id === taskId) {
@@ -159,7 +159,7 @@ suite("Roo Code read_file Tool", function () {
 				console.log("Task completed:", id)
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -208,9 +208,9 @@ suite("Roo Code read_file Tool", function () {
 			console.log("Test passed! File read successfully with correct content")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskStarted, taskStartedHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskStarted, taskStartedHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -228,7 +228,7 @@ suite("Roo Code read_file Tool", function () {
 				console.log("AI response:", message.text?.substring(0, 200))
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -236,7 +236,7 @@ suite("Roo Code read_file Tool", function () {
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -268,8 +268,8 @@ suite("Roo Code read_file Tool", function () {
 			console.log("Test passed! Multiline file read successfully with correct content")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -287,7 +287,7 @@ suite("Roo Code read_file Tool", function () {
 				console.log("AI response:", message.text?.substring(0, 200))
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -295,7 +295,7 @@ suite("Roo Code read_file Tool", function () {
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -327,8 +327,8 @@ suite("Roo Code read_file Tool", function () {
 			console.log("Test passed! File read with line range successfully")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -341,7 +341,7 @@ suite("Roo Code read_file Tool", function () {
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -349,7 +349,7 @@ suite("Roo Code read_file Tool", function () {
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -382,8 +382,8 @@ suite("Roo Code read_file Tool", function () {
 			console.log("Test passed! Non-existent file handled correctly")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -401,7 +401,7 @@ suite("Roo Code read_file Tool", function () {
 				console.log("AI response:", message.text?.substring(0, 200))
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -409,7 +409,7 @@ suite("Roo Code read_file Tool", function () {
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -442,8 +442,8 @@ suite("Roo Code read_file Tool", function () {
 			console.log("Test passed! XML file read successfully")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -456,7 +456,7 @@ suite("Roo Code read_file Tool", function () {
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -464,7 +464,7 @@ suite("Roo Code read_file Tool", function () {
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -501,8 +501,8 @@ Assume both files exist and you can read them directly. Read each file and tell 
 			console.log("Test passed! Multiple files read successfully")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -520,7 +520,7 @@ Assume both files exist and you can read them directly. Read each file and tell 
 				console.log("AI response:", message.text?.substring(0, 200))
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -528,7 +528,7 @@ Assume both files exist and you can read them directly. Read each file and tell 
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -560,8 +560,8 @@ Assume both files exist and you can read them directly. Read each file and tell 
 			console.log("Test passed! Large file read efficiently")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 })

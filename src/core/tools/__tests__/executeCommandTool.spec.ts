@@ -1,6 +1,6 @@
 // npx vitest run src/core/tools/__tests__/executeCommandTool.spec.ts
 
-import type { ToolUsage } from "@roo-code/types"
+import type { ToolUsage } from "@bro-code/types"
 import * as vscode from "vscode"
 
 import { Task } from "../../task/Task"
@@ -49,7 +49,7 @@ describe("executeCommandTool", () => {
 	let mockHandleError: any
 	let mockPushToolResult: any
 	let mockToolUse: ToolUse<"execute_command">
-	const originalCliRuntime = process.env.ROO_CLI_RUNTIME
+	const originalCliRuntime = process.env.BRO_CLI_RUNTIME
 
 	beforeEach(() => {
 		// Reset mocks
@@ -66,7 +66,7 @@ describe("executeCommandTool", () => {
 			sayAndCreateMissingParamError: vitest.fn().mockResolvedValue("Missing parameter error"),
 			consecutiveMistakeCount: 0,
 			didRejectTool: false,
-			rooIgnoreController: {
+			broIgnoreController: {
 				validateCommand: vitest.fn().mockReturnValue(null),
 			},
 			recordToolUsage: vitest.fn().mockReturnValue({} as ToolUsage),
@@ -112,7 +112,7 @@ describe("executeCommandTool", () => {
 	})
 
 	afterEach(() => {
-		process.env.ROO_CLI_RUNTIME = originalCliRuntime
+		process.env.BRO_CLI_RUNTIME = originalCliRuntime
 		vitest.useRealTimers()
 	})
 
@@ -231,18 +231,18 @@ describe("executeCommandTool", () => {
 			expect(mockPushToolResult).not.toHaveBeenCalled()
 		})
 
-		it("should handle rooignore validation failures", async () => {
+		it("should handle broignore validation failures", async () => {
 			// Setup
 			mockToolUse.params.command = "cat .env"
 			mockToolUse.nativeArgs = { command: "cat .env" }
 			// Override the validateCommand mock to return a filename
 			const validateCommandMock = vitest.fn().mockReturnValue(".env")
-			mockCline.rooIgnoreController = {
+			mockCline.broIgnoreController = {
 				validateCommand: validateCommandMock,
 			}
 
-			const mockRooIgnoreError = "RooIgnore error"
-			;(formatResponse.rooIgnoreError as any).mockReturnValue(mockRooIgnoreError)
+			const mockBroIgnoreError = "BroIgnore error"
+			;(formatResponse.broIgnoreError as any).mockReturnValue(mockBroIgnoreError)
 
 			// Execute
 			await executeCommandTool.handle(mockCline as unknown as Task, mockToolUse, {
@@ -253,11 +253,11 @@ describe("executeCommandTool", () => {
 
 			// Verify
 			expect(validateCommandMock).toHaveBeenCalledWith("cat .env")
-			expect(mockCline.say).toHaveBeenCalledWith("rooignore_error", ".env")
-			expect(formatResponse.rooIgnoreError).toHaveBeenCalledWith(".env")
-			expect(mockPushToolResult).toHaveBeenCalledWith(mockRooIgnoreError)
+			expect(mockCline.say).toHaveBeenCalledWith("broignore_error", ".env")
+			expect(formatResponse.broIgnoreError).toHaveBeenCalledWith(".env")
+			expect(mockPushToolResult).toHaveBeenCalledWith(mockBroIgnoreError)
 			expect(mockAskApproval).not.toHaveBeenCalled()
-			// executeCommandInTerminal should not be called since rooignore blocked it
+			// executeCommandInTerminal should not be called since broignore blocked it
 		})
 
 		it("allows Execa retry when shell integration fails before command submission", () => {
@@ -318,12 +318,12 @@ describe("executeCommandTool", () => {
 		})
 
 		it("should ignore model timeout in CLI runtime", () => {
-			process.env.ROO_CLI_RUNTIME = "1"
+			process.env.BRO_CLI_RUNTIME = "1"
 			expect(executeCommandModule.resolveAgentTimeoutMs(30)).toBe(0)
 		})
 
 		it("should honor model timeout outside CLI runtime", () => {
-			delete process.env.ROO_CLI_RUNTIME
+			delete process.env.BRO_CLI_RUNTIME
 			expect(executeCommandModule.resolveAgentTimeoutMs(30)).toBe(30_000)
 		})
 	})

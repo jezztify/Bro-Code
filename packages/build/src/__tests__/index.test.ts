@@ -6,39 +6,39 @@ describe("generatePackageJson", () => {
 	it("should be a test", () => {
 		const generatedPackageJson = generatePackageJson({
 			packageJson: {
-				name: "roo-cline",
+				name: "bro-cline",
 				displayName: "%extension.displayName%",
 				description: "%extension.description%",
-				publisher: "RooVeterinaryInc",
+				publisher: "BroVeterinaryInc",
 				version: "3.17.2",
 				icon: "assets/icons/icon.png",
 				contributes: {
 					viewsContainers: {
 						activitybar: [
 							{
-								id: "roo-cline-ActivityBar",
+								id: "bro-cline-ActivityBar",
 								title: "%views.activitybar.title%",
 								icon: "assets/icons/icon.svg",
 							},
 						],
 					},
 					views: {
-						"roo-cline-ActivityBar": [
+						"bro-cline-ActivityBar": [
 							{
 								type: "webview",
-								id: "roo-cline.SidebarProvider",
+								id: "bro-cline.SidebarProvider",
 								name: "",
 							},
 						],
 					},
 					commands: [
 						{
-							command: "roo-cline.plusButtonClicked",
+							command: "bro-cline.plusButtonClicked",
 							title: "%command.newTask.title%",
 							icon: "$(edit)",
 						},
 						{
-							command: "roo-cline.openInNewTab",
+							command: "bro-cline.openInNewTab",
 							title: "%command.openInNewTab.title%",
 							category: "%configuration.title%",
 						},
@@ -46,48 +46,48 @@ describe("generatePackageJson", () => {
 					menus: {
 						"editor/context": [
 							{
-								submenu: "roo-cline.contextMenu",
+								submenu: "bro-cline.contextMenu",
 								group: "navigation",
 							},
 						],
-						"roo-cline.contextMenu": [
+						"bro-cline.contextMenu": [
 							{
-								command: "roo-cline.addToContext",
+								command: "bro-cline.addToContext",
 								group: "1_actions@1",
 							},
 						],
 						"editor/title": [
 							{
-								command: "roo-cline.plusButtonClicked",
+								command: "bro-cline.plusButtonClicked",
 								group: "navigation@1",
-								when: "activeWebviewPanelId == roo-cline.TabPanelProvider",
+								when: "activeWebviewPanelId == bro-cline.TabPanelProvider",
 							},
 							{
-								command: "roo-cline.settingsButtonClicked",
+								command: "bro-cline.settingsButtonClicked",
 								group: "navigation@6",
-								when: "activeWebviewPanelId == roo-cline.TabPanelProvider",
+								when: "activeWebviewPanelId == bro-cline.TabPanelProvider",
 							},
 							{
-								command: "roo-cline.accountButtonClicked",
+								command: "bro-cline.accountButtonClicked",
 								group: "navigation@6",
-								when: "activeWebviewPanelId == roo-cline.TabPanelProvider",
+								when: "activeWebviewPanelId == bro-cline.TabPanelProvider",
 							},
 						],
 					},
 					submenus: [
 						{
-							id: "roo-cline.contextMenu",
+							id: "bro-cline.contextMenu",
 							label: "%views.contextMenu.label%",
 						},
 						{
-							id: "roo-cline.terminalMenu",
+							id: "bro-cline.terminalMenu",
 							label: "%views.terminalMenu.label%",
 						},
 					],
 					configuration: {
 						title: "%configuration.title%",
 						properties: {
-							"roo-cline.allowedCommands": {
+							"bro-cline.allowedCommands": {
 								type: "array",
 								items: {
 									type: "string",
@@ -95,7 +95,7 @@ describe("generatePackageJson", () => {
 								default: ["npm test", "npm install", "tsc", "git log", "git diff", "git show"],
 								description: "%commands.allowedCommands.description%",
 							},
-							"roo-cline.customStoragePath": {
+							"bro-cline.customStoragePath": {
 								type: "string",
 								default: "",
 								description: "%settings.customStoragePath.description%",
@@ -108,50 +108,50 @@ describe("generatePackageJson", () => {
 				},
 			},
 			overrideJson: {
-				name: "zoo-code-nightly",
-				displayName: "Zoo Code Nightly",
-				publisher: "ZooCodeOrganization",
+				name: "bro-code-nightly",
+				displayName: "Bro Code Nightly",
+				publisher: "BroCodeOrganization",
 				version: "0.0.1",
 				icon: "assets/icons/icon-nightly.png",
 				scripts: {},
 			},
-			substitution: ["roo-cline", "zoo-code-nightly"],
+			substitution: ["bro-cline", "bro-code-nightly"],
 		})
 
 		expect(generatedPackageJson).toStrictEqual({
-			name: "zoo-code-nightly",
-			displayName: "Zoo Code Nightly",
+			name: "bro-code-nightly",
+			displayName: "Bro Code Nightly",
 			description: "%extension.description%",
-			publisher: "ZooCodeOrganization",
+			publisher: "BroCodeOrganization",
 			version: "0.0.1",
 			icon: "assets/icons/icon-nightly.png",
 			contributes: {
 				viewsContainers: {
 					activitybar: [
 						{
-							id: "zoo-code-nightly-ActivityBar",
+							id: "bro-code-nightly-ActivityBar",
 							title: "%views.activitybar.title%",
 							icon: "assets/icons/icon.svg",
 						},
 					],
 				},
 				views: {
-					"zoo-code-nightly-ActivityBar": [
+					"bro-code-nightly-ActivityBar": [
 						{
 							type: "webview",
-							id: "zoo-code-nightly.SidebarProvider",
+							id: "bro-code-nightly.SidebarProvider",
 							name: "",
 						},
 					],
 				},
 				commands: [
 					{
-						command: "zoo-code-nightly.plusButtonClicked",
+						command: "bro-code-nightly.plusButtonClicked",
 						title: "%command.newTask.title%",
 						icon: "$(edit)",
 					},
 					{
-						command: "zoo-code-nightly.openInNewTab",
+						command: "bro-code-nightly.openInNewTab",
 						title: "%command.openInNewTab.title%",
 						category: "%configuration.title%",
 					},
@@ -159,48 +159,48 @@ describe("generatePackageJson", () => {
 				menus: {
 					"editor/context": [
 						{
-							submenu: "zoo-code-nightly.contextMenu",
+							submenu: "bro-code-nightly.contextMenu",
 							group: "navigation",
 						},
 					],
-					"zoo-code-nightly.contextMenu": [
+					"bro-code-nightly.contextMenu": [
 						{
-							command: "zoo-code-nightly.addToContext",
+							command: "bro-code-nightly.addToContext",
 							group: "1_actions@1",
 						},
 					],
 					"editor/title": [
 						{
-							command: "zoo-code-nightly.plusButtonClicked",
+							command: "bro-code-nightly.plusButtonClicked",
 							group: "navigation@1",
-							when: "activeWebviewPanelId == zoo-code-nightly.TabPanelProvider",
+							when: "activeWebviewPanelId == bro-code-nightly.TabPanelProvider",
 						},
 						{
-							command: "zoo-code-nightly.settingsButtonClicked",
+							command: "bro-code-nightly.settingsButtonClicked",
 							group: "navigation@6",
-							when: "activeWebviewPanelId == zoo-code-nightly.TabPanelProvider",
+							when: "activeWebviewPanelId == bro-code-nightly.TabPanelProvider",
 						},
 						{
-							command: "zoo-code-nightly.accountButtonClicked",
+							command: "bro-code-nightly.accountButtonClicked",
 							group: "navigation@6",
-							when: "activeWebviewPanelId == zoo-code-nightly.TabPanelProvider",
+							when: "activeWebviewPanelId == bro-code-nightly.TabPanelProvider",
 						},
 					],
 				},
 				submenus: [
 					{
-						id: "zoo-code-nightly.contextMenu",
+						id: "bro-code-nightly.contextMenu",
 						label: "%views.contextMenu.label%",
 					},
 					{
-						id: "zoo-code-nightly.terminalMenu",
+						id: "bro-code-nightly.terminalMenu",
 						label: "%views.terminalMenu.label%",
 					},
 				],
 				configuration: {
 					title: "%configuration.title%",
 					properties: {
-						"zoo-code-nightly.allowedCommands": {
+						"bro-code-nightly.allowedCommands": {
 							type: "array",
 							items: {
 								type: "string",
@@ -208,7 +208,7 @@ describe("generatePackageJson", () => {
 							default: ["npm test", "npm install", "tsc", "git log", "git diff", "git show"],
 							description: "%commands.allowedCommands.description%",
 						},
-						"zoo-code-nightly.customStoragePath": {
+						"bro-code-nightly.customStoragePath": {
 							type: "string",
 							default: "",
 							description: "%settings.customStoragePath.description%",

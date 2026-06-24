@@ -1,5 +1,5 @@
 /**
- * Roo Code Client
+ * Bro Code Client
  *
  * This is the main entry point for the client library. It provides a high-level
  * API for:
@@ -27,7 +27,7 @@
  * ```
  */
 
-import type { ExtensionMessage, WebviewMessage, ClineAskResponse, ClineMessage, ClineAsk } from "@roo-code/types"
+import type { ExtensionMessage, WebviewMessage, ClineAskResponse, ClineMessage, ClineAsk } from "@bro-code/types"
 
 import { StateStore } from "./state-store.js"
 import { MessageProcessor, parseExtensionMessage } from "./message-processor.js"
@@ -84,7 +84,7 @@ export interface ExtensionClientConfig {
 // =============================================================================
 
 /**
- * ExtensionClient is the main interface for interacting with the Roo Code extension.
+ * ExtensionClient is the main interface for interacting with the Bro Code extension.
  *
  * Basic usage:
  * ```typescript

@@ -1,5 +1,5 @@
 {
-	"greeting": "Zoo Code へようこそ！",
+	"greeting": "Bro Code へようこそ！",
 	"task": {
 		"title": "タスク",
 		"expand": "タスクを展開",
@@ -96,10 +96,10 @@
 	"enqueueMessage": "メッセージをキューに追加（現在のタスク完了後に送信されます）",
 	"scrollToBottom": "チャットの最下部にスクロール",
 	"scrollToLatestCheckpoint": "前のチェックポイントまでスクロール",
-	"about": "Zoo Codeは、エディタに常駐するAI開発チームです。",
+	"about": "Bro Codeは、エディタに常駐するAI開発チームです。",
 	"docs": "詳細については、<DocsLink>ドキュメント</DocsLink>をご確認ください。",
 	"onboarding": "このワークスペースのタスクリストは空です。",
-	"rooTips": {
+	"broTips": {
 		"customizableModes": {
 			"title": "カスタマイズ可能なモード",
 			"description": "タスクに集中し、成果を出す専門のペルソナ。"
@@ -128,7 +128,7 @@
 		"title": "モード",
 		"marketplace": "モードマーケットプレイス",
 		"settings": "モード設定",
-		"description": "Rooの動作をカスタマイズする専門的なペルソナ。",
+		"description": "Broの動作をカスタマイズする専門的なペルソナ。",
 		"searchPlaceholder": "モードを検索...",
 		"noResults": "結果が見つかりません"
 	},
@@ -142,7 +142,7 @@
 	"diffError": {
 		"title": "編集に失敗しました"
 	},
-	"troubleMessage": "Rooに問題が発生しています...",
+	"troubleMessage": "Broに問題が発生しています...",
 	"apiRequest": {
 		"title": "APIリクエスト",
 		"failed": "APIリクエスト失敗",
@@ -160,7 +160,7 @@
 			"500": "プロバイダー サーバー エラー。プロバイダー側に問題があり、リクエスト自体に問題はありません。",
 			"docs": "ドキュメント",
 			"goToSettings": "設定",
-			"unknown": "不明な API エラーです。Zoo Code サポートにお問い合わせください。",
+			"unknown": "不明な API エラーです。Bro Code サポートにお問い合わせください。",
 			"connection": "接続エラー。インターネット接続が機能していることを確認してください。",
 			"claudeCodeNotAuthenticated": "Claude Codeを使用するにはサインインが必要です。設定に移動して「Claude Codeにサインイン」をクリックして認証してください。"
 		}
@@ -185,43 +185,43 @@
 		"current": "現在"
 	},
 	"instructions": {
-		"wantsToFetch": "Rooは現在のタスクを支援するための詳細な指示を取得したい"
+		"wantsToFetch": "Broは現在のタスクを支援するための詳細な指示を取得したい"
 	},
 	"fileOperations": {
-		"wantsToRead": "Rooはこのファイルを読みたい",
-		"wantsToReadOutsideWorkspace": "Rooはワークスペース外のこのファイルを読みたい",
-		"didRead": "Rooはこのファイルを読みました",
-		"wantsToEdit": "Rooはこのファイルを編集したい",
-		"wantsToEditOutsideWorkspace": "Rooはワークスペース外のこのファイルを編集したい",
-		"wantsToEditProtected": "Rooは保護された設定ファイルを編集したい",
-		"wantsToCreate": "Rooは新しいファイルを作成したい",
-		"wantsToSearchReplace": "Rooはこのファイルで検索と置換を行う",
-		"didSearchReplace": "Rooはこのファイルで検索と置換を実行しました",
-		"wantsToInsert": "Rooはこのファイルにコンテンツを挿入したい",
-		"wantsToInsertWithLineNumber": "Rooはこのファイルの{{lineNumber}}行目にコンテンツを挿入したい",
-		"wantsToInsertAtEnd": "Rooはこのファイルの末尾にコンテンツを追加したい",
-		"wantsToReadAndXMore": "Zoo はこのファイルと他に {{count}} 個のファイルを読み込もうとしています",
-		"wantsToReadMultiple": "Rooは複数のファイルを読み取ろうとしています",
-		"wantsToApplyBatchChanges": "Rooは複数のファイルに変更を適用したい",
-		"wantsToGenerateImage": "Rooは画像を生成したい",
-		"wantsToGenerateImageOutsideWorkspace": "Rooはワークスペース外で画像を生成したい",
-		"wantsToGenerateImageProtected": "Rooは保護された場所で画像を生成したい",
-		"didGenerateImage": "Rooは画像を生成しました"
+		"wantsToRead": "Broはこのファイルを読みたい",
+		"wantsToReadOutsideWorkspace": "Broはワークスペース外のこのファイルを読みたい",
+		"didRead": "Broはこのファイルを読みました",
+		"wantsToEdit": "Broはこのファイルを編集したい",
+		"wantsToEditOutsideWorkspace": "Broはワークスペース外のこのファイルを編集したい",
+		"wantsToEditProtected": "Broは保護された設定ファイルを編集したい",
+		"wantsToCreate": "Broは新しいファイルを作成したい",
+		"wantsToSearchReplace": "Broはこのファイルで検索と置換を行う",
+		"didSearchReplace": "Broはこのファイルで検索と置換を実行しました",
+		"wantsToInsert": "Broはこのファイルにコンテンツを挿入したい",
+		"wantsToInsertWithLineNumber": "Broはこのファイルの{{lineNumber}}行目にコンテンツを挿入したい",
+		"wantsToInsertAtEnd": "Broはこのファイルの末尾にコンテンツを追加したい",
+		"wantsToReadAndXMore": "Bro はこのファイルと他に {{count}} 個のファイルを読み込もうとしています",
+		"wantsToReadMultiple": "Broは複数のファイルを読み取ろうとしています",
+		"wantsToApplyBatchChanges": "Broは複数のファイルに変更を適用したい",
+		"wantsToGenerateImage": "Broは画像を生成したい",
+		"wantsToGenerateImageOutsideWorkspace": "Broはワークスペース外で画像を生成したい",
+		"wantsToGenerateImageProtected": "Broは保護された場所で画像を生成したい",
+		"didGenerateImage": "Broは画像を生成しました"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Rooはこのディレクトリのトップレベルファイルを表示したい",
-		"didViewTopLevel": "Rooはこのディレクトリのトップレベルファイルを表示しました",
-		"wantsToViewRecursive": "Rooはこのディレクトリのすべてのファイルを再帰的に表示したい",
-		"didViewRecursive": "Rooはこのディレクトリのすべてのファイルを再帰的に表示しました",
-		"wantsToSearch": "Rooはこのディレクトリで <code>{{regex}}</code> を検索したい",
-		"didSearch": "Rooはこのディレクトリで <code>{{regex}}</code> を検索しました",
-		"wantsToSearchOutsideWorkspace": "Rooはこのディレクトリ（ワークスペース外）で <code>{{regex}}</code> を検索したい",
-		"didSearchOutsideWorkspace": "Rooはこのディレクトリ（ワークスペース外）で <code>{{regex}}</code> を検索しました",
-		"wantsToViewTopLevelOutsideWorkspace": "Rooはこのディレクトリ（ワークスペース外）のトップレベルファイルを表示したい",
-		"didViewTopLevelOutsideWorkspace": "Rooはこのディレクトリ（ワークスペース外）のトップレベルファイルを表示しました",
-		"wantsToViewRecursiveOutsideWorkspace": "Rooはこのディレクトリ（ワークスペース外）のすべてのファイルを再帰的に表示したい",
-		"didViewRecursiveOutsideWorkspace": "Rooはこのディレクトリ（ワークスペース外）のすべてのファイルを再帰的に表示しました",
-		"wantsToViewMultipleDirectories": "Zoo は複数のディレクトリを表示したい"
+		"wantsToViewTopLevel": "Broはこのディレクトリのトップレベルファイルを表示したい",
+		"didViewTopLevel": "Broはこのディレクトリのトップレベルファイルを表示しました",
+		"wantsToViewRecursive": "Broはこのディレクトリのすべてのファイルを再帰的に表示したい",
+		"didViewRecursive": "Broはこのディレクトリのすべてのファイルを再帰的に表示しました",
+		"wantsToSearch": "Broはこのディレクトリで <code>{{regex}}</code> を検索したい",
+		"didSearch": "Broはこのディレクトリで <code>{{regex}}</code> を検索しました",
+		"wantsToSearchOutsideWorkspace": "Broはこのディレクトリ（ワークスペース外）で <code>{{regex}}</code> を検索したい",
+		"didSearchOutsideWorkspace": "Broはこのディレクトリ（ワークスペース外）で <code>{{regex}}</code> を検索しました",
+		"wantsToViewTopLevelOutsideWorkspace": "Broはこのディレクトリ（ワークスペース外）のトップレベルファイルを表示したい",
+		"didViewTopLevelOutsideWorkspace": "Broはこのディレクトリ（ワークスペース外）のトップレベルファイルを表示しました",
+		"wantsToViewRecursiveOutsideWorkspace": "Broはこのディレクトリ（ワークスペース外）のすべてのファイルを再帰的に表示したい",
+		"didViewRecursiveOutsideWorkspace": "Broはこのディレクトリ（ワークスペース外）のすべてのファイルを再帰的に表示しました",
+		"wantsToViewMultipleDirectories": "Bro は複数のディレクトリを表示したい"
 	},
 	"commandOutput": "コマンド出力",
 	"commandExecution": {
@@ -244,24 +244,24 @@
 	"response": "応答",
 	"arguments": "引数",
 	"text": {
-		"rooSaid": "Rooの発言"
+		"broSaid": "Broの発言"
 	},
 	"feedback": {
 		"youSaid": "あなたの発言"
 	},
 	"mcp": {
-		"wantsToUseTool": "RooはMCPサーバー{{serverName}}でツールを使用したい",
-		"wantsToAccessResource": "RooはMCPサーバー{{serverName}}のリソースにアクセスしたい"
+		"wantsToUseTool": "BroはMCPサーバー{{serverName}}でツールを使用したい",
+		"wantsToAccessResource": "BroはMCPサーバー{{serverName}}のリソースにアクセスしたい"
 	},
 	"modes": {
-		"wantsToSwitch": "Rooは<code>{{mode}}</code>モードに切り替えたい",
-		"wantsToSwitchWithReason": "Rooは次の理由で<code>{{mode}}</code>モードに切り替えたい: {{reason}}",
-		"didSwitch": "Rooは<code>{{mode}}</code>モードに切り替えました",
-		"didSwitchWithReason": "Rooは次の理由で<code>{{mode}}</code>モードに切り替えました: {{reason}}"
+		"wantsToSwitch": "Broは<code>{{mode}}</code>モードに切り替えたい",
+		"wantsToSwitchWithReason": "Broは次の理由で<code>{{mode}}</code>モードに切り替えたい: {{reason}}",
+		"didSwitch": "Broは<code>{{mode}}</code>モードに切り替えました",
+		"didSwitchWithReason": "Broは次の理由で<code>{{mode}}</code>モードに切り替えました: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Rooは<code>{{mode}}</code>モードで新しいサブタスクを作成したい",
-		"wantsToFinish": "Rooはこのサブタスクを終了したい",
+		"wantsToCreate": "Broは<code>{{mode}}</code>モードで新しいサブタスクを作成したい",
+		"wantsToFinish": "Broはこのサブタスクを終了したい",
 		"newTaskContent": "サブタスク指示",
 		"completionContent": "サブタスク完了",
 		"resultContent": "サブタスク結果",
@@ -270,7 +270,7 @@
 		"goToSubtask": "タスクを表示"
 	},
 	"questions": {
-		"hasQuestion": "Rooは質問があります"
+		"hasQuestion": "Broは質問があります"
 	},
 	"taskCompleted": "タスク完了",
 	"modelResponseIncomplete": "モデルの応答が不完全",
@@ -286,7 +286,7 @@
 		"copyToClipboard": "クリップボードにコピー",
 		"copied": "コピーしました！",
 		"diagnostics": "詳細なエラー情報を取得",
-		"proxyProvider": "プロキシベースのプロバイダーを使用しているようです。ログを確認し、Rooのリクエストを書き換えていないことを確認してください。"
+		"proxyProvider": "プロキシベースのプロバイダーを使用しているようです。ログを確認し、Broのリクエストを書き換えていないことを確認してください。"
 	},
 	"powershell": {
 		"issues": "Windows PowerShellに問題があるようです。こちらを参照してください"
@@ -329,16 +329,16 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "Rooはスキルを読み込もうとしています",
-		"didLoad": "Rooはスキルを読み込みました"
+		"wantsToLoad": "Broはスキルを読み込もうとしています",
+		"didLoad": "Broはスキルを読み込みました"
 	},
 	"followUpSuggest": {
 		"copyToInput": "入力欄にコピー（またはShift + クリック）",
 		"timerPrefix": "自動承認が有効です。{{seconds}}秒後に選択中…"
 	},
 	"announcement": {
-		"title": "Zoo Code {{version}} リリース",
-		"support": "<githubLink>GitHub</githubLink>でスターを付けて Zoo Code を応援してください。",
+		"title": "Bro Code {{version}} リリース",
+		"support": "<githubLink>GitHub</githubLink>でスターを付けて Bro Code を応援してください。",
 		"release": {
 			"heading": "新機能:",
 			"highlight1": "Claude Sonnet 5 サポート — 最新の Claude モデルが Anthropic、Bedrock、Vertex の各プロバイダーで利用可能になりました。",
@@ -367,24 +367,24 @@
 	"profileViolationWarning": "現在のプロファイルは組織の設定と互換性がありません",
 	"shellIntegration": {
 		"title": "コマンド実行警告",
-		"description": "コマンドはVSCodeターミナルシェル統合なしで実行されています。この警告を非表示にするには、<settingsLink>Zoo Code 設定</settingsLink>の<strong>Terminal</strong>セクションでシェル統合を無効にするか、以下のリンクを使用してVSCodeターミナル統合のトラブルシューティングを行ってください。",
+		"description": "コマンドはVSCodeターミナルシェル統合なしで実行されています。この警告を非表示にするには、<settingsLink>Bro Code 設定</settingsLink>の<strong>Terminal</strong>セクションでシェル統合を無効にするか、以下のリンクを使用してVSCodeターミナル統合のトラブルシューティングを行ってください。",
 		"troubleshooting": "シェル統合のドキュメントはこちらをクリック"
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "自動承認リクエスト制限に達しました",
-			"description": "Rooは{{count}}件のAPI自動承認リクエスト制限に達しました。カウントをリセットしてタスクを続行しますか？",
+			"description": "Broは{{count}}件のAPI自動承認リクエスト制限に達しました。カウントをリセットしてタスクを続行しますか？",
 			"button": "リセットして続行"
 		},
 		"autoApprovedCostLimitReached": {
 			"title": "自動承認コスト制限に達しました",
-			"description": "Rooは自動承認されたコスト制限の${{count}}に達しました。コストをリセットしてタスクを続行しますか？",
+			"description": "Broは自動承認されたコスト制限の${{count}}に達しました。コストをリセットしてタスクを続行しますか？",
 			"button": "リセットして続ける"
 		}
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Rooはコードベースで <code>{{query}}</code> を検索したい",
-		"wantsToSearchWithPath": "Rooは <code>{{path}}</code> 内のコードベースで <code>{{query}}</code> を検索したい",
+		"wantsToSearch": "Broはコードベースで <code>{{query}}</code> を検索したい",
+		"wantsToSearchWithPath": "Broは <code>{{path}}</code> 内のコードベースで <code>{{query}}</code> を検索したい",
 		"didSearch_one": "1件の結果が見つかりました",
 		"didSearch_other": "{{count}}件の結果が見つかりました",
 		"resultTooltip": "類似度スコア: {{score}} (クリックしてファイルを開く)"
@@ -424,8 +424,8 @@
 	"versionIndicator": {
 		"ariaLabel": "バージョン {{version}} - クリックしてリリースノートを表示"
 	},
-	"rooCloudCTA": {
-		"title": "Zoo Code Cloud が進化中！",
+	"broCloudCTA": {
+		"title": "Bro Code Cloud が進化中！",
 		"description": "クラウドでリモートエージェントを実行し、どこからでもタスクにアクセスし、他の人と協力し、その他多くの機能を利用できます。",
 		"joinWaitlist": "最新のアップデートを受け取るためにサインアップしてください。"
 	},
@@ -466,8 +466,8 @@
 		"clickToEdit": "クリックしてメッセージを編集"
 	},
 	"slashCommand": {
-		"wantsToRun": "Rooはスラッシュコマンドを実行したい",
-		"didRun": "Rooはスラッシュコマンドを実行しました"
+		"wantsToRun": "Broはスラッシュコマンドを実行したい",
+		"didRun": "Broはスラッシュコマンドを実行しました"
 	},
 	"todo": {
 		"partial": "{{total}}件中{{completed}}件のTo-Doが完了",
@@ -486,7 +486,7 @@
 		"openMcpSettings": "MCP 設定を開く"
 	},
 	"readCommandOutput": {
-		"title": "Rooがコマンド出力を読み込みました"
+		"title": "Broがコマンド出力を読み込みました"
 	},
 	"retiredProvider": {
 		"title": "プロバイダーのサポート終了",

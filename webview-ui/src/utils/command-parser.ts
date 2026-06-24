@@ -1,5 +1,5 @@
 import { parse } from "shell-quote"
-import { parseCommand } from "@roo/parse-command"
+import { parseCommand } from "@bro/parse-command"
 
 /**
  * Extract command patterns from a command string.

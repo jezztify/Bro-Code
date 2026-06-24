@@ -1,8 +1,8 @@
 // npx vitest run __tests__/provider-delegation.spec.ts
 
 import { describe, it, expect, vi } from "vitest"
-import type { HistoryItem } from "@roo-code/types"
-import { RooCodeEventName } from "@roo-code/types"
+import type { HistoryItem } from "@bro-code/types"
+import { BroCodeEventName } from "@bro-code/types"
 import { ClineProvider } from "../core/webview/ClineProvider"
 
 const parentHistoryItem: HistoryItem = {
@@ -102,7 +102,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		expect(childStart).toHaveBeenCalledTimes(1)
 
 		// Provider-level event
-		expect(providerEmit).toHaveBeenCalledWith(RooCodeEventName.TaskDelegated, "parent-1", "child-1")
+		expect(providerEmit).toHaveBeenCalledWith(BroCodeEventName.TaskDelegated, "parent-1", "child-1")
 
 		// Mode switch
 		expect(handleModeSwitch).toHaveBeenCalledWith("code")

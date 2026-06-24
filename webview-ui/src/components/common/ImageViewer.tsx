@@ -9,8 +9,8 @@ import { IconButton } from "./IconButton"
 import { ZoomControls } from "./ZoomControls"
 import { StandardTooltip } from "@/components/ui"
 
-const MIN_ZOOM = 0.5
-const MAX_ZOOM = 20
+const MIN_BROM = 0.5
+const MAX_BROM = 20
 
 export interface ImageViewerProps {
 	imageUri: string // The URI to use for rendering (webview URI, base64, or regular URL)
@@ -111,7 +111,7 @@ export function ImageViewer({
 	const adjustZoom = (amount: number) => {
 		setZoomLevel((prev) => {
 			const newZoom = prev + amount
-			return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom))
+			return Math.max(MIN_BROM, Math.min(MAX_BROM, newZoom))
 		})
 	}
 

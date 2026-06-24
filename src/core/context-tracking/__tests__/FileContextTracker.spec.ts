@@ -61,7 +61,7 @@ describe("FileContextTracker.addFileToFileContextTracker", () => {
 		expect(entry.path).toBe("/workspace/foo.ts")
 		expect(entry.record_state).toBe("active")
 		expect(entry.record_source).toBe("read_tool")
-		expect(entry.roo_read_date).toBeTypeOf("number")
+		expect(entry.bro_read_date).toBeTypeOf("number")
 	})
 
 	it("marks existing active entries as stale before adding the new entry", async () => {
@@ -77,7 +77,7 @@ describe("FileContextTracker.addFileToFileContextTracker", () => {
 		const { safeWriteJson } = await import("../../../utils/safeWriteJson")
 		const mockWrite = vi.mocked(safeWriteJson)
 
-		await tracker.addFileToFileContextTracker("task-1", "/workspace/foo.ts", "roo_edited")
+		await tracker.addFileToFileContextTracker("task-1", "/workspace/foo.ts", "bro_edited")
 
 		const written = mockWrite.mock.calls[0][1] as any
 		expect(written.files_in_context[0].record_state).toBe("stale")

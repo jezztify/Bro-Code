@@ -1,4 +1,4 @@
-import type { ProviderName, ModelInfo, ProviderSettings } from "@roo-code/types"
+import type { ProviderName, ModelInfo, ProviderSettings } from "@bro-code/types"
 import {
 	anthropicDefaultModelId,
 	bedrockDefaultModelId,
@@ -26,8 +26,8 @@ import {
 	litellmDefaultModelId,
 	vercelAiGatewayDefaultModelId,
 	opencodeGoDefaultModelId,
-	zooGatewayDefaultModelId,
-} from "@roo-code/types"
+	broGatewayDefaultModelId,
+} from "@bro-code/types"
 
 import { MODELS_BY_PROVIDER } from "../constants"
 
@@ -130,7 +130,7 @@ const PROVIDER_MODEL_CONFIG: Partial<Record<ProviderName, ProviderModelConfig>> 
 	poe: { field: "apiModelId", default: poeDefaultModelId },
 	"vercel-ai-gateway": { field: "vercelAiGatewayModelId", default: vercelAiGatewayDefaultModelId },
 	"opencode-go": { field: "opencodeGoModelId", default: opencodeGoDefaultModelId },
-	"zoo-gateway": { field: "zooGatewayModelId", default: zooGatewayDefaultModelId },
+	"bro-gateway": { field: "broGatewayModelId", default: broGatewayDefaultModelId },
 	openai: { field: "openAiModelId" },
 	ollama: { field: "ollamaModelId" },
 	lmstudio: { field: "lmStudioModelId" },

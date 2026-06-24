@@ -1,11 +1,11 @@
 import * as path from "path"
 import * as childProcess from "child_process"
 import { listFiles } from "../list-files"
-import { directoryExists } from "../../../services/roo-config"
+import { directoryExists } from "../../../services/bro-config"
 
 vi.mock("child_process")
 vi.mock("fs")
-vi.mock("../../../services/roo-config", () => ({
+vi.mock("../../../services/bro-config", () => ({
 	directoryExists: vi.fn().mockResolvedValue(true),
 }))
 vi.mock("vscode", () => ({
@@ -158,7 +158,7 @@ describe("list-files symlink support", () => {
 		const mockSpawn = vi.mocked(childProcess.spawn)
 		mockSpawn.mockReturnValue(createMockRipgrepProcess(["nested/deep/deep-nested-file.ts\n"]) as any)
 
-		const testDir = "/tmp/roo-test-workspace/list-files-tool-fixture"
+		const testDir = "/tmp/bro-test-workspace/list-files-tool-fixture"
 
 		const [files] = await listFiles(testDir, true, 100)
 
@@ -283,10 +283,10 @@ describe("hidden directory exclusion", () => {
 	})
 
 	it("should allow explicit targeting of hidden directories", async () => {
-		// Mock filesystem structure for explicit .roo-memory targeting
+		// Mock filesystem structure for explicit .bro-memory targeting
 		const mockReaddir = vi.mocked(fs.promises.readdir)
 
-		// Mock .roo-memory directory contents
+		// Mock .bro-memory directory contents
 		mockReaddir.mockResolvedValueOnce([
 			{ name: "tasks", isDirectory: () => true, isSymbolicLink: () => false },
 			{ name: "context", isDirectory: () => true, isSymbolicLink: () => false },
@@ -296,15 +296,15 @@ describe("hidden directory exclusion", () => {
 		const mockSpawn = vi.mocked(childProcess.spawn)
 		mockSpawn.mockReturnValue(createMockRipgrepProcess() as any)
 
-		// Call listFiles explicitly targeting .roo-memory directory
-		const [result] = await listFiles("/test/.roo-memory", true, 100)
+		// Call listFiles explicitly targeting .bro-memory directory
+		const [result] = await listFiles("/test/.bro-memory", true, 100)
 
 		// When explicitly targeting a hidden directory, its subdirectories should be included
 		const directories = result.filter((item) => item.endsWith("/"))
 
-		const hasTasksDir = directories.some((dir) => dir.includes(".roo-memory/tasks/") || dir.includes("tasks/"))
+		const hasTasksDir = directories.some((dir) => dir.includes(".bro-memory/tasks/") || dir.includes("tasks/"))
 		const hasContextDir = directories.some(
-			(dir) => dir.includes(".roo-memory/context/") || dir.includes("context/"),
+			(dir) => dir.includes(".bro-memory/context/") || dir.includes("context/"),
 		)
 
 		expect(hasTasksDir).toBe(true)
@@ -312,17 +312,17 @@ describe("hidden directory exclusion", () => {
 	})
 
 	it("should include top-level files when recursively listing a hidden directory that's also in DIRS_TO_IGNORE", async () => {
-		// This test specifically addresses the bug where files at the root level of .roo/temp
+		// This test specifically addresses the bug where files at the root level of .bro/temp
 		// were being excluded when using recursive listing
 		const mockSpawn = vi.mocked(childProcess.spawn)
 		mockSpawn.mockReturnValue(createMockRipgrepProcess(["teste1.md\n", "22/test2.md\n"]) as any)
 
-		// Mock directory listing for .roo/temp
+		// Mock directory listing for .bro/temp
 		const mockReaddir = vi.mocked(fs.promises.readdir)
 		mockReaddir.mockResolvedValueOnce([{ name: "22", isDirectory: () => true, isSymbolicLink: () => false }] as any)
 
-		// Call listFiles targeting .roo/temp (which is both hidden and in DIRS_TO_IGNORE)
-		const [files] = await listFiles("/test/.roo/temp", true, 100)
+		// Call listFiles targeting .bro/temp (which is both hidden and in DIRS_TO_IGNORE)
+		const [files] = await listFiles("/test/.bro/temp", true, 100)
 
 		// Verify ripgrep was called with correct arguments
 		const [rgPath, args] = mockSpawn.mock.calls[0]

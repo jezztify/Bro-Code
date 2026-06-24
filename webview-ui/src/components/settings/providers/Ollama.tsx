@@ -3,7 +3,7 @@ import { useEvent } from "react-use"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { Checkbox } from "vscrui"
 
-import { type ProviderSettings, type ExtensionMessage, type ModelRecord, ollamaDefaultModelInfo } from "@roo-code/types"
+import { type ProviderSettings, type ExtensionMessage, type ModelRecord, ollamaDefaultModelInfo } from "@bro-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useRouterModels } from "@src/components/ui/hooks/useRouterModels"

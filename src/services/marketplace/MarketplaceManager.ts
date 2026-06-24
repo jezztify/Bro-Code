@@ -4,8 +4,8 @@ import * as path from "path"
 import * as vscode from "vscode"
 import * as yaml from "yaml"
 
-import type { MarketplaceItem, MarketplaceItemType } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import type { MarketplaceItem, MarketplaceItemType } from "@bro-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
 
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { ensureSettingsDirectoryExists } from "../../utils/globalContext"
@@ -214,8 +214,8 @@ export class MarketplaceManager {
 				return // No workspace, no project installations
 			}
 
-			// Check modes in .roomodes
-			const projectModesPath = path.join(workspaceFolder.uri.fsPath, ".roomodes")
+			// Check modes in .bromodes
+			const projectModesPath = path.join(workspaceFolder.uri.fsPath, ".bromodes")
 			try {
 				const content = await fs.readFile(projectModesPath, "utf-8")
 				const data = yaml.parse(content)
@@ -232,8 +232,8 @@ export class MarketplaceManager {
 				// File doesn't exist or can't be read, skip
 			}
 
-			// Check MCPs in .roo/mcp.json
-			const projectMcpPath = path.join(workspaceFolder.uri.fsPath, ".roo", "mcp.json")
+			// Check MCPs in .bro/mcp.json
+			const projectMcpPath = path.join(workspaceFolder.uri.fsPath, ".bro", "mcp.json")
 			try {
 				const content = await fs.readFile(projectMcpPath, "utf-8")
 				const data = JSON.parse(content)

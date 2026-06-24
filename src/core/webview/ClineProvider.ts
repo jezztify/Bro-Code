@@ -15,7 +15,7 @@ import {
 	type GlobalState,
 	type ProviderName,
 	type ProviderSettings,
-	type RooCodeSettings,
+	type BroCodeSettings,
 	type ProviderSettingsEntry,
 	type StaticAppProperties,
 	type DynamicAppProperties,
@@ -37,24 +37,24 @@ import {
 	type ExtensionMessage,
 	type ExtensionState,
 	type MarketplaceInstalledMetadata,
-	RooCodeEventName,
+	BroCodeEventName,
 	requestyDefaultModelId,
 	openRouterDefaultModelId,
 	DEFAULT_WRITE_DELAY_MS,
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
-	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
-	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
-	DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
+	DEFAULT_AUTO_CLOSE_BRO_OPENED_FILES,
+	DEFAULT_AUTO_CLOSE_BRO_OPENED_FILES_AFTER_USER_EDITED,
+	DEFAULT_AUTO_CLOSE_BRO_OPENED_NEW_FILES,
 	ORGANIZATION_ALLOW_ALL,
 	DEFAULT_MODES,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	getModelId,
 	isRetiredProvider,
-} from "@roo-code/types"
+} from "@bro-code/types"
 import { RateLimitClock, createRateLimitClock } from "../task/RateLimitClock"
 import { aggregateTaskCostsRecursive, type AggregatedCosts } from "./aggregateTaskCosts"
-import { TelemetryService } from "@roo-code/telemetry"
-import { CloudService, getRooCodeApiUrl } from "@roo-code/cloud"
+import { TelemetryService } from "@bro-code/telemetry"
+import { CloudService, getBroCodeApiUrl } from "@bro-code/cloud"
 
 import { Package } from "../../shared/package"
 import { findLast } from "../../shared/array"
@@ -101,7 +101,7 @@ import { CustomModesManager } from "../config/CustomModesManager"
 import { Task } from "../task/Task"
 
 import { webviewMessageHandler } from "./webviewMessageHandler"
-import type { ClineMessage, TodoItem } from "@roo-code/types"
+import type { ClineMessage, TodoItem } from "@bro-code/types"
 import {
 	readApiMessages,
 	saveApiMessages,
@@ -284,15 +284,15 @@ export class ClineProvider
 		// Forward <most> task events to the provider.
 		// We do something fairly similar for the IPC-based API.
 		this.taskCreationCallback = (instance: Task) => {
-			this.emit(RooCodeEventName.TaskCreated, instance)
+			this.emit(BroCodeEventName.TaskCreated, instance)
 
 			// Create named listener functions so we can remove them later.
-			const onTaskStarted = () => this.emit(RooCodeEventName.TaskStarted, instance.taskId)
+			const onTaskStarted = () => this.emit(BroCodeEventName.TaskStarted, instance.taskId)
 			const onTaskCompleted = (taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage) => {
-				this.emit(RooCodeEventName.TaskCompleted, taskId, tokenUsage, toolUsage)
+				this.emit(BroCodeEventName.TaskCompleted, taskId, tokenUsage, toolUsage)
 			}
 			const onTaskAborted = async () => {
-				this.emit(RooCodeEventName.TaskAborted, instance.taskId)
+				this.emit(BroCodeEventName.TaskAborted, instance.taskId)
 
 				try {
 					// Only rehydrate on genuine streaming failures.
@@ -320,51 +320,51 @@ export class ClineProvider
 					)
 				}
 			}
-			const onTaskFocused = () => this.emit(RooCodeEventName.TaskFocused, instance.taskId)
-			const onTaskUnfocused = () => this.emit(RooCodeEventName.TaskUnfocused, instance.taskId)
-			const onTaskActive = (taskId: string) => this.emit(RooCodeEventName.TaskActive, taskId)
-			const onTaskInteractive = (taskId: string) => this.emit(RooCodeEventName.TaskInteractive, taskId)
-			const onTaskResumable = (taskId: string) => this.emit(RooCodeEventName.TaskResumable, taskId)
-			const onTaskIdle = (taskId: string) => this.emit(RooCodeEventName.TaskIdle, taskId)
-			const onTaskPaused = (taskId: string) => this.emit(RooCodeEventName.TaskPaused, taskId)
-			const onTaskUnpaused = (taskId: string) => this.emit(RooCodeEventName.TaskUnpaused, taskId)
-			const onTaskSpawned = (taskId: string) => this.emit(RooCodeEventName.TaskSpawned, taskId)
-			const onTaskUserMessage = (taskId: string) => this.emit(RooCodeEventName.TaskUserMessage, taskId)
+			const onTaskFocused = () => this.emit(BroCodeEventName.TaskFocused, instance.taskId)
+			const onTaskUnfocused = () => this.emit(BroCodeEventName.TaskUnfocused, instance.taskId)
+			const onTaskActive = (taskId: string) => this.emit(BroCodeEventName.TaskActive, taskId)
+			const onTaskInteractive = (taskId: string) => this.emit(BroCodeEventName.TaskInteractive, taskId)
+			const onTaskResumable = (taskId: string) => this.emit(BroCodeEventName.TaskResumable, taskId)
+			const onTaskIdle = (taskId: string) => this.emit(BroCodeEventName.TaskIdle, taskId)
+			const onTaskPaused = (taskId: string) => this.emit(BroCodeEventName.TaskPaused, taskId)
+			const onTaskUnpaused = (taskId: string) => this.emit(BroCodeEventName.TaskUnpaused, taskId)
+			const onTaskSpawned = (taskId: string) => this.emit(BroCodeEventName.TaskSpawned, taskId)
+			const onTaskUserMessage = (taskId: string) => this.emit(BroCodeEventName.TaskUserMessage, taskId)
 			const onTaskTokenUsageUpdated = (taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage) =>
-				this.emit(RooCodeEventName.TaskTokenUsageUpdated, taskId, tokenUsage, toolUsage)
+				this.emit(BroCodeEventName.TaskTokenUsageUpdated, taskId, tokenUsage, toolUsage)
 
 			// Attach the listeners.
-			instance.on(RooCodeEventName.TaskStarted, onTaskStarted)
-			instance.on(RooCodeEventName.TaskCompleted, onTaskCompleted)
-			instance.on(RooCodeEventName.TaskAborted, onTaskAborted)
-			instance.on(RooCodeEventName.TaskFocused, onTaskFocused)
-			instance.on(RooCodeEventName.TaskUnfocused, onTaskUnfocused)
-			instance.on(RooCodeEventName.TaskActive, onTaskActive)
-			instance.on(RooCodeEventName.TaskInteractive, onTaskInteractive)
-			instance.on(RooCodeEventName.TaskResumable, onTaskResumable)
-			instance.on(RooCodeEventName.TaskIdle, onTaskIdle)
-			instance.on(RooCodeEventName.TaskPaused, onTaskPaused)
-			instance.on(RooCodeEventName.TaskUnpaused, onTaskUnpaused)
-			instance.on(RooCodeEventName.TaskSpawned, onTaskSpawned)
-			instance.on(RooCodeEventName.TaskUserMessage, onTaskUserMessage)
-			instance.on(RooCodeEventName.TaskTokenUsageUpdated, onTaskTokenUsageUpdated)
+			instance.on(BroCodeEventName.TaskStarted, onTaskStarted)
+			instance.on(BroCodeEventName.TaskCompleted, onTaskCompleted)
+			instance.on(BroCodeEventName.TaskAborted, onTaskAborted)
+			instance.on(BroCodeEventName.TaskFocused, onTaskFocused)
+			instance.on(BroCodeEventName.TaskUnfocused, onTaskUnfocused)
+			instance.on(BroCodeEventName.TaskActive, onTaskActive)
+			instance.on(BroCodeEventName.TaskInteractive, onTaskInteractive)
+			instance.on(BroCodeEventName.TaskResumable, onTaskResumable)
+			instance.on(BroCodeEventName.TaskIdle, onTaskIdle)
+			instance.on(BroCodeEventName.TaskPaused, onTaskPaused)
+			instance.on(BroCodeEventName.TaskUnpaused, onTaskUnpaused)
+			instance.on(BroCodeEventName.TaskSpawned, onTaskSpawned)
+			instance.on(BroCodeEventName.TaskUserMessage, onTaskUserMessage)
+			instance.on(BroCodeEventName.TaskTokenUsageUpdated, onTaskTokenUsageUpdated)
 
 			// Store the cleanup functions for later removal.
 			this.taskEventListeners.set(instance, [
-				() => instance.off(RooCodeEventName.TaskStarted, onTaskStarted),
-				() => instance.off(RooCodeEventName.TaskCompleted, onTaskCompleted),
-				() => instance.off(RooCodeEventName.TaskAborted, onTaskAborted),
-				() => instance.off(RooCodeEventName.TaskFocused, onTaskFocused),
-				() => instance.off(RooCodeEventName.TaskUnfocused, onTaskUnfocused),
-				() => instance.off(RooCodeEventName.TaskActive, onTaskActive),
-				() => instance.off(RooCodeEventName.TaskInteractive, onTaskInteractive),
-				() => instance.off(RooCodeEventName.TaskResumable, onTaskResumable),
-				() => instance.off(RooCodeEventName.TaskIdle, onTaskIdle),
-				() => instance.off(RooCodeEventName.TaskUserMessage, onTaskUserMessage),
-				() => instance.off(RooCodeEventName.TaskPaused, onTaskPaused),
-				() => instance.off(RooCodeEventName.TaskUnpaused, onTaskUnpaused),
-				() => instance.off(RooCodeEventName.TaskSpawned, onTaskSpawned),
-				() => instance.off(RooCodeEventName.TaskTokenUsageUpdated, onTaskTokenUsageUpdated),
+				() => instance.off(BroCodeEventName.TaskStarted, onTaskStarted),
+				() => instance.off(BroCodeEventName.TaskCompleted, onTaskCompleted),
+				() => instance.off(BroCodeEventName.TaskAborted, onTaskAborted),
+				() => instance.off(BroCodeEventName.TaskFocused, onTaskFocused),
+				() => instance.off(BroCodeEventName.TaskUnfocused, onTaskUnfocused),
+				() => instance.off(BroCodeEventName.TaskActive, onTaskActive),
+				() => instance.off(BroCodeEventName.TaskInteractive, onTaskInteractive),
+				() => instance.off(BroCodeEventName.TaskResumable, onTaskResumable),
+				() => instance.off(BroCodeEventName.TaskIdle, onTaskIdle),
+				() => instance.off(BroCodeEventName.TaskUserMessage, onTaskUserMessage),
+				() => instance.off(BroCodeEventName.TaskPaused, onTaskPaused),
+				() => instance.off(BroCodeEventName.TaskUnpaused, onTaskUnpaused),
+				() => instance.off(BroCodeEventName.TaskSpawned, onTaskSpawned),
+				() => instance.off(BroCodeEventName.TaskTokenUsageUpdated, onTaskTokenUsageUpdated),
 			])
 		}
 	}
@@ -455,7 +455,7 @@ export class ClineProvider
 		// Add this cline instance into the stack that represents the order of
 		// all the called tasks.
 		this.clineStack.push(task)
-		task.emit(RooCodeEventName.TaskFocused)
+		task.emit(BroCodeEventName.TaskFocused)
 
 		// Perform special setup provider specific tasks.
 		await this.performPreparationTasks(task)
@@ -509,7 +509,7 @@ export class ClineProvider
 			const childTaskId = task.taskId
 			const parentTaskId = task.parentTaskId
 
-			task.emit(RooCodeEventName.TaskUnfocused)
+			task.emit(BroCodeEventName.TaskUnfocused)
 
 			try {
 				// Abort the running task and set isAbandoned to true so
@@ -726,7 +726,7 @@ export class ClineProvider
 		// own - but unlike `vscode.window.tabGroups.activeTabGroup` (which keeps pointing at
 		// whichever editor tab was last focused even after focus moves to the Side Bar),
 		// `WebviewView.visible` only stays true while the user has actually navigated the Side
-		// Bar to the Zoo Code view. So if it's visible here - no tab claimed focus - it's the
+		// Bar to the Bro Code view. So if it's visible here - no tab claimed focus - it's the
 		// most reliable signal that the Side Bar, not a stale editor tab, is what the user is
 		// interacting with.
 		const sidebarInstance = visibleInstances.find(
@@ -994,71 +994,71 @@ export class ClineProvider
 			await this.removeClineFromStack()
 		}
 
-		// Ensure zoo-gateway profile is seeded for users who signed in before this feature existed.
-		// Without this, users with a valid cached token but no zoo-gateway profile would need to
-		// re-authenticate to use Zoo Gateway. Fire-and-forget to avoid blocking webview init.
-		void this.ensureZooGatewayProfileSeeded().catch((err) => {
-			this.log(`[ensureZooGatewayProfileSeeded] Error: ${err instanceof Error ? err.message : String(err)}`)
+		// Ensure bro-gateway profile is seeded for users who signed in before this feature existed.
+		// Without this, users with a valid cached token but no bro-gateway profile would need to
+		// re-authenticate to use Bro Gateway. Fire-and-forget to avoid blocking webview init.
+		void this.ensureBroGatewayProfileSeeded().catch((err) => {
+			this.log(`[ensureBroGatewayProfileSeeded] Error: ${err instanceof Error ? err.message : String(err)}`)
 		})
 	}
 
 	/**
-	 * Seeds the zoo-gateway provider profile for users who have a cached auth token
-	 * but no profile (e.g., users who signed in before Zoo Gateway was added), or
+	 * Seeds the bro-gateway provider profile for users who have a cached auth token
+	 * but no profile (e.g., users who signed in before Bro Gateway was added), or
 	 * who have an empty/imported profile without a token.
-	 * Called once per webview init; handleZooCodeCallback is idempotent so repeated calls are safe.
+	 * Called once per webview init; handleBroCodeCallback is idempotent so repeated calls are safe.
 	 */
-	private async ensureZooGatewayProfileSeeded(): Promise<void> {
-		const { getCachedZooCodeToken, getZooCodeBaseUrl } = await import("../../services/zoo-code-auth")
-		const token = getCachedZooCodeToken()
+	private async ensureBroGatewayProfileSeeded(): Promise<void> {
+		const { getCachedBroCodeToken, getBroCodeBaseUrl } = await import("../../services/bro-code-auth")
+		const token = getCachedBroCodeToken()
 		if (!token) return
-		const expectedGatewayBaseUrl = `${getZooCodeBaseUrl()}/api/gateway/v1`
+		const expectedGatewayBaseUrl = `${getBroCodeBaseUrl()}/api/gateway/v1`
 
-		// Check ALL zoo-gateway profiles — only skip seeding if every profile has the current token.
-		// Using .find() would miss stale tokens in duplicate/renamed profiles since handleZooCodeCallback
+		// Check ALL bro-gateway profiles — only skip seeding if every profile has the current token.
+		// Using .find() would miss stale tokens in duplicate/renamed profiles since handleBroCodeCallback
 		// uses .filter() and updates all of them — the early-return guard must match.
 		const allProfiles = await this.providerSettingsManager.listConfig()
-		const zooGatewayProfiles = allProfiles.filter((p) => p.apiProvider === "zoo-gateway")
+		const broGatewayProfiles = allProfiles.filter((p) => p.apiProvider === "bro-gateway")
 
-		if (zooGatewayProfiles.length === 0) {
-			this.log("[ensureZooGatewayProfileSeeded] No zoo-gateway profile found, creating one")
+		if (broGatewayProfiles.length === 0) {
+			this.log("[ensureBroGatewayProfileSeeded] No bro-gateway profile found, creating one")
 		} else {
 			let allUpToDate = true
 
-			for (const entry of zooGatewayProfiles) {
+			for (const entry of broGatewayProfiles) {
 				try {
 					const fullProfile = await this.providerSettingsManager.getProfile({ name: entry.name })
 					if (
-						fullProfile.zooSessionToken !== token ||
-						fullProfile.zooGatewayBaseUrl !== expectedGatewayBaseUrl
+						fullProfile.broSessionToken !== token ||
+						fullProfile.broGatewayBaseUrl !== expectedGatewayBaseUrl
 					) {
 						allUpToDate = false
-						this.log("[ensureZooGatewayProfileSeeded] Existing zoo-gateway profile is stale, updating")
+						this.log("[ensureBroGatewayProfileSeeded] Existing bro-gateway profile is stale, updating")
 						break
 					}
 				} catch {
 					allUpToDate = false
-					this.log("[ensureZooGatewayProfileSeeded] Failed to read existing profile, will re-seed")
+					this.log("[ensureBroGatewayProfileSeeded] Failed to read existing profile, will re-seed")
 					break
 				}
 			}
 
 			if (allUpToDate) {
-				const { postZooGatewayCredentialsReady } = await import("../../services/zoo-gateway-credentials-sync")
-				postZooGatewayCredentialsReady((message) => this.postMessageToWebview(message))
+				const { postBroGatewayCredentialsReady } = await import("../../services/bro-gateway-credentials-sync")
+				postBroGatewayCredentialsReady((message) => this.postMessageToWebview(message))
 				return
 			}
 		}
 
 		// User has token but either no profile, some profiles without token, or stale tokens — seed all
-		await this.handleZooCodeCallback(token)
+		await this.handleBroCodeCallback(token)
 	}
 
 	public async createTaskWithHistoryItem(
 		historyItem: HistoryItem & { rootTask?: Task; parentTask?: Task },
 		options?: { startTask?: boolean },
 	) {
-		const isCliRuntime = process.env.ROO_CLI_RUNTIME === "1"
+		const isCliRuntime = process.env.BRO_CLI_RUNTIME === "1"
 		// CLI injects runtime provider settings from command flags/env at startup.
 		// Restoring provider profiles from task history can overwrite those
 		// runtime settings with stale/incomplete persisted profiles.
@@ -1224,7 +1224,7 @@ export class ClineProvider
 
 			// Replace the task in the stack
 			this.clineStack[stackIndex] = task
-			task.emit(RooCodeEventName.TaskFocused)
+			task.emit(BroCodeEventName.TaskFocused)
 
 			// Perform preparation tasks and set up event listeners
 			await this.performPreparationTasks(task)
@@ -1389,7 +1389,7 @@ export class ClineProvider
 						window.AUDIO_BASE_URI = "${audioUri}"
 						window.MATERIAL_ICONS_BASE_URI = "${materialIconsUri}"
 					</script>
-					<title>Roo Code</title>
+					<title>Bro Code</title>
 				</head>
 				<body>
 					<div id="root"></div>
@@ -1468,7 +1468,7 @@ export class ClineProvider
 				window.AUDIO_BASE_URI = "${audioUri}"
 				window.MATERIAL_ICONS_BASE_URI = "${materialIconsUri}"
 			</script>
-            <title>Roo Code</title>
+            <title>Bro Code</title>
           </head>
           <body>
             <noscript>You need to enable JavaScript to run this app.</noscript>
@@ -1502,7 +1502,7 @@ export class ClineProvider
 
 		if (task) {
 			TelemetryService.instance.captureModeSwitch(task.taskId, newMode)
-			task.emit(RooCodeEventName.TaskModeSwitched, task.taskId, newMode)
+			task.emit(BroCodeEventName.TaskModeSwitched, task.taskId, newMode)
 
 			try {
 				// Update the task history with the new mode first.
@@ -1530,7 +1530,7 @@ export class ClineProvider
 
 		await this.updateGlobalState("mode", newMode)
 
-		this.emit(RooCodeEventName.ModeChanged, newMode)
+		this.emit(BroCodeEventName.ModeChanged, newMode)
 
 		// If workspace lock is on, keep the current API config — don't load mode-specific config
 		const lockApiConfigAcrossModes = this.context.workspaceState.get("lockApiConfigAcrossModes", false)
@@ -1776,7 +1776,7 @@ export class ClineProvider
 		await this.postStateToWebview()
 
 		if (providerSettings.apiProvider) {
-			this.emit(RooCodeEventName.ProviderProfileChanged, { name, provider: providerSettings.apiProvider })
+			this.emit(BroCodeEventName.ProviderProfileChanged, { name, provider: providerSettings.apiProvider })
 		}
 	}
 
@@ -1792,21 +1792,21 @@ export class ClineProvider
 		// Get platform-specific application data directory
 		let mcpServersDir: string
 		if (process.platform === "win32") {
-			// Windows: %APPDATA%\Roo-Code\MCP
-			mcpServersDir = path.join(os.homedir(), "AppData", "Roaming", "Roo-Code", "MCP")
+			// Windows: %APPDATA%\Bro-Code\MCP
+			mcpServersDir = path.join(os.homedir(), "AppData", "Roaming", "Bro-Code", "MCP")
 		} else if (process.platform === "darwin") {
 			// macOS: ~/Documents/Cline/MCP
 			mcpServersDir = path.join(os.homedir(), "Documents", "Cline", "MCP")
 		} else {
 			// Linux: ~/.local/share/Cline/MCP
-			mcpServersDir = path.join(os.homedir(), ".local", "share", "Roo-Code", "MCP")
+			mcpServersDir = path.join(os.homedir(), ".local", "share", "Bro-Code", "MCP")
 		}
 
 		try {
 			await fs.mkdir(mcpServersDir, { recursive: true })
 		} catch (error) {
 			// Fallback to a relative path if directory creation fails
-			return path.join(os.homedir(), ".roo-code", "mcp")
+			return path.join(os.homedir(), ".bro-code", "mcp")
 		}
 		return mcpServersDir
 	}
@@ -1853,62 +1853,62 @@ export class ClineProvider
 		await this.upsertProviderProfile(currentApiConfigName, newConfiguration)
 	}
 
-	// Zoo Code Auth
+	// Bro Code Auth
 
-	async handleZooCodeCallback(token: string) {
+	async handleBroCodeCallback(token: string) {
 		// Auth mutation (token storage, subscription check, success toast) was already
 		// performed by handleAuthCallback() in handleUri.ts before this method was called.
-		// Save the zoo-gateway provider profile with the session token so that
-		// ZooGatewayHandler can authenticate without any manual user input.
+		// Save the bro-gateway provider profile with the session token so that
+		// BroGatewayHandler can authenticate without any manual user input.
 		//
-		// activate: true ONLY if Zoo Gateway is already the active profile — this pushes
+		// activate: true ONLY if Bro Gateway is already the active profile — this pushes
 		// the new token to the in-memory handler so the current task picks it up immediately.
 		// Otherwise activate: false — do NOT switch providers mid-conversation. The user
-		// must explicitly select Zoo Gateway in settings if they want to use it.
+		// must explicitly select Bro Gateway in settings if they want to use it.
 		try {
 			const { apiConfiguration } = await this.getState()
 			const currentSettings = this.contextProxy.getProviderSettings()
 			const currentApiConfigName = this.contextProxy.getValues().currentApiConfigName
 
-			// Derive the gateway base URL from ZOO_CODE_BASE_URL so that non-prod environments
+			// Derive the gateway base URL from BRO_CODE_BASE_URL so that non-prod environments
 			// (staging, local dev) route completions to the correct backend instead of always
 			// hard-coding production. An already-set value in the profile is NOT preserved here —
 			// it must always align with the auth server the user just authenticated against.
-			const { getZooCodeBaseUrl } = await import("../../services/zoo-code-auth")
-			const derivedGatewayBaseUrl = `${getZooCodeBaseUrl()}/api/gateway/v1`
+			const { getBroCodeBaseUrl } = await import("../../services/bro-code-auth")
+			const derivedGatewayBaseUrl = `${getBroCodeBaseUrl()}/api/gateway/v1`
 
-			// Check if Zoo Gateway is the currently active profile by apiProvider identity,
+			// Check if Bro Gateway is the currently active profile by apiProvider identity,
 			// not by profile name (profile names are user-renameable).
-			const isZooGatewayActive = currentSettings.apiProvider === "zoo-gateway"
+			const isBroGatewayActive = currentSettings.apiProvider === "bro-gateway"
 
-			// Always scan ALL profiles and update every zoo-gateway profile with the new token.
+			// Always scan ALL profiles and update every bro-gateway profile with the new token.
 			// This ensures renamed profiles, duplicate profiles, and inactive profiles all stay
 			// in sync. The model lookup in requestRouterModels uses .find() which returns the
-			// first zoo-gateway profile it finds — if that profile has a stale token, requests fail.
+			// first bro-gateway profile it finds — if that profile has a stale token, requests fail.
 			const allProfiles = await this.providerSettingsManager.listConfig()
-			const zooProfiles = allProfiles.filter((p) => p.apiProvider === "zoo-gateway")
+			const broProfiles = allProfiles.filter((p) => p.apiProvider === "bro-gateway")
 
-			if (zooProfiles.length === 0) {
-				// No existing zoo-gateway profile — create the canonical default.
+			if (broProfiles.length === 0) {
+				// No existing bro-gateway profile — create the canonical default.
 				const newConfiguration: ProviderSettings = {
-					apiProvider: "zoo-gateway",
-					zooSessionToken: token,
-					zooGatewayModelId: apiConfiguration.zooGatewayModelId,
-					zooGatewayBaseUrl: derivedGatewayBaseUrl,
+					apiProvider: "bro-gateway",
+					broSessionToken: token,
+					broGatewayModelId: apiConfiguration.broGatewayModelId,
+					broGatewayBaseUrl: derivedGatewayBaseUrl,
 				}
-				// Activate only if zoo-gateway was the active provider (shouldn't happen if
+				// Activate only if bro-gateway was the active provider (shouldn't happen if
 				// no profiles exist, but defensive).
-				await this.upsertProviderProfile("Zoo Gateway", newConfiguration, isZooGatewayActive)
+				await this.upsertProviderProfile("Bro Gateway", newConfiguration, isBroGatewayActive)
 			} else {
-				// Update every existing zoo-gateway profile with the new token and the
+				// Update every existing bro-gateway profile with the new token and the
 				// derived base URL so that environment-specific routing stays consistent.
-				for (const entry of zooProfiles) {
-					const isActiveProfile = isZooGatewayActive && entry.name === currentApiConfigName
+				for (const entry of broProfiles) {
+					const isActiveProfile = isBroGatewayActive && entry.name === currentApiConfigName
 					const existing = await this.providerSettingsManager.getProfile({ name: entry.name })
 					const updated: ProviderSettings = {
 						...existing,
-						zooSessionToken: token,
-						zooGatewayBaseUrl: derivedGatewayBaseUrl,
+						broSessionToken: token,
+						broGatewayBaseUrl: derivedGatewayBaseUrl,
 					}
 					if (isActiveProfile) {
 						// Use upsertProviderProfile with activate: true so the in-memory handler
@@ -1922,14 +1922,14 @@ export class ClineProvider
 			}
 		} catch (error) {
 			this.log(
-				`[handleZooCodeCallback] Failed to save zoo-gateway profile: ${
+				`[handleBroCodeCallback] Failed to save bro-gateway profile: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 			)
 		}
 		await this.postStateToWebview()
-		const { postZooGatewayCredentialsReady } = await import("../../services/zoo-gateway-credentials-sync")
-		postZooGatewayCredentialsReady((message) => this.postMessageToWebview(message))
+		const { postBroGatewayCredentialsReady } = await import("../../services/bro-gateway-credentials-sync")
+		postBroGatewayCredentialsReady((message) => this.postMessageToWebview(message))
 	}
 
 	// Requesty
@@ -2349,7 +2349,7 @@ export class ClineProvider
 			maxWorkspaceFiles,
 			disabledTools,
 			telemetrySetting,
-			showRooIgnoredFiles,
+			showBroIgnoredFiles,
 			enableSubfolderRules,
 			language,
 			maxImageFileSize,
@@ -2381,9 +2381,9 @@ export class ClineProvider
 			openRouterImageApiKey,
 			openRouterImageGenerationSelectedModel,
 			lockApiConfigAcrossModes,
-			autoCloseZooOpenedFiles,
-			autoCloseZooOpenedFilesAfterUserEdited,
-			autoCloseZooOpenedNewFiles,
+			autoCloseBroOpenedFiles,
+			autoCloseBroOpenedFilesAfterUserEdited,
+			autoCloseBroOpenedNewFiles,
 		} = await this.getState()
 
 		let cloudOrganizations: CloudOrganizationMembership[] = []
@@ -2414,36 +2414,37 @@ export class ClineProvider
 		const mergedDeniedCommands = this.mergeDeniedCommands(deniedCommands)
 		const cwd = this.cwd
 		const currentTask = this.getCurrentTask()
-		let zooCodeState: {
-			zooCodeIsAuthenticated: boolean
-			zooCodeUserName: string | undefined
-			zooCodeUserEmail: string | undefined
-			zooCodeUserImage: string | undefined
-			zooCodeBaseUrl: string
+		let broCodeState: {
+			broCodeIsAuthenticated: boolean
+			broCodeUserName: string | undefined
+			broCodeUserEmail: string | undefined
+			broCodeUserImage: string | undefined
+			broCodeBaseUrl: string
 			deviceName: string
 		} = {
-			zooCodeIsAuthenticated: false,
-			zooCodeUserName: undefined,
-			zooCodeUserEmail: undefined,
-			zooCodeUserImage: undefined,
-			zooCodeBaseUrl: "https://www.zoocode.dev",
+			broCodeIsAuthenticated: false,
+			broCodeUserName: undefined,
+			broCodeUserEmail: undefined,
+			broCodeUserImage: undefined,
+			broCodeBaseUrl: "https://www.brocode.dev",
 			deviceName: os.hostname(),
 		}
 
 		try {
-			const { isZooCodeAuthenticated, getCachedZooCodeUserInfo, getZooCodeBaseUrl } =
-				await import("../../services/zoo-code-auth")
-			const userInfo = getCachedZooCodeUserInfo()
-			zooCodeState = {
-				zooCodeIsAuthenticated: await isZooCodeAuthenticated(),
-				zooCodeUserName: userInfo.name,
-				zooCodeUserEmail: userInfo.email,
-				zooCodeUserImage: userInfo.image,
-				zooCodeBaseUrl: getZooCodeBaseUrl(),
+			const { isBroCodeAuthenticated, getCachedBroCodeUserInfo, getBroCodeBaseUrl } = await import(
+				"../../services/bro-code-auth"
+			)
+			const userInfo = getCachedBroCodeUserInfo()
+			broCodeState = {
+				broCodeIsAuthenticated: await isBroCodeAuthenticated(),
+				broCodeUserName: userInfo.name,
+				broCodeUserEmail: userInfo.email,
+				broCodeUserImage: userInfo.image,
+				broCodeBaseUrl: getBroCodeBaseUrl(),
 				deviceName: os.hostname(),
 			}
 		} catch {
-			// Keep the default unauthenticated state if the optional Zoo Code auth service is unavailable.
+			// Keep the default unauthenticated state if the optional Bro Code auth service is unavailable.
 		}
 
 		return {
@@ -2511,7 +2512,7 @@ export class ClineProvider
 			telemetrySetting,
 			telemetryKey,
 			machineId,
-			showRooIgnoredFiles: showRooIgnoredFiles ?? false,
+			showBroIgnoredFiles: showBroIgnoredFiles ?? false,
 			enableSubfolderRules: enableSubfolderRules ?? false,
 			language: language ?? formatLanguage(vscode.env.language),
 			renderContext: this.renderContext,
@@ -2524,7 +2525,7 @@ export class ClineProvider
 			enterBehavior: enterBehavior ?? "send",
 			cloudUserInfo,
 			cloudIsAuthenticated: cloudIsAuthenticated ?? false,
-			cloudAuthSkipModel: this.context.globalState.get<boolean>("roo-auth-skip-model") ?? false,
+			cloudAuthSkipModel: this.context.globalState.get<boolean>("bro-auth-skip-model") ?? false,
 			cloudOrganizations,
 			sharingEnabled: sharingEnabled ?? false,
 			publicSharingEnabled: publicSharingEnabled ?? false,
@@ -2552,7 +2553,7 @@ export class ClineProvider
 			// Phase 1 cloud removal: do not let Cloud-auth MDM enforcement force login-only UI flows.
 			mdmCompliant: undefined,
 			profileThresholds: profileThresholds ?? {},
-			cloudApiUrl: getRooCodeApiUrl(),
+			cloudApiUrl: getBroCodeApiUrl(),
 			hasOpenedModeSelector: this.getGlobalState("hasOpenedModeSelector") ?? false,
 			lockApiConfigAcrossModes: lockApiConfigAcrossModes ?? false,
 			alwaysAllowFollowupQuestions: alwaysAllowFollowupQuestions ?? false,
@@ -2567,10 +2568,10 @@ export class ClineProvider
 			imageGenerationProvider,
 			openRouterImageApiKey,
 			openRouterImageGenerationSelectedModel,
-			autoCloseZooOpenedFiles: autoCloseZooOpenedFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
-			autoCloseZooOpenedFilesAfterUserEdited:
-				autoCloseZooOpenedFilesAfterUserEdited ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
-			autoCloseZooOpenedNewFiles: autoCloseZooOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
+			autoCloseBroOpenedFiles: autoCloseBroOpenedFiles ?? DEFAULT_AUTO_CLOSE_BRO_OPENED_FILES,
+			autoCloseBroOpenedFilesAfterUserEdited:
+				autoCloseBroOpenedFilesAfterUserEdited ?? DEFAULT_AUTO_CLOSE_BRO_OPENED_FILES_AFTER_USER_EDITED,
+			autoCloseBroOpenedNewFiles: autoCloseBroOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_BRO_OPENED_NEW_FILES,
 			openAiCodexIsAuthenticated: await (async () => {
 				try {
 					const { openAiCodexOAuthManager } = await import("../../integrations/openai-codex/oauth")
@@ -2579,7 +2580,7 @@ export class ClineProvider
 					return false
 				}
 			})(),
-			...zooCodeState,
+			...broCodeState,
 			platform: process.platform,
 			arch: process.arch,
 			debug: vscode.workspace.getConfiguration(Package.name).get<boolean>("debug", false),
@@ -2726,7 +2727,7 @@ export class ClineProvider
 			maxWorkspaceFiles: stateValues.maxWorkspaceFiles ?? 200,
 			disabledTools: stateValues.disabledTools,
 			telemetrySetting: stateValues.telemetrySetting || "unset",
-			showRooIgnoredFiles: stateValues.showRooIgnoredFiles ?? false,
+			showBroIgnoredFiles: stateValues.showBroIgnoredFiles ?? false,
 			enableSubfolderRules: stateValues.enableSubfolderRules ?? false,
 			maxImageFileSize: stateValues.maxImageFileSize ?? 5,
 			maxTotalImageSize: stateValues.maxTotalImageSize ?? 20,
@@ -2778,9 +2779,9 @@ export class ClineProvider
 			imageGenerationProvider: stateValues.imageGenerationProvider,
 			openRouterImageApiKey: stateValues.openRouterImageApiKey,
 			openRouterImageGenerationSelectedModel: stateValues.openRouterImageGenerationSelectedModel,
-			autoCloseZooOpenedFiles: stateValues.autoCloseZooOpenedFiles,
-			autoCloseZooOpenedFilesAfterUserEdited: stateValues.autoCloseZooOpenedFilesAfterUserEdited,
-			autoCloseZooOpenedNewFiles: stateValues.autoCloseZooOpenedNewFiles,
+			autoCloseBroOpenedFiles: stateValues.autoCloseBroOpenedFiles,
+			autoCloseBroOpenedFilesAfterUserEdited: stateValues.autoCloseBroOpenedFilesAfterUserEdited,
+			autoCloseBroOpenedNewFiles: stateValues.autoCloseBroOpenedNewFiles,
 		}
 	}
 
@@ -2881,11 +2882,11 @@ export class ClineProvider
 		return this.contextProxy.getValue(key)
 	}
 
-	public async setValue<K extends keyof RooCodeSettings>(key: K, value: RooCodeSettings[K]) {
+	public async setValue<K extends keyof BroCodeSettings>(key: K, value: BroCodeSettings[K]) {
 		await this.contextProxy.setValue(key, value)
 	}
 
-	public getValue<K extends keyof RooCodeSettings>(key: K) {
+	public getValue<K extends keyof BroCodeSettings>(key: K) {
 		return this.contextProxy.getValue(key)
 	}
 
@@ -2893,7 +2894,7 @@ export class ClineProvider
 		return this.contextProxy.getValues()
 	}
 
-	public async setValues(values: RooCodeSettings) {
+	public async setValues(values: BroCodeSettings) {
 		await this.contextProxy.setValues(values)
 	}
 
@@ -3050,12 +3051,12 @@ export class ClineProvider
 			return
 		}
 		this.log(
-			`[Zoo Code] Webview hidden during active task.\n` +
+			`[Bro Code] Webview hidden during active task.\n` +
 				`  taskId:       ${task.taskId}\n` +
 				`  messageCount: ${task.clineMessages.length}\n` +
 				`  stackDepth:   ${this.clineStack.length}\n` +
 				`  timestamp:    ${new Date().toISOString()}\n` +
-				`If the panel appears gray after this, share this log with support@zoocode.dev`,
+				`If the panel appears gray after this, share this log with support@brocode.dev`,
 		)
 	}
 
@@ -3115,7 +3116,7 @@ export class ClineProvider
 		images?: string[],
 		parentTask?: Task,
 		options: CreateTaskOptions = {},
-		configuration: RooCodeSettings = {},
+		configuration: BroCodeSettings = {},
 	): Promise<Task> {
 		if (configuration) {
 			await this.setValues(configuration)
@@ -3148,7 +3149,7 @@ export class ClineProvider
 
 			// Register custom modes so the CustomModesManager knows about them.
 			// setValues writes to global state, but the manager overwrites that
-			// when it merges .roomodes + global settings on refresh.  Persisting
+			// when it merges .bromodes + global settings on refresh.  Persisting
 			// via updateCustomMode ensures modes survive the merge cycle.
 			if (configuration.customModes?.length) {
 				for (const mode of configuration.customModes) {
@@ -3702,7 +3703,7 @@ export class ClineProvider
 
 		// 7) Emit TaskDelegated (provider-level)
 		try {
-			this.emit(RooCodeEventName.TaskDelegated, parentTaskId, child.taskId)
+			this.emit(BroCodeEventName.TaskDelegated, parentTaskId, child.taskId)
 		} catch {
 			// non-fatal
 		}
@@ -3926,7 +3927,7 @@ export class ClineProvider
 
 			// 6) Emit TaskDelegationCompleted (provider-level)
 			try {
-				this.emit(RooCodeEventName.TaskDelegationCompleted, parentTaskId, childTaskId, completionResultSummary)
+				this.emit(BroCodeEventName.TaskDelegationCompleted, parentTaskId, childTaskId, completionResultSummary)
 			} catch {
 				// non-fatal
 			}
@@ -3954,7 +3955,7 @@ export class ClineProvider
 
 			// 9) Emit TaskDelegationResumed (provider-level)
 			try {
-				this.emit(RooCodeEventName.TaskDelegationResumed, parentTaskId, childTaskId)
+				this.emit(BroCodeEventName.TaskDelegationResumed, parentTaskId, childTaskId)
 			} catch {
 				// non-fatal
 			}

@@ -3,7 +3,7 @@
  *
  * These tests cover:
  * - Input validation (missing path parameter)
- * - RooIgnore blocking
+ * - BroIgnore blocking
  * - Directory read error handling
  * - Binary file handling (images, PDF, DOCX, unsupported)
  * - Image memory limits
@@ -87,9 +87,9 @@ vi.mock("../../prompts/responses", () => ({
 			(feedback?: string) =>
 				`The user approved this operation and responded with the message:\n<user_message>\n${feedback}\n</user_message>`,
 		),
-		rooIgnoreError: vi.fn(
+		broIgnoreError: vi.fn(
 			(filePath: string) =>
-				`Access to ${filePath} is blocked by the .rooignore file settings. You must try to continue in the task without using this file, or ask the user to update the .rooignore file.`,
+				`Access to ${filePath} is blocked by the .broignore file settings. You must try to continue in the task without using this file, or ask the user to update the .broignore file.`,
 		),
 		toolResult: vi.fn((text: string, images?: string[]) => {
 			if (images && images.length > 0) {
@@ -133,13 +133,13 @@ const mockedProcessImageFile = vi.mocked(processImageFile)
 
 interface MockTaskOptions {
 	supportsImages?: boolean
-	rooIgnoreAllowed?: boolean
+	broIgnoreAllowed?: boolean
 	maxImageFileSize?: number
 	maxTotalImageSize?: number
 }
 
 function createMockTask(options: MockTaskOptions = {}) {
-	const { supportsImages = false, rooIgnoreAllowed = true, maxImageFileSize = 5, maxTotalImageSize = 20 } = options
+	const { supportsImages = false, broIgnoreAllowed = true, maxImageFileSize = 5, maxTotalImageSize = 20 } = options
 
 	return {
 		cwd: "/test/workspace",
@@ -155,8 +155,8 @@ function createMockTask(options: MockTaskOptions = {}) {
 		say: vi.fn().mockResolvedValue(undefined),
 		sayAndCreateMissingParamError: vi.fn().mockResolvedValue("Missing required parameter: path"),
 		recordToolError: vi.fn(),
-		rooIgnoreController: {
-			validateAccess: vi.fn().mockReturnValue(rooIgnoreAllowed),
+		broIgnoreController: {
+			validateAccess: vi.fn().mockReturnValue(broIgnoreAllowed),
 		},
 		fileContextTracker: {
 			trackFileContext: vi.fn().mockResolvedValue(undefined),
@@ -283,16 +283,16 @@ describe("ReadFileTool", () => {
 		})
 	})
 
-	describe("RooIgnore handling", () => {
-		it("should block access to rooignore-protected files", async () => {
-			const mockTask = createMockTask({ rooIgnoreAllowed: false })
+	describe("BroIgnore handling", () => {
+		it("should block access to broignore-protected files", async () => {
+			const mockTask = createMockTask({ broIgnoreAllowed: false })
 			const callbacks = createMockCallbacks()
 
 			await readFileTool.execute({ path: "secret.env" }, mockTask as any, callbacks)
 
-			expect(mockTask.say).toHaveBeenCalledWith("rooignore_error", "secret.env")
-			expect(formatResponse.rooIgnoreError).toHaveBeenCalledWith("secret.env")
-			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("blocked by the .rooignore"))
+			expect(mockTask.say).toHaveBeenCalledWith("broignore_error", "secret.env")
+			expect(formatResponse.broIgnoreError).toHaveBeenCalledWith("secret.env")
+			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("blocked by the .broignore"))
 		})
 	})
 
@@ -795,14 +795,14 @@ describe("ReadFileTool", () => {
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("file2 content"))
 		})
 
-		it("should block rooignore-protected files in legacy format", async () => {
-			const mockTask = createMockTask({ rooIgnoreAllowed: false })
+		it("should block broignore-protected files in legacy format", async () => {
+			const mockTask = createMockTask({ broIgnoreAllowed: false })
 			const callbacks = createMockCallbacks()
 
 			await readFileTool.execute({ files: [{ path: "secret.env" }] } as any, mockTask as any, callbacks)
 
-			expect(mockTask.say).toHaveBeenCalledWith("rooignore_error", "secret.env")
-			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("blocked by the .rooignore"))
+			expect(mockTask.say).toHaveBeenCalledWith("broignore_error", "secret.env")
+			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("blocked by the .broignore"))
 			// Consistent with the native path: a blocked file fails the tool turn.
 			expect(mockTask.didToolFailInCurrentTurn).toBe(true)
 		})
@@ -1470,8 +1470,8 @@ describe("ReadFileTool", () => {
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("Error"))
 		})
 
-		it("should set didToolFailInCurrentTurn on rooignore block", async () => {
-			const mockTask = createMockTask({ rooIgnoreAllowed: false })
+		it("should set didToolFailInCurrentTurn on broignore block", async () => {
+			const mockTask = createMockTask({ broIgnoreAllowed: false })
 			const callbacks = createMockCallbacks()
 
 			await readFileTool.execute({ path: "blocked.ts" }, mockTask as any, callbacks)

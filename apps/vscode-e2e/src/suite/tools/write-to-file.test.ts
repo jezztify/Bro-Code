@@ -3,7 +3,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { BroCodeEventName, type ClineMessage } from "@bro-code/types"
 
 import { waitUntilCompleted, sleep } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
@@ -14,7 +14,7 @@ const NESTED_FILE_RELATIVE_PATH = `${TEST_DIR_NAME}/nested/deep/directory/write-
 const SIMPLE_FILE_CONTENT = "Hello, this is a test file!"
 const NESTED_FILE_CONTENT = "File in nested directory"
 
-suite("Roo Code write_to_file Tool", function () {
+suite("Bro Code write_to_file Tool", function () {
 	setDefaultSuiteTimeout(this)
 
 	let workspaceDir: string
@@ -94,7 +94,7 @@ suite("Roo Code write_to_file Tool", function () {
 				errorOccurred = message.text || "Unknown error"
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			await waitUntilCompleted({
@@ -126,7 +126,7 @@ suite("Roo Code write_to_file Tool", function () {
 			)
 			assert.ok(toolApprovalMessage, "Task should have requested approval for the file write")
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 
@@ -142,7 +142,7 @@ suite("Roo Code write_to_file Tool", function () {
 				errorOccurred = message.text || "Unknown error"
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			await waitUntilCompleted({
@@ -174,7 +174,7 @@ suite("Roo Code write_to_file Tool", function () {
 			)
 			assert.ok(toolApprovalMessage, "Task should have requested approval for the nested file write")
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 })

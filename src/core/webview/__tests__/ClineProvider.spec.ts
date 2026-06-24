@@ -1,4 +1,4 @@
-// pnpm --filter roo-cline test core/webview/__tests__/ClineProvider.spec.ts
+// pnpm --filter bro-cline test core/webview/__tests__/ClineProvider.spec.ts
 
 import * as path from "path"
 
@@ -15,8 +15,8 @@ import {
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
 	DEFAULT_WRITE_DELAY_MS,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@bro-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
 
 import { defaultModeSlug } from "../../../shared/modes"
 import { experimentDefault } from "../../../shared/experiments"
@@ -257,12 +257,12 @@ vi.mock("../../../api/providers/fetchers/modelCache", () => ({
 	getModelsFromCache: vi.fn().mockReturnValue(undefined),
 }))
 
-vi.mock("../../../services/zoo-code-auth", () => ({
-	getZooCodeBaseUrl: vi.fn(() => "https://www.zoocode.dev"),
-	getCachedZooCodeToken: vi.fn(),
+vi.mock("../../../services/bro-code-auth", () => ({
+	getBroCodeBaseUrl: vi.fn(() => "https://www.brocode.dev"),
+	getCachedBroCodeToken: vi.fn(),
 	handleAuthCallback: vi.fn(),
-	setZooCodeUserInfo: vi.fn(),
-	disconnectZooCode: vi.fn(),
+	setBroCodeUserInfo: vi.fn(),
+	disconnectBroCode: vi.fn(),
 }))
 
 vi.mock("../../../shared/modes", () => ({
@@ -345,7 +345,7 @@ vi.mock("../diff/strategies/multi-search-replace", () => ({
 	}),
 }))
 
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@bro-code/cloud", () => ({
 	CloudService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		get instance() {
@@ -355,7 +355,7 @@ vi.mock("@roo-code/cloud", () => ({
 			}
 		},
 	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("https://app.roocode.com"),
+	getBroCodeApiUrl: vi.fn().mockReturnValue("https://app.brocode.com"),
 }))
 
 afterAll(() => {
@@ -656,7 +656,7 @@ describe("ClineProvider", () => {
 			maxOpenTabsContext: 20,
 			maxWorkspaceFiles: 200,
 			telemetrySetting: "unset",
-			showRooIgnoredFiles: false,
+			showBroIgnoredFiles: false,
 			enableSubfolderRules: false,
 			renderContext: "sidebar",
 			maxImageFileSize: 5,
@@ -1056,52 +1056,52 @@ describe("ClineProvider", () => {
 	})
 
 	describe("auto-close settings are included in posted state", () => {
-		it("getStateToPostToWebview returns saved autoCloseZooOpenedFiles value", async () => {
+		it("getStateToPostToWebview returns saved autoCloseBroOpenedFiles value", async () => {
 			await provider.resolveWebviewView(mockWebviewView)
 
 			// Simulate the updateSettings handler storing the value.
-			await provider.contextProxy.setValue("autoCloseZooOpenedFiles", false)
-			await provider.contextProxy.setValue("autoCloseZooOpenedFilesAfterUserEdited", true)
-			await provider.contextProxy.setValue("autoCloseZooOpenedNewFiles", true)
+			await provider.contextProxy.setValue("autoCloseBroOpenedFiles", false)
+			await provider.contextProxy.setValue("autoCloseBroOpenedFilesAfterUserEdited", true)
+			await provider.contextProxy.setValue("autoCloseBroOpenedNewFiles", true)
 
 			const state = await provider.getStateToPostToWebview()
 
 			// The saved values must be present in the state posted to the webview.
-			expect(state.autoCloseZooOpenedFiles).toBe(false)
-			expect(state.autoCloseZooOpenedFilesAfterUserEdited).toBe(true)
-			expect(state.autoCloseZooOpenedNewFiles).toBe(true)
+			expect(state.autoCloseBroOpenedFiles).toBe(false)
+			expect(state.autoCloseBroOpenedFilesAfterUserEdited).toBe(true)
+			expect(state.autoCloseBroOpenedNewFiles).toBe(true)
 		})
 
-		it("getStateToPostToWebview defaults autoCloseZooOpenedFiles to false when unset", async () => {
+		it("getStateToPostToWebview defaults autoCloseBroOpenedFiles to true when unset", async () => {
 			await provider.resolveWebviewView(mockWebviewView)
 
 			// Ensure the settings are not set.
-			await provider.contextProxy.setValue("autoCloseZooOpenedFiles", undefined)
-			await provider.contextProxy.setValue("autoCloseZooOpenedFilesAfterUserEdited", undefined)
-			await provider.contextProxy.setValue("autoCloseZooOpenedNewFiles", undefined)
+			await provider.contextProxy.setValue("autoCloseBroOpenedFiles", undefined)
+			await provider.contextProxy.setValue("autoCloseBroOpenedFilesAfterUserEdited", undefined)
+			await provider.contextProxy.setValue("autoCloseBroOpenedNewFiles", undefined)
 
 			const state = await provider.getStateToPostToWebview()
 
-			// Unset values should default to their documented defaults (opt-in).
-			expect(state.autoCloseZooOpenedFiles).toBe(false)
-			expect(state.autoCloseZooOpenedFilesAfterUserEdited).toBe(false)
-			expect(state.autoCloseZooOpenedNewFiles).toBe(false)
+			// Unset values should default to their documented defaults.
+			expect(state.autoCloseBroOpenedFiles).toBe(true)
+			expect(state.autoCloseBroOpenedFilesAfterUserEdited).toBe(false)
+			expect(state.autoCloseBroOpenedNewFiles).toBe(false)
 		})
 
-		it("getState returns saved autoCloseZooOpenedFiles value for DiffViewProvider", async () => {
+		it("getState returns saved autoCloseBroOpenedFiles value for DiffViewProvider", async () => {
 			await provider.resolveWebviewView(mockWebviewView)
 
-			await provider.contextProxy.setValue("autoCloseZooOpenedFiles", false)
-			await provider.contextProxy.setValue("autoCloseZooOpenedFilesAfterUserEdited", true)
-			await provider.contextProxy.setValue("autoCloseZooOpenedNewFiles", true)
+			await provider.contextProxy.setValue("autoCloseBroOpenedFiles", false)
+			await provider.contextProxy.setValue("autoCloseBroOpenedFilesAfterUserEdited", true)
+			await provider.contextProxy.setValue("autoCloseBroOpenedNewFiles", true)
 
 			const state = await provider.getState()
 
 			// DiffViewProvider reads from getState(); all three fields must be present
 			// so a regression that drops any of them is caught.
-			expect(state.autoCloseZooOpenedFiles).toBe(false)
-			expect(state.autoCloseZooOpenedFilesAfterUserEdited).toBe(true)
-			expect(state.autoCloseZooOpenedNewFiles).toBe(true)
+			expect(state.autoCloseBroOpenedFiles).toBe(false)
+			expect(state.autoCloseBroOpenedFilesAfterUserEdited).toBe(true)
+			expect(state.autoCloseBroOpenedNewFiles).toBe(true)
 		})
 	})
 
@@ -1211,24 +1211,24 @@ describe("ClineProvider", () => {
 		expect(provider.providerSettingsManager.activateProfile).toHaveBeenCalledWith({ id: "config-id-123" })
 	})
 
-	test("handles showRooIgnoredFiles setting", async () => {
+	test("handles showBroIgnoredFiles setting", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
 		// Default value should be false
-		expect((await provider.getState()).showRooIgnoredFiles).toBe(false)
+		expect((await provider.getState()).showBroIgnoredFiles).toBe(false)
 
-		// Test showRooIgnoredFiles with true
-		await messageHandler({ type: "updateSettings", updatedSettings: { showRooIgnoredFiles: true } })
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("showRooIgnoredFiles", true)
+		// Test showBroIgnoredFiles with true
+		await messageHandler({ type: "updateSettings", updatedSettings: { showBroIgnoredFiles: true } })
+		expect(mockContext.globalState.update).toHaveBeenCalledWith("showBroIgnoredFiles", true)
 		expect(mockPostMessage).toHaveBeenCalled()
-		expect((await provider.getState()).showRooIgnoredFiles).toBe(true)
+		expect((await provider.getState()).showBroIgnoredFiles).toBe(true)
 
-		// Test showRooIgnoredFiles with false
-		await messageHandler({ type: "updateSettings", updatedSettings: { showRooIgnoredFiles: false } })
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("showRooIgnoredFiles", false)
+		// Test showBroIgnoredFiles with false
+		await messageHandler({ type: "updateSettings", updatedSettings: { showBroIgnoredFiles: false } })
+		expect(mockContext.globalState.update).toHaveBeenCalledWith("showBroIgnoredFiles", false)
 		expect(mockPostMessage).toHaveBeenCalled()
-		expect((await provider.getState()).showRooIgnoredFiles).toBe(false)
+		expect((await provider.getState()).showBroIgnoredFiles).toBe(false)
 	})
 
 	test("handles updatePrompt message correctly", async () => {
@@ -2338,11 +2338,11 @@ describe("Project MCP Settings", () => {
 			type: "openProjectMcpSettings",
 		})
 
-		const expectedRooDir = path.join("/test/workspace", ".roo")
-		const expectedMcpPath = path.join(expectedRooDir, "mcp.json")
+		const expectedBroDir = path.join("/test/workspace", ".bro")
+		const expectedMcpPath = path.join(expectedBroDir, "mcp.json")
 
 		// Check that fs.mkdir was called with the correct path
-		expect(mockedFs.mkdir).toHaveBeenCalledWith(expectedRooDir, { recursive: true })
+		expect(mockedFs.mkdir).toHaveBeenCalledWith(expectedBroDir, { recursive: true })
 		expect(pathUtils.getWorkspacePath).toHaveBeenCalled()
 
 		// Verify file was created with default content
@@ -2473,7 +2473,7 @@ describe("getTelemetryProperties", () => {
 
 		test("includes cloud authentication property when user is authenticated", async () => {
 			// Import the CloudService mock and update it
-			const { CloudService } = await import("@roo-code/cloud")
+			const { CloudService } = await import("@bro-code/cloud")
 			const mockCloudService = {
 				isAuthenticated: vi.fn().mockReturnValue(true),
 			}
@@ -2491,7 +2491,7 @@ describe("getTelemetryProperties", () => {
 
 		test("includes cloud authentication property when user is not authenticated", async () => {
 			// Import the CloudService mock and update it
-			const { CloudService } = await import("@roo-code/cloud")
+			const { CloudService } = await import("@bro-code/cloud")
 			const mockCloudService = {
 				isAuthenticated: vi.fn().mockReturnValue(false),
 			}
@@ -2509,7 +2509,7 @@ describe("getTelemetryProperties", () => {
 
 		test("handles CloudService errors gracefully", async () => {
 			// Import the CloudService mock and update it to throw an error
-			const { CloudService } = await import("@roo-code/cloud")
+			const { CloudService } = await import("@bro-code/cloud")
 			Object.defineProperty(CloudService, "instance", {
 				get: vi.fn().mockImplementation(() => {
 					throw new Error("CloudService not available")
@@ -2530,7 +2530,7 @@ describe("getTelemetryProperties", () => {
 
 		test("handles CloudService method errors gracefully", async () => {
 			// Import the CloudService mock and update it
-			const { CloudService } = await import("@roo-code/cloud")
+			const { CloudService } = await import("@bro-code/cloud")
 			const mockCloudService = {
 				isAuthenticated: vi.fn().mockImplementation(() => {
 					throw new Error("Authentication check error")
@@ -2695,7 +2695,7 @@ describe("ClineProvider - Router Models", () => {
 				requesty: mockModels,
 				unbound: mockModels,
 				"vercel-ai-gateway": mockModels,
-				"zoo-gateway": mockModels,
+				"bro-gateway": mockModels,
 				litellm: mockModels,
 				ollama: {},
 				lmstudio: {},
@@ -2731,7 +2731,7 @@ describe("ClineProvider - Router Models", () => {
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty fail
 			.mockResolvedValueOnce(mockModels) // unbound success
 			.mockResolvedValueOnce(mockModels) // vercel-ai-gateway success
-			.mockResolvedValueOnce(mockModels) // zoo-gateway success
+			.mockResolvedValueOnce(mockModels) // bro-gateway success
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm fail
 			.mockResolvedValueOnce(mockModels) // opencode-go (public endpoint)
 
@@ -2745,7 +2745,7 @@ describe("ClineProvider - Router Models", () => {
 				requesty: {},
 				unbound: mockModels,
 				"vercel-ai-gateway": mockModels,
-				"zoo-gateway": mockModels,
+				"bro-gateway": mockModels,
 				ollama: {},
 				lmstudio: {},
 				litellm: {},
@@ -2842,7 +2842,7 @@ describe("ClineProvider - Router Models", () => {
 				requesty: mockModels,
 				unbound: mockModels,
 				"vercel-ai-gateway": mockModels,
-				"zoo-gateway": mockModels,
+				"bro-gateway": mockModels,
 				litellm: {},
 				ollama: {},
 				lmstudio: {},
@@ -3899,16 +3899,16 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 		})
 	})
 
-	describe("Zoo Code auth profile sync", () => {
+	describe("Bro Code auth profile sync", () => {
 		beforeEach(async () => {
-			const { getCachedZooCodeToken } = await import("../../../services/zoo-code-auth")
-			vi.mocked(getCachedZooCodeToken).mockReturnValue("")
+			const { getCachedBroCodeToken } = await import("../../../services/bro-code-auth")
+			vi.mocked(getCachedBroCodeToken).mockReturnValue("")
 		})
 
-		describe("handleZooCodeCallback", () => {
-			it("creates a Zoo Gateway profile when none exists", async () => {
+		describe("handleBroCodeCallback", () => {
+			it("creates a Bro Gateway profile when none exists", async () => {
 				vi.spyOn(provider, "getState").mockResolvedValue({
-					apiConfiguration: { zooGatewayModelId: "anthropic/claude-sonnet-4" },
+					apiConfiguration: { broGatewayModelId: "anthropic/claude-sonnet-4" },
 				} as any)
 				vi.spyOn(provider.contextProxy, "getProviderSettings").mockReturnValue({
 					apiProvider: "anthropic",
@@ -3923,67 +3923,67 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 					listConfig: vi.fn().mockResolvedValue([]),
 				}
 
-				await provider.handleZooCodeCallback("zoo_ext_token")
+				await provider.handleBroCodeCallback("bro_ext_token")
 
-				expect(postMessageSpy).toHaveBeenCalledWith({ type: "zooGatewayCredentialsReady" })
+				expect(postMessageSpy).toHaveBeenCalledWith({ type: "broGatewayCredentialsReady" })
 				expect(upsertSpy).toHaveBeenCalledWith(
-					"Zoo Gateway",
+					"Bro Gateway",
 					expect.objectContaining({
-						apiProvider: "zoo-gateway",
-						zooSessionToken: "zoo_ext_token",
-						zooGatewayBaseUrl: "https://www.zoocode.dev/api/gateway/v1",
+						apiProvider: "bro-gateway",
+						broSessionToken: "bro_ext_token",
+						broGatewayBaseUrl: "https://www.brocode.dev/api/gateway/v1",
 					}),
 					false,
 				)
 			})
 
-			it("updates every zoo-gateway profile and activates only the active one", async () => {
+			it("updates every bro-gateway profile and activates only the active one", async () => {
 				vi.spyOn(provider, "getState").mockResolvedValue({
-					apiConfiguration: { zooGatewayModelId: "anthropic/claude-sonnet-4" },
+					apiConfiguration: { broGatewayModelId: "anthropic/claude-sonnet-4" },
 				} as any)
 				vi.spyOn(provider.contextProxy, "getProviderSettings").mockReturnValue({
-					apiProvider: "zoo-gateway",
+					apiProvider: "bro-gateway",
 				} as any)
 				vi.spyOn(provider.contextProxy, "getValues").mockReturnValue({
-					currentApiConfigName: "Zoo Gateway",
+					currentApiConfigName: "Bro Gateway",
 				} as any)
 				const upsertSpy = vi.spyOn(provider, "upsertProviderProfile").mockResolvedValue("profile-id")
 				const saveConfig = vi.fn().mockResolvedValue(undefined)
 				vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
 				;(provider as any).providerSettingsManager = {
 					listConfig: vi.fn().mockResolvedValue([
-						{ name: "Zoo Gateway", apiProvider: "zoo-gateway" },
-						{ name: "Backup Zoo", apiProvider: "zoo-gateway" },
+						{ name: "Bro Gateway", apiProvider: "bro-gateway" },
+						{ name: "Backup Bro", apiProvider: "bro-gateway" },
 					]),
 					getProfile: vi
 						.fn()
 						.mockResolvedValueOnce({
-							apiProvider: "zoo-gateway",
-							zooSessionToken: "old-token",
-							zooGatewayBaseUrl: "https://old.example/api/gateway/v1",
+							apiProvider: "bro-gateway",
+							broSessionToken: "old-token",
+							broGatewayBaseUrl: "https://old.example/api/gateway/v1",
 						})
 						.mockResolvedValueOnce({
-							apiProvider: "zoo-gateway",
-							zooSessionToken: "old-token",
+							apiProvider: "bro-gateway",
+							broSessionToken: "old-token",
 						}),
 					saveConfig,
 				}
 
-				await provider.handleZooCodeCallback("new-token")
+				await provider.handleBroCodeCallback("new-token")
 
 				expect(upsertSpy).toHaveBeenCalledWith(
-					"Zoo Gateway",
+					"Bro Gateway",
 					expect.objectContaining({
-						zooSessionToken: "new-token",
-						zooGatewayBaseUrl: "https://www.zoocode.dev/api/gateway/v1",
+						broSessionToken: "new-token",
+						broGatewayBaseUrl: "https://www.brocode.dev/api/gateway/v1",
 					}),
 					true,
 				)
 				expect(saveConfig).toHaveBeenCalledWith(
-					"Backup Zoo",
+					"Backup Bro",
 					expect.objectContaining({
-						zooSessionToken: "new-token",
-						zooGatewayBaseUrl: "https://www.zoocode.dev/api/gateway/v1",
+						broSessionToken: "new-token",
+						broGatewayBaseUrl: "https://www.brocode.dev/api/gateway/v1",
 					}),
 				)
 			})
@@ -3995,81 +3995,81 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 					listConfig: vi.fn().mockResolvedValue([]),
 				}
 
-				await provider.handleZooCodeCallback("zoo_ext_token")
+				await provider.handleBroCodeCallback("bro_ext_token")
 
 				expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
-					expect.stringContaining("[handleZooCodeCallback] Failed to save zoo-gateway profile"),
+					expect.stringContaining("[handleBroCodeCallback] Failed to save bro-gateway profile"),
 				)
 				// State must still be refreshed even when profile persistence fails.
 				expect(provider.postStateToWebview).toHaveBeenCalled()
 			})
 		})
 
-		describe("ensureZooGatewayProfileSeeded", () => {
+		describe("ensureBroGatewayProfileSeeded", () => {
 			it("does nothing when no cached auth token exists", async () => {
-				const handleSpy = vi.spyOn(provider, "handleZooCodeCallback").mockResolvedValue(undefined)
+				const handleSpy = vi.spyOn(provider, "handleBroCodeCallback").mockResolvedValue(undefined)
 
 				;(provider as any).providerSettingsManager = {
 					listConfig: vi.fn(),
 				}
 
-				await (provider as any).ensureZooGatewayProfileSeeded()
+				await (provider as any).ensureBroGatewayProfileSeeded()
 
 				expect(handleSpy).not.toHaveBeenCalled()
 			})
 
-			it("skips seeding when every zoo-gateway profile already has the current token and base URL", async () => {
-				const { getCachedZooCodeToken } = await import("../../../services/zoo-code-auth")
-				vi.mocked(getCachedZooCodeToken).mockReturnValue("current-token")
-				const handleSpy = vi.spyOn(provider, "handleZooCodeCallback").mockResolvedValue(undefined)
+			it("skips seeding when every bro-gateway profile already has the current token and base URL", async () => {
+				const { getCachedBroCodeToken } = await import("../../../services/bro-code-auth")
+				vi.mocked(getCachedBroCodeToken).mockReturnValue("current-token")
+				const handleSpy = vi.spyOn(provider, "handleBroCodeCallback").mockResolvedValue(undefined)
 				const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
 
 				;(provider as any).providerSettingsManager = {
-					listConfig: vi.fn().mockResolvedValue([{ name: "Zoo Gateway", apiProvider: "zoo-gateway" }]),
+					listConfig: vi.fn().mockResolvedValue([{ name: "Bro Gateway", apiProvider: "bro-gateway" }]),
 					getProfile: vi.fn().mockResolvedValue({
-						zooSessionToken: "current-token",
-						zooGatewayBaseUrl: "https://www.zoocode.dev/api/gateway/v1",
+						broSessionToken: "current-token",
+						broGatewayBaseUrl: "https://www.brocode.dev/api/gateway/v1",
 					}),
 				}
 
-				await (provider as any).ensureZooGatewayProfileSeeded()
+				await (provider as any).ensureBroGatewayProfileSeeded()
 
 				expect(handleSpy).not.toHaveBeenCalled()
-				expect(postMessageSpy).toHaveBeenCalledWith({ type: "zooGatewayCredentialsReady" })
+				expect(postMessageSpy).toHaveBeenCalledWith({ type: "broGatewayCredentialsReady" })
 			})
 
-			it("re-seeds when any zoo-gateway profile has a stale or missing token", async () => {
-				const { getCachedZooCodeToken } = await import("../../../services/zoo-code-auth")
-				vi.mocked(getCachedZooCodeToken).mockReturnValue("fresh-token")
-				const handleSpy = vi.spyOn(provider, "handleZooCodeCallback").mockResolvedValue(undefined)
+			it("re-seeds when any bro-gateway profile has a stale or missing token", async () => {
+				const { getCachedBroCodeToken } = await import("../../../services/bro-code-auth")
+				vi.mocked(getCachedBroCodeToken).mockReturnValue("fresh-token")
+				const handleSpy = vi.spyOn(provider, "handleBroCodeCallback").mockResolvedValue(undefined)
 
 				;(provider as any).providerSettingsManager = {
-					listConfig: vi.fn().mockResolvedValue([{ name: "Zoo Gateway", apiProvider: "zoo-gateway" }]),
+					listConfig: vi.fn().mockResolvedValue([{ name: "Bro Gateway", apiProvider: "bro-gateway" }]),
 					getProfile: vi.fn().mockResolvedValue({
-						zooSessionToken: "stale-token",
-						zooGatewayBaseUrl: "https://www.zoocode.dev/api/gateway/v1",
+						broSessionToken: "stale-token",
+						broGatewayBaseUrl: "https://www.brocode.dev/api/gateway/v1",
 					}),
 				}
 
-				await (provider as any).ensureZooGatewayProfileSeeded()
+				await (provider as any).ensureBroGatewayProfileSeeded()
 
 				expect(handleSpy).toHaveBeenCalledWith("fresh-token")
 			})
 
-			it("re-seeds when any zoo-gateway profile has a stale base URL", async () => {
-				const { getCachedZooCodeToken } = await import("../../../services/zoo-code-auth")
-				vi.mocked(getCachedZooCodeToken).mockReturnValue("current-token")
-				const handleSpy = vi.spyOn(provider, "handleZooCodeCallback").mockResolvedValue(undefined)
+			it("re-seeds when any bro-gateway profile has a stale base URL", async () => {
+				const { getCachedBroCodeToken } = await import("../../../services/bro-code-auth")
+				vi.mocked(getCachedBroCodeToken).mockReturnValue("current-token")
+				const handleSpy = vi.spyOn(provider, "handleBroCodeCallback").mockResolvedValue(undefined)
 
 				;(provider as any).providerSettingsManager = {
-					listConfig: vi.fn().mockResolvedValue([{ name: "Zoo Gateway", apiProvider: "zoo-gateway" }]),
+					listConfig: vi.fn().mockResolvedValue([{ name: "Bro Gateway", apiProvider: "bro-gateway" }]),
 					getProfile: vi.fn().mockResolvedValue({
-						zooSessionToken: "current-token",
-						zooGatewayBaseUrl: "https://staging.zoocode.dev/api/gateway/v1",
+						broSessionToken: "current-token",
+						broGatewayBaseUrl: "https://staging.brocode.dev/api/gateway/v1",
 					}),
 				}
 
-				await (provider as any).ensureZooGatewayProfileSeeded()
+				await (provider as any).ensureBroGatewayProfileSeeded()
 
 				expect(handleSpy).toHaveBeenCalledWith("current-token")
 			})

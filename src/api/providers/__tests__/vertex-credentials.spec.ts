@@ -10,7 +10,7 @@ vitest.mock("vscode", () => ({
 	},
 }))
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@bro-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureException: vitest.fn(),

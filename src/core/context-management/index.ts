@@ -1,13 +1,13 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import crypto from "crypto"
 
-import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryService } from "@bro-code/telemetry"
 
 import { ApiHandler, ApiHandlerCreateMessageMetadata } from "../../api"
 import { MAX_CONDENSE_THRESHOLD, MIN_CONDENSE_THRESHOLD, summarizeConversation, SummarizeResponse } from "../condense"
 import { ApiMessage } from "../task-persistence/apiMessages"
-import { ANTHROPIC_DEFAULT_MAX_TOKENS } from "@roo-code/types"
-import { RooIgnoreController } from "../ignore/RooIgnoreController"
+import { ANTHROPIC_DEFAULT_MAX_TOKENS } from "@bro-code/types"
+import { BroIgnoreController } from "../ignore/BroIgnoreController"
 
 /**
  * Context Management
@@ -262,12 +262,12 @@ export type ContextManagementOptions = {
 	metadata?: ApiHandlerCreateMessageMetadata
 	/** Optional environment details string to include in the condensed summary */
 	environmentDetails?: string
-	/** Optional array of file paths read by Roo during the task (will be folded via tree-sitter) */
-	filesReadByRoo?: string[]
-	/** Optional current working directory for resolving file paths (required if filesReadByRoo is provided) */
+	/** Optional array of file paths read by Bro during the task (will be folded via tree-sitter) */
+	filesReadByBro?: string[]
+	/** Optional current working directory for resolving file paths (required if filesReadByBro is provided) */
 	cwd?: string
 	/** Optional controller for file access validation */
-	rooIgnoreController?: RooIgnoreController
+	broIgnoreController?: BroIgnoreController
 	/**
 	 * Opt-in (vscode-lm): measure the condense percentage against available input space
 	 * (contextWindow - reserved output) instead of the full window. Others leave it undefined.
@@ -303,9 +303,9 @@ export async function manageContext({
 	currentProfileId,
 	metadata,
 	environmentDetails,
-	filesReadByRoo,
+	filesReadByBro,
 	cwd,
-	rooIgnoreController,
+	broIgnoreController,
 	useAvailableInputForContextPercent,
 }: ContextManagementOptions): Promise<ContextManagementResult> {
 	let error: string | undefined
@@ -367,9 +367,9 @@ export async function manageContext({
 				customCondensingPrompt,
 				metadata,
 				environmentDetails,
-				filesReadByRoo,
+				filesReadByBro,
 				cwd,
-				rooIgnoreController,
+				broIgnoreController,
 			})
 			if (result.error) {
 				error = result.error

@@ -9,21 +9,21 @@ import * as vscode from "vscode"
 const {
 	mockGetVisibleInstance,
 	mockGetAllInstances,
-	mockHandleZooCodeAuthCallback,
-	mockSetZooCodeUserInfo,
+	mockHandleBroCodeAuthCallback,
+	mockSetBroCodeUserInfo,
 	mockVisibleProvider,
 } = vi.hoisted(() => {
 	const mockVisibleProvider = {
 		handleOpenRouterCallback: vi.fn(),
 		handleRequestyCallback: vi.fn(),
-		handleZooCodeCallback: vi.fn(),
+		handleBroCodeCallback: vi.fn(),
 	} as any
 
 	return {
 		mockGetVisibleInstance: vi.fn(() => mockVisibleProvider),
 		mockGetAllInstances: vi.fn(() => [mockVisibleProvider]),
-		mockHandleZooCodeAuthCallback: vi.fn(),
-		mockSetZooCodeUserInfo: vi.fn(),
+		mockHandleBroCodeAuthCallback: vi.fn(),
+		mockSetBroCodeUserInfo: vi.fn(),
 		mockVisibleProvider,
 	}
 })
@@ -35,9 +35,9 @@ vi.mock("../../core/webview/ClineProvider", () => ({
 	},
 }))
 
-vi.mock("../../services/zoo-code-auth", () => ({
-	handleAuthCallback: mockHandleZooCodeAuthCallback,
-	setZooCodeUserInfo: mockSetZooCodeUserInfo,
+vi.mock("../../services/bro-code-auth", () => ({
+	handleAuthCallback: mockHandleBroCodeAuthCallback,
+	setBroCodeUserInfo: mockSetBroCodeUserInfo,
 }))
 
 import { handleUri } from "../handleUri"
@@ -58,57 +58,57 @@ describe("handleUri", () => {
 		expect(mockVisibleProvider.handleOpenRouterCallback).not.toHaveBeenCalled()
 		expect(mockVisibleProvider.handleRequestyCallback).not.toHaveBeenCalled()
 		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-			"Roo Code Cloud sign-in is currently unavailable. Configure another provider to continue.",
+			"Bro Code Cloud sign-in is currently unavailable. Configure another provider to continue.",
 		)
 	})
 
 	it("stores callback user info even when no provider instances exist", async () => {
 		mockGetVisibleInstance.mockReturnValue(null)
 		mockGetAllInstances.mockReturnValue([])
-		mockHandleZooCodeAuthCallback.mockResolvedValue(true)
+		mockHandleBroCodeAuthCallback.mockResolvedValue(true)
 
 		await handleUri({
 			path: "/auth-callback",
-			query: "token=zoo_ext_test_token&name=Jane%20Doe&email=jane%40example.com&image=https%3A%2F%2Fexample.com%2Favatar.png",
+			query: "token=bro_ext_test_token&name=Jane%20Doe&email=jane%40example.com&image=https%3A%2F%2Fexample.com%2Favatar.png",
 		} as any)
 
-		expect(mockHandleZooCodeAuthCallback).toHaveBeenCalledWith("zoo_ext_test_token")
-		expect(mockSetZooCodeUserInfo).toHaveBeenCalledWith({
+		expect(mockHandleBroCodeAuthCallback).toHaveBeenCalledWith("bro_ext_test_token")
+		expect(mockSetBroCodeUserInfo).toHaveBeenCalledWith({
 			name: "Jane Doe",
 			email: "jane@example.com",
 			image: "https://example.com/avatar.png",
 		})
-		// No provider instances exist, so handleZooCodeCallback should not be called
-		expect(mockVisibleProvider.handleZooCodeCallback).not.toHaveBeenCalled()
+		// No provider instances exist, so handleBroCodeCallback should not be called
+		expect(mockVisibleProvider.handleBroCodeCallback).not.toHaveBeenCalled()
 	})
 
 	it("refreshes the visible provider after a successful auth callback", async () => {
-		mockHandleZooCodeAuthCallback.mockResolvedValue(true)
+		mockHandleBroCodeAuthCallback.mockResolvedValue(true)
 
 		await handleUri({
 			path: "/auth-callback",
-			query: "token=zoo_ext_test_token",
+			query: "token=bro_ext_test_token",
 		} as any)
 
 		// When no user info is provided, null values are passed to clear stale data
-		expect(mockSetZooCodeUserInfo).toHaveBeenCalledWith({
+		expect(mockSetBroCodeUserInfo).toHaveBeenCalledWith({
 			name: null,
 			email: null,
 			image: null,
 		})
-		expect(mockVisibleProvider.handleZooCodeCallback).toHaveBeenCalledWith("zoo_ext_test_token")
+		expect(mockVisibleProvider.handleBroCodeCallback).toHaveBeenCalledWith("bro_ext_test_token")
 	})
 
 	it("clears stale user info fields when re-authing with missing fields", async () => {
-		mockHandleZooCodeAuthCallback.mockResolvedValue(true)
+		mockHandleBroCodeAuthCallback.mockResolvedValue(true)
 
 		// Re-auth with only name - email and image should be cleared
 		await handleUri({
 			path: "/auth-callback",
-			query: "token=zoo_ext_test_token&name=John%20Doe",
+			query: "token=bro_ext_test_token&name=John%20Doe",
 		} as any)
 
-		expect(mockSetZooCodeUserInfo).toHaveBeenCalledWith({
+		expect(mockSetBroCodeUserInfo).toHaveBeenCalledWith({
 			name: "John Doe",
 			email: null,
 			image: null,
@@ -116,49 +116,49 @@ describe("handleUri", () => {
 	})
 
 	it("does not persist user info when auth callback validation fails", async () => {
-		mockHandleZooCodeAuthCallback.mockResolvedValue(false)
+		mockHandleBroCodeAuthCallback.mockResolvedValue(false)
 
 		await handleUri({
 			path: "/auth-callback",
-			query: "token=zoo_ext_test_token&name=Jane%20Doe",
+			query: "token=bro_ext_test_token&name=Jane%20Doe",
 		} as any)
 
-		expect(mockSetZooCodeUserInfo).not.toHaveBeenCalled()
-		expect(mockVisibleProvider.handleZooCodeCallback).not.toHaveBeenCalled()
+		expect(mockSetBroCodeUserInfo).not.toHaveBeenCalled()
+		expect(mockVisibleProvider.handleBroCodeCallback).not.toHaveBeenCalled()
 	})
 
 	it("propagates the callback token to every ClineProvider instance, not just the visible one", async () => {
 		// Regression: prior to multi-instance fan-out, hidden providers (sidebar collapsed,
-		// secondary panels) never received the zooSessionToken, so their profile settings
+		// secondary panels) never received the broSessionToken, so their profile settings
 		// stayed unauthenticated until reload.
-		mockHandleZooCodeAuthCallback.mockResolvedValue(true)
+		mockHandleBroCodeAuthCallback.mockResolvedValue(true)
 
-		const hiddenProvider = { handleZooCodeCallback: vi.fn() } as any
-		const secondHidden = { handleZooCodeCallback: vi.fn() } as any
+		const hiddenProvider = { handleBroCodeCallback: vi.fn() } as any
+		const secondHidden = { handleBroCodeCallback: vi.fn() } as any
 		mockGetAllInstances.mockReturnValue([mockVisibleProvider, hiddenProvider, secondHidden])
 
 		await handleUri({
 			path: "/auth-callback",
-			query: "token=zoo_ext_test_token",
+			query: "token=bro_ext_test_token",
 		} as any)
 
-		expect(mockHandleZooCodeAuthCallback).toHaveBeenCalledWith("zoo_ext_test_token")
-		expect(mockSetZooCodeUserInfo).toHaveBeenCalled()
-		expect(mockVisibleProvider.handleZooCodeCallback).toHaveBeenCalledWith("zoo_ext_test_token")
-		expect(hiddenProvider.handleZooCodeCallback).toHaveBeenCalledWith("zoo_ext_test_token")
-		expect(secondHidden.handleZooCodeCallback).toHaveBeenCalledWith("zoo_ext_test_token")
+		expect(mockHandleBroCodeAuthCallback).toHaveBeenCalledWith("bro_ext_test_token")
+		expect(mockSetBroCodeUserInfo).toHaveBeenCalled()
+		expect(mockVisibleProvider.handleBroCodeCallback).toHaveBeenCalledWith("bro_ext_test_token")
+		expect(hiddenProvider.handleBroCodeCallback).toHaveBeenCalledWith("bro_ext_test_token")
+		expect(secondHidden.handleBroCodeCallback).toHaveBeenCalledWith("bro_ext_test_token")
 	})
 
 	it("serializes callbacks across instances to avoid concurrent profile-store writes", async () => {
 		// Regression: a previous implementation used Promise.all which fanned out concurrent
 		// read-modify-write operations on the same provider settings store. Verify the
 		// callbacks are invoked sequentially.
-		mockHandleZooCodeAuthCallback.mockResolvedValue(true)
+		mockHandleBroCodeAuthCallback.mockResolvedValue(true)
 
 		const order: string[] = []
 		const makeProvider = (name: string) =>
 			({
-				handleZooCodeCallback: vi.fn(async () => {
+				handleBroCodeCallback: vi.fn(async () => {
 					order.push(`${name}:start`)
 					// Yield to the event loop so a concurrent call would interleave.
 					await new Promise((resolve) => setTimeout(resolve, 0))
@@ -172,29 +172,29 @@ describe("handleUri", () => {
 
 		await handleUri({
 			path: "/auth-callback",
-			query: "token=zoo_ext_test_token",
+			query: "token=bro_ext_test_token",
 		} as any)
 
 		expect(order).toEqual(["a:start", "a:end", "b:start", "b:end"])
 	})
 
 	it("continues fan-out when one instance fails to persist the callback token", async () => {
-		mockHandleZooCodeAuthCallback.mockResolvedValue(true)
+		mockHandleBroCodeAuthCallback.mockResolvedValue(true)
 
 		const failingProvider = {
-			handleZooCodeCallback: vi.fn(async () => {
+			handleBroCodeCallback: vi.fn(async () => {
 				throw new Error("profile store unavailable")
 			}),
 		} as any
-		const healthyProvider = { handleZooCodeCallback: vi.fn() } as any
+		const healthyProvider = { handleBroCodeCallback: vi.fn() } as any
 		mockGetAllInstances.mockReturnValue([failingProvider, healthyProvider])
 
 		await handleUri({
 			path: "/auth-callback",
-			query: "token=zoo_ext_test_token",
+			query: "token=bro_ext_test_token",
 		} as any)
 
-		expect(failingProvider.handleZooCodeCallback).toHaveBeenCalledWith("zoo_ext_test_token")
-		expect(healthyProvider.handleZooCodeCallback).toHaveBeenCalledWith("zoo_ext_test_token")
+		expect(failingProvider.handleBroCodeCallback).toHaveBeenCalledWith("bro_ext_test_token")
+		expect(healthyProvider.handleBroCodeCallback).toHaveBeenCalledWith("bro_ext_test_token")
 	})
 })

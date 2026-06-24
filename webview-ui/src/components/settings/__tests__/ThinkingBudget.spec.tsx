@@ -4,7 +4,7 @@ import React from "react"
 
 import { render, screen, fireEvent } from "@/utils/test-utils"
 
-import type { ModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@bro-code/types"
 
 import { ThinkingBudget } from "../ThinkingBudget"
 

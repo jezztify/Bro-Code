@@ -1,5 +1,5 @@
 ---
-"zoo-code": patch
+"bro-code": patch
 ---
 
 Fix command auto-approval for multi-line shell constructs that must be treated as a single command.

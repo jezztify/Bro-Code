@@ -1,29 +1,29 @@
 // npx vitest run __tests__/delegation-events.spec.ts
 
-import { RooCodeEventName, rooCodeEventsSchema, taskEventSchema } from "@roo-code/types"
+import { BroCodeEventName, broCodeEventsSchema, taskEventSchema } from "@bro-code/types"
 
 describe("delegation event schemas", () => {
-	test("rooCodeEventsSchema validates tuples", () => {
-		expect(() => (rooCodeEventsSchema.shape as any)[RooCodeEventName.TaskDelegated].parse(["p", "c"])).not.toThrow()
+	test("broCodeEventsSchema validates tuples", () => {
+		expect(() => (broCodeEventsSchema.shape as any)[BroCodeEventName.TaskDelegated].parse(["p", "c"])).not.toThrow()
 		expect(() =>
-			(rooCodeEventsSchema.shape as any)[RooCodeEventName.TaskDelegationCompleted].parse(["p", "c", "s"]),
+			(broCodeEventsSchema.shape as any)[BroCodeEventName.TaskDelegationCompleted].parse(["p", "c", "s"]),
 		).not.toThrow()
 		expect(() =>
-			(rooCodeEventsSchema.shape as any)[RooCodeEventName.TaskDelegationResumed].parse(["p", "c"]),
+			(broCodeEventsSchema.shape as any)[BroCodeEventName.TaskDelegationResumed].parse(["p", "c"]),
 		).not.toThrow()
 
 		// invalid shapes
-		expect(() => (rooCodeEventsSchema.shape as any)[RooCodeEventName.TaskDelegated].parse(["p"])).toThrow()
+		expect(() => (broCodeEventsSchema.shape as any)[BroCodeEventName.TaskDelegated].parse(["p"])).toThrow()
 		expect(() =>
-			(rooCodeEventsSchema.shape as any)[RooCodeEventName.TaskDelegationCompleted].parse(["p", "c"]),
+			(broCodeEventsSchema.shape as any)[BroCodeEventName.TaskDelegationCompleted].parse(["p", "c"]),
 		).toThrow()
-		expect(() => (rooCodeEventsSchema.shape as any)[RooCodeEventName.TaskDelegationResumed].parse(["p"])).toThrow()
+		expect(() => (broCodeEventsSchema.shape as any)[BroCodeEventName.TaskDelegationResumed].parse(["p"])).toThrow()
 	})
 
 	test("taskEventSchema discriminated union includes delegation events", () => {
 		expect(() =>
 			taskEventSchema.parse({
-				eventName: RooCodeEventName.TaskDelegated,
+				eventName: BroCodeEventName.TaskDelegated,
 				payload: ["p", "c"],
 				taskId: 1,
 			}),
@@ -31,7 +31,7 @@ describe("delegation event schemas", () => {
 
 		expect(() =>
 			taskEventSchema.parse({
-				eventName: RooCodeEventName.TaskDelegationCompleted,
+				eventName: BroCodeEventName.TaskDelegationCompleted,
 				payload: ["p", "c", "s"],
 				taskId: 1,
 			}),
@@ -39,7 +39,7 @@ describe("delegation event schemas", () => {
 
 		expect(() =>
 			taskEventSchema.parse({
-				eventName: RooCodeEventName.TaskDelegationResumed,
+				eventName: BroCodeEventName.TaskDelegationResumed,
 				payload: ["p", "c"],
 				taskId: 1,
 			}),

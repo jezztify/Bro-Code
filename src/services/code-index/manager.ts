@@ -9,13 +9,13 @@ import { CodeIndexSearchService } from "./search-service"
 import { CodeIndexOrchestrator } from "./orchestrator"
 import { CacheManager } from "./cache-manager"
 import { SembleProvider } from "./semble"
-import { RooIgnoreController } from "../../core/ignore/RooIgnoreController"
+import { BroIgnoreController } from "../../core/ignore/BroIgnoreController"
 import fs from "fs/promises"
 import ignore from "ignore"
 import path from "path"
 import { t } from "../../i18n"
-import { TelemetryService } from "@roo-code/telemetry"
-import { TelemetryEventName } from "@roo-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
+import { TelemetryEventName } from "@bro-code/types"
 
 export class CodeIndexManager {
 	// --- Singleton Implementation ---
@@ -440,16 +440,16 @@ export class CodeIndexManager {
 			})
 		}
 
-		// Create RooIgnoreController instance
-		const rooIgnoreController = new RooIgnoreController(workspacePath)
-		await rooIgnoreController.initialize()
+		// Create BroIgnoreController instance
+		const broIgnoreController = new BroIgnoreController(workspacePath)
+		await broIgnoreController.initialize()
 
 		// (Re)Create shared service instances
 		const { embedder, vectorStore, scanner, fileWatcher } = this._serviceFactory.createServices(
 			this.context,
 			this._cacheManager!,
 			ignoreInstance,
-			rooIgnoreController,
+			broIgnoreController,
 		)
 
 		// Validate embedder configuration before proceeding

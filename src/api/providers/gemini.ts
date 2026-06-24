@@ -13,8 +13,8 @@ import {
 	geminiDefaultModelId,
 	geminiModels,
 	ApiProviderError,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@bro-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 

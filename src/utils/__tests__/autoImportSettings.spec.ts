@@ -155,7 +155,7 @@ describe("autoImportSettings", () => {
 	})
 
 	it("should skip auto-import when settings file does not exist", async () => {
-		const settingsPath = "~/Documents/roo-config.json"
+		const settingsPath = "~/Documents/bro-config.json"
 		vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
 			get: vi.fn().mockReturnValue(settingsPath),
 		} as any)
@@ -170,10 +170,10 @@ describe("autoImportSettings", () => {
 		})
 
 		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
-			"[AutoImport] Checking for settings file at: /home/user/Documents/roo-config.json",
+			"[AutoImport] Checking for settings file at: /home/user/Documents/bro-config.json",
 		)
 		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
-			"[AutoImport] Settings file not found at /home/user/Documents/roo-config.json, skipping auto-import",
+			"[AutoImport] Settings file not found at /home/user/Documents/bro-config.json, skipping auto-import",
 		)
 		expect(mockProviderSettingsManager.import).not.toHaveBeenCalled()
 	})
@@ -241,7 +241,7 @@ describe("autoImportSettings", () => {
 				},
 			},
 			globalSettings: {
-				imageGenerationProvider: "roo",
+				imageGenerationProvider: "bro",
 				customInstructions: "Test instructions",
 			},
 		}
@@ -260,7 +260,7 @@ describe("autoImportSettings", () => {
 		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith("[AutoImport] Import completed with 1 warning.")
 		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
 			expect.stringContaining(
-				'[AutoImport] Warning: Setting "globalSettings.imageGenerationProvider" used unsupported value "roo"',
+				'[AutoImport] Warning: Setting "globalSettings.imageGenerationProvider" used unsupported value "bro"',
 			),
 		)
 		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("info.auto_import_success")

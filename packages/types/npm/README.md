@@ -1,21 +1,21 @@
-# Zoo Code API
+# Bro Code API
 
-The Zoo Code extension exposes an API that can be used by other extensions.
+The Bro Code extension exposes an API that can be used by other extensions.
 
 > Note: The npm package and exported API type names intentionally retain the
-> legacy `@roo-code` and `RooCodeAPI` names for backward compatibility after the
-> extension rebrand to Zoo Code.
+> legacy `@bro-code` and `BroCodeAPI` names for backward compatibility after the
+> extension rebrand to Bro Code.
 
 To use this API in your extension:
 
-1. Install `@roo-code/types` with npm, pnpm, or yarn.
-2. Import the `RooCodeAPI` type.
+1. Install `@bro-code/types` with npm, pnpm, or yarn.
+2. Import the `BroCodeAPI` type.
 3. Load the extension API.
 
 ```typescript
-import { RooCodeAPI } from "@roo-code/types"
+import { BroCodeAPI } from "@bro-code/types"
 
-const extension = vscode.extensions.getExtension<RooCodeAPI>("ZooCodeOrganization.zoo-code")
+const extension = vscode.extensions.getExtension<BroCodeAPI>("BroCodeOrganization.bro-code")
 
 if (!extension?.isActive) {
 	throw new Error("Extension is not activated")
@@ -28,7 +28,7 @@ if (!api) {
 }
 
 // Start a new task with an initial message.
-await api.startNewTask("Hello, Zoo Code API! Let's make a new project...")
+await api.startNewTask("Hello, Bro Code API! Let's make a new project...")
 
 // Start a new task with an initial message and images.
 await api.startNewTask("Use this design language", ["data:image/webp;base64,..."])
@@ -43,10 +43,10 @@ await api.pressPrimaryButton()
 await api.pressSecondaryButton()
 ```
 
-**NOTE:** To ensure that the `ZooCodeOrganization.zoo-code` extension is activated before your extension, add it to the `extensionDependencies` in your `package.json`:
+**NOTE:** To ensure that the `BroCodeOrganization.bro-code` extension is activated before your extension, add it to the `extensionDependencies` in your `package.json`:
 
 ```json
-"extensionDependencies": ["ZooCodeOrganization.zoo-code"]
+"extensionDependencies": ["BroCodeOrganization.bro-code"]
 ```
 
 For detailed information on the available methods and their usage, refer to the generated declarations in `dist/index.d.ts` or the source types in `packages/types/src/index.ts`.

@@ -2,8 +2,8 @@
 
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import type { ModelInfo } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import type { ModelInfo } from "@bro-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
 
 import { BaseProvider } from "../../../api/providers/base-provider"
 import { ApiMessage } from "../../task-persistence/apiMessages"
@@ -849,9 +849,9 @@ describe("Context Management", () => {
 	})
 
 	/**
-	 * Tests for filesReadByRoo being passed to summarizeConversation
+	 * Tests for filesReadByBro being passed to summarizeConversation
 	 */
-	describe("filesReadByRoo parameters", () => {
+	describe("filesReadByBro parameters", () => {
 		const createModelInfo = (contextWindow: number, maxTokens?: number): ModelInfo => ({
 			contextWindow,
 			supportsPromptCache: true,
@@ -866,7 +866,7 @@ describe("Context Management", () => {
 			{ role: "user", content: "Fifth message" },
 		]
 
-		it("should pass filesReadByRoo, cwd, and rooIgnoreController to summarizeConversation when provided", async () => {
+		it("should pass filesReadByBro, cwd, and broIgnoreController to summarizeConversation when provided", async () => {
 			// Mock the summarizeConversation function
 			const mockSummary = "Summary with folded context"
 			const mockCost = 0.05
@@ -892,11 +892,11 @@ describe("Context Management", () => {
 				{ ...messages[messages.length - 1], content: "" },
 			]
 
-			const filesReadByRoo = ["src/test.ts", "src/utils.ts"]
+			const filesReadByBro = ["src/test.ts", "src/utils.ts"]
 			const cwd = "/test/project"
-			const mockRooIgnoreController = {
+			const mockBroIgnoreController = {
 				filterPaths: vi.fn(),
-			} as unknown as import("../../ignore/RooIgnoreController").RooIgnoreController
+			} as unknown as import("../../ignore/BroIgnoreController").BroIgnoreController
 
 			const result = await manageContext({
 				messages: messagesWithSmallContent,
@@ -910,21 +910,21 @@ describe("Context Management", () => {
 				taskId,
 				profileThresholds: {},
 				currentProfileId: "default",
-				filesReadByRoo,
+				filesReadByBro,
 				cwd,
-				rooIgnoreController: mockRooIgnoreController,
+				broIgnoreController: mockBroIgnoreController,
 			})
 
-			// Verify summarizeConversation was called with filesReadByRoo, cwd, and rooIgnoreController
+			// Verify summarizeConversation was called with filesReadByBro, cwd, and broIgnoreController
 			expect(summarizeSpy).toHaveBeenCalledWith({
 				messages: messagesWithSmallContent,
 				apiHandler: mockApiHandler,
 				systemPrompt: "System prompt",
 				taskId,
 				isAutomaticTrigger: true,
-				filesReadByRoo,
+				filesReadByBro,
 				cwd,
-				rooIgnoreController: mockRooIgnoreController,
+				broIgnoreController: mockBroIgnoreController,
 			})
 
 			// Verify the result contains the summary information
@@ -939,7 +939,7 @@ describe("Context Management", () => {
 			summarizeSpy.mockRestore()
 		})
 
-		it("should pass undefined filesReadByRoo parameters when not provided", async () => {
+		it("should pass undefined filesReadByBro parameters when not provided", async () => {
 			// Mock the summarizeConversation function
 			const mockSummary = "Summary without folded context"
 			const mockCost = 0.03
@@ -977,7 +977,7 @@ describe("Context Management", () => {
 				taskId,
 				profileThresholds: {},
 				currentProfileId: "default",
-				// filesReadByRoo, cwd, rooIgnoreController are NOT provided
+				// filesReadByBro, cwd, broIgnoreController are NOT provided
 			})
 
 			// Verify summarizeConversation was called with undefined parameters
@@ -999,7 +999,7 @@ describe("Context Management", () => {
 			summarizeSpy.mockRestore()
 		})
 
-		it("should pass empty array filesReadByRoo when provided as empty", async () => {
+		it("should pass empty array filesReadByBro when provided as empty", async () => {
 			// Mock the summarizeConversation function
 			const mockSummary = "Summary with empty file list"
 			const mockCost = 0.04
@@ -1037,7 +1037,7 @@ describe("Context Management", () => {
 				taskId,
 				profileThresholds: {},
 				currentProfileId: "default",
-				filesReadByRoo: [], // Empty array
+				filesReadByBro: [], // Empty array
 				cwd: "/test/project",
 			})
 
@@ -1048,7 +1048,7 @@ describe("Context Management", () => {
 				systemPrompt: "System prompt",
 				taskId,
 				isAutomaticTrigger: true,
-				filesReadByRoo: [],
+				filesReadByBro: [],
 				cwd: "/test/project",
 			})
 

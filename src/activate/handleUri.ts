@@ -2,30 +2,30 @@ import * as vscode from "vscode"
 
 import { getRouterUnavailableSignInMessage } from "../core/config/routerRemoval"
 import { ClineProvider } from "../core/webview/ClineProvider"
-import { handleAuthCallback as handleZooCodeAuthCallback, setZooCodeUserInfo } from "../services/zoo-code-auth"
+import { handleAuthCallback as handleBroCodeAuthCallback, setBroCodeUserInfo } from "../services/bro-code-auth"
 
 /**
- * Persist the Zoo Code session token to every active provider instance.
+ * Persist the Bro Code session token to every active provider instance.
  *
- * The profile settings write (handleZooCodeCallback) must run on any active
- * instance — not just the visible one — so the zoo-gateway zooSessionToken is
+ * The profile settings write (handleBroCodeCallback) must run on any active
+ * instance — not just the visible one — so the bro-gateway broSessionToken is
  * persisted even when the sidebar/panel is hidden at callback time.
  *
- * Run sequentially (NOT Promise.all): each ClineProvider's handleZooCodeCallback
+ * Run sequentially (NOT Promise.all): each ClineProvider's handleBroCodeCallback
  * does a read-modify-write on the same backing provider settings store
  * (listConfig → getProfile → saveConfig / upsertProviderProfile). Fanning out
  * concurrently across N instances can interleave reads/writes and clobber
  * updates. Serialization is cheap (at most a handful of instances) and avoids
  * the race.
  */
-async function propagateZooGatewayCallback(token: string): Promise<void> {
+async function propagateBroGatewayCallback(token: string): Promise<void> {
 	const allInstances = ClineProvider.getAllInstances()
 	for (const instance of allInstances) {
 		try {
-			await instance.handleZooCodeCallback(token)
+			await instance.handleBroCodeCallback(token)
 		} catch (error) {
 			console.error(
-				"Failed to persist Zoo Gateway token for a provider instance:",
+				"Failed to persist Bro Gateway token for a provider instance:",
 				error instanceof Error ? error.message : error,
 			)
 		}
@@ -69,16 +69,16 @@ export const handleUri = async (uri: vscode.Uri) => {
 				const email = query.get("email") ?? null
 				const image = query.get("image") ?? null
 
-				const success = await handleZooCodeAuthCallback(token)
+				const success = await handleBroCodeAuthCallback(token)
 				if (success) {
 					// Store user info after successful auth validation (regardless of webview visibility)
-					// Always call setZooCodeUserInfo to clear stale data when fields are missing
-					await setZooCodeUserInfo({
+					// Always call setBroCodeUserInfo to clear stale data when fields are missing
+					await setBroCodeUserInfo({
 						name,
 						email,
 						image,
 					})
-					await propagateZooGatewayCallback(token)
+					await propagateBroGatewayCallback(token)
 				}
 			}
 			break

@@ -1,6 +1,6 @@
 import { LLM, LLMInfo, LLMInstanceInfo, LMStudioClient } from "@lmstudio/sdk"
 
-import { type ModelInfo, lMStudioDefaultModelInfo } from "@roo-code/types"
+import { type ModelInfo, lMStudioDefaultModelInfo } from "@bro-code/types"
 
 import { flushModels, getModels } from "./modelCache"
 import { lmStudioFetch, type LmStudioProxyOptions } from "../utils/lmstudio-proxy"

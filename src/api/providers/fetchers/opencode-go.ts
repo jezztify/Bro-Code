@@ -1,8 +1,8 @@
 import axios from "axios"
 import { z } from "zod"
 
-import type { ModelInfo } from "@roo-code/types"
-import { opencodeGoDefaultModelInfo, getOpencodeGoModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@bro-code/types"
+import { opencodeGoDefaultModelInfo, getOpencodeGoModelInfo } from "@bro-code/types"
 
 const OPENCODE_GO_BASE_URL = "https://opencode.ai/zen/go/v1"
 

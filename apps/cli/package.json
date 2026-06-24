@@ -1,12 +1,12 @@
 {
-	"name": "@roo-code/cli",
+	"name": "@bro-code/cli",
 	"version": "0.1.17",
-	"description": "Roo Code CLI - Run the Roo Code agent from the command line",
+	"description": "Bro Code CLI - Run the Bro Code agent from the command line",
 	"private": true,
 	"type": "module",
 	"main": "dist/index.js",
 	"bin": {
-		"roo": "dist/index.js"
+		"bro": "dist/index.js"
 	},
 	"scripts": {
 		"format": "prettier --write 'src/**/*.ts'",
@@ -17,15 +17,15 @@
 		"test:integration": "tsx scripts/integration/run.ts",
 		"build": "tsup",
 		"build:extension": "pnpm --filter ./src bundle",
-		"dev": "ROO_AUTH_BASE_URL=https://app.roocode.com ROO_SDK_BASE_URL=https://cloud-api.roocode.com ROO_CODE_PROVIDER_URL=https://api.roocode.com/proxy tsx src/index.ts",
-		"dev:local": "ROO_AUTH_BASE_URL=http://localhost:3000 ROO_SDK_BASE_URL=http://localhost:3001 ROO_CODE_PROVIDER_URL=http://localhost:8080/proxy tsx src/index.ts",
+		"dev": "BRO_AUTH_BASE_URL=https://app.brocode.com BRO_SDK_BASE_URL=https://cloud-api.brocode.com BRO_CODE_PROVIDER_URL=https://api.brocode.com/proxy tsx src/index.ts",
+		"dev:local": "BRO_AUTH_BASE_URL=http://localhost:3000 BRO_SDK_BASE_URL=http://localhost:3001 BRO_CODE_PROVIDER_URL=http://localhost:8080/proxy tsx src/index.ts",
 		"clean": "rimraf dist .turbo"
 	},
 	"dependencies": {
 		"@inkjs/ui": "^2.0.0",
-		"@roo-code/core": "workspace:^",
-		"@roo-code/types": "workspace:^",
-		"@roo-code/vscode-shim": "workspace:^",
+		"@bro-code/core": "workspace:^",
+		"@bro-code/types": "workspace:^",
+		"@bro-code/vscode-shim": "workspace:^",
 		"@trpc/client": "^11.8.1",
 		"@vscode/ripgrep": "^1.15.9",
 		"commander": "^12.1.0",
@@ -38,8 +38,8 @@
 		"zustand": "^5.0.0"
 	},
 	"devDependencies": {
-		"@roo-code/config-eslint": "workspace:^",
-		"@roo-code/config-typescript": "workspace:^",
+		"@bro-code/config-eslint": "workspace:^",
+		"@bro-code/config-typescript": "workspace:^",
 		"@types/node": "20.19.43",
 		"@types/react": "18.3.31",
 		"@vitest/coverage-v8": "4.1.9",

@@ -3,14 +3,14 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { BroCodeEventName, type ClineMessage } from "@bro-code/types"
 
 import { waitFor, sleep } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
 
 const TEST_DIR_NAME = "search-files-tool-fixture"
 
-suite("Roo Code search_files Tool", function () {
+suite("Bro Code search_files Tool", function () {
 	setDefaultSuiteTimeout(this)
 
 	let workspaceDir: string
@@ -303,7 +303,7 @@ The search should find matches across different file types and provide context f
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -311,7 +311,7 @@ The search should find matches across different file types and provide context f
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -345,8 +345,8 @@ The search should find matches across different file types and provide context f
 			console.log("Test passed! Function definitions found successfully with validated results")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -359,7 +359,7 @@ The search should find matches across different file types and provide context f
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -367,7 +367,7 @@ The search should find matches across different file types and provide context f
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -399,8 +399,8 @@ The search should find matches across different file types and provide context f
 			console.log("Test passed! TODO comments found successfully")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -413,7 +413,7 @@ The search should find matches across different file types and provide context f
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -421,7 +421,7 @@ The search should find matches across different file types and provide context f
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -451,8 +451,8 @@ The search should find matches across different file types and provide context f
 			console.log("Test passed! TypeScript interfaces found with file pattern filter")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -465,7 +465,7 @@ The search should find matches across different file types and provide context f
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -473,7 +473,7 @@ The search should find matches across different file types and provide context f
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -506,8 +506,8 @@ The search should find matches across different file types and provide context f
 			console.log("Test passed! JSON configuration keys found successfully")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -520,7 +520,7 @@ The search should find matches across different file types and provide context f
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -528,7 +528,7 @@ The search should find matches across different file types and provide context f
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -558,8 +558,8 @@ The search should find matches across different file types and provide context f
 			console.log("Test passed! Nested directory search completed successfully")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -572,7 +572,7 @@ The search should find matches across different file types and provide context f
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -580,7 +580,7 @@ The search should find matches across different file types and provide context f
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -610,8 +610,8 @@ The search should find matches across different file types and provide context f
 			console.log("Test passed! Complex regex pattern search completed successfully")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -629,7 +629,7 @@ The search should find matches across different file types and provide context f
 				console.log("AI completion message:", message.text?.substring(0, 300))
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -637,7 +637,7 @@ The search should find matches across different file types and provide context f
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -690,8 +690,8 @@ The search should find matches across different file types and provide context f
 			console.log("Test passed! No-match scenario handled correctly")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -704,7 +704,7 @@ The search should find matches across different file types and provide context f
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -712,7 +712,7 @@ The search should find matches across different file types and provide context f
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -745,8 +745,8 @@ The search should find matches across different file types and provide context f
 			console.log("Test passed! Class definitions and async methods found successfully")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 })

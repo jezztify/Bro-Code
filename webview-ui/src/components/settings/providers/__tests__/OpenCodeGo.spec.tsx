@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, act } from "@testing-library/react"
 
-import type { ProviderSettings, OrganizationAllowList } from "@roo-code/types"
-import { opencodeGoDefaultModelId } from "@roo-code/types"
+import type { ProviderSettings, OrganizationAllowList } from "@bro-code/types"
+import { opencodeGoDefaultModelId } from "@bro-code/types"
 
 import { OpenCodeGo } from "../OpenCodeGo"
 

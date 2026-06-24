@@ -1,6 +1,6 @@
 {
 	"extension": {
-		"name": "Zoo Code",
+		"name": "Bro Code",
 		"description": "Целая команда ИИ-разработчиков в вашем редакторе."
 	},
 	"number_format": {
@@ -111,9 +111,9 @@
 			"thinking_complete_safety": "(Размышление завершено, но вывод заблокирован настройками безопасности.)",
 			"thinking_complete_recitation": "(Размышление завершено, но вывод заблокирован проверкой цитирования.)"
 		},
-		"roo": {
-			"authenticationRequired": "Провайдер Roo требует облачной аутентификации. Войдите в Roo Code Cloud.",
-			"routerRemoved": "Roo Code Router был удалён. Выберите и настройте другого провайдера."
+		"bro": {
+			"authenticationRequired": "Провайдер Bro требует облачной аутентификации. Войдите в Bro Code Cloud.",
+			"routerRemoved": "Bro Code Router был удалён. Выберите и настройте другого провайдера."
 		},
 		"api": {
 			"invalidKeyInvalidChars": "API-ключ содержит недопустимые символы.",
@@ -142,16 +142,16 @@
 			"unexpectedStreamError": "Unexpected error processing response stream",
 			"completionError": "OpenAI Codex completion error: {{message}}"
 		},
-		"rooHistoryImport": "Ошибка импорта истории Roo Code: {{error}}"
+		"broHistoryImport": "Ошибка импорта истории Roo Code: {{error}}"
 	},
 	"warnings": {
 		"no_terminal_content": "Не выбрано содержимое терминала",
 		"missing_task_files": "Файлы этой задачи отсутствуют. Хотите удалить её из списка задач?",
-		"auto_import_failed": "Не удалось автоматически импортировать настройки ZooCode: {{error}}",
-		"rooHistoryImport": {
+		"auto_import_failed": "Не удалось автоматически импортировать настройки BroCode: {{error}}",
+		"broHistoryImport": {
 			"nothingFound": "История задач Roo Code для импорта из {{domain}} не найдена.",
-			"alreadyImported_one": "{{count}} история задач Roo Code уже импортирована в Zoo Code.",
-			"alreadyImported_other": "Все {{count}} истории задач Roo Code уже импортированы в Zoo Code."
+			"alreadyImported_one": "{{count}} история задач Roo Code уже импортирована в Bro Code.",
+			"alreadyImported_other": "Все {{count}} истории задач Roo Code уже импортированы в Bro Code."
 		}
 	},
 	"info": {
@@ -161,7 +161,7 @@
 		"custom_storage_path_set": "Установлен пользовательский путь хранения: {{path}}",
 		"default_storage_path": "Возвращено использование пути хранения по умолчанию",
 		"settings_imported": "Настройки успешно импортированы.",
-		"auto_import_success": "Настройки ZooCode автоматически импортированы из {{filename}}",
+		"auto_import_success": "Настройки BroCode автоматически импортированы из {{filename}}",
 		"share_link_copied": "Ссылка для совместного использования скопирована в буфер обмена",
 		"image_copied_to_clipboard": "URI данных изображения скопирован в буфер обмена",
 		"image_saved": "Изображение сохранено в {{path}}",
@@ -169,12 +169,12 @@
 		"public_share_link_copied": "Публичная ссылка для совместного доступа скопирована в буфер обмена!",
 		"mode_exported": "Режим '{{mode}}' успешно экспортирован",
 		"mode_imported": "Режим успешно импортирован",
-		"roo": {
-			"signInUnavailable": "Вход в Roo Code Cloud сейчас недоступен. Настрой другого провайдера, чтобы продолжить."
+		"bro": {
+			"signInUnavailable": "Вход в Bro Code Cloud сейчас недоступен. Настрой другого провайдера, чтобы продолжить."
 		},
-		"rooHistoryImport": {
-			"success_one": "{{count}} история задач Roo Code импортирована в Zoo Code.",
-			"success_other": "{{count}} историй задач Roo Code импортировано в Zoo Code."
+		"broHistoryImport": {
+			"success_one": "{{count}} история задач Roo Code импортирована в Bro Code.",
+			"success_other": "{{count}} историй задач Roo Code импортировано в Bro Code."
 		}
 	},
 	"answers": {
@@ -201,12 +201,12 @@
 	},
 	"storage": {
 		"prompt_custom_path": "Введите пользовательский путь хранения истории разговоров, оставьте пустым для использования расположения по умолчанию",
-		"path_placeholder": "D:\\ZooCodeStorage",
-		"enter_absolute_path": "Пожалуйста, введите абсолютный путь (например, D:\\ZooCodeStorage или /home/user/storage)",
+		"path_placeholder": "D:\\BroCodeStorage",
+		"enter_absolute_path": "Пожалуйста, введите абсолютный путь (например, D:\\BroCodeStorage или /home/user/storage)",
 		"enter_valid_path": "Пожалуйста, введите корректный путь"
 	},
 	"input": {
-		"task_prompt": "Что должен сделать Zoo?",
+		"task_prompt": "Что должен сделать Bro?",
 		"task_placeholder": "Введите вашу задачу здесь"
 	},
 	"settings": {
@@ -214,8 +214,8 @@
 	},
 	"customModes": {
 		"errors": {
-			"yamlParseError": "Недопустимый YAML в файле .roomodes на строке {{line}}. Проверь:\n• Правильные отступы (используй пробелы, не табы)\n• Соответствующие кавычки и скобки\n• Допустимый синтаксис YAML",
-			"schemaValidationError": "Недопустимый формат пользовательских режимов в .roomodes:\n{{issues}}",
+			"yamlParseError": "Недопустимый YAML в файле .bromodes на строке {{line}}. Проверь:\n• Правильные отступы (используй пробелы, не табы)\n• Соответствующие кавычки и скобки\n• Допустимый синтаксис YAML",
+			"schemaValidationError": "Недопустимый формат пользовательских режимов в .bromodes:\n{{issues}}",
 			"invalidFormat": "Недопустимый формат пользовательских режимов. Убедись, что твои настройки соответствуют правильному формату YAML.",
 			"updateFailed": "Не удалось обновить пользовательский режим: {{error}}",
 			"deleteFailed": "Не удалось удалить пользовательский режим: {{error}}",
@@ -236,8 +236,8 @@
 	},
 	"mdm": {
 		"errors": {
-			"cloud_auth_required": "Ваша организация требует аутентификации Zoo Code Cloud. Войдите в систему, чтобы продолжить.",
-			"organization_mismatch": "Вы должны быть аутентифицированы с учетной записью Zoo Code Cloud вашей организации.",
+			"cloud_auth_required": "Ваша организация требует аутентификации Bro Code Cloud. Войдите в систему, чтобы продолжить.",
+			"organization_mismatch": "Вы должны быть аутентифицированы с учетной записью Bro Code Cloud вашей организации.",
 			"manual_url_empty": "Введи действительный URL обратного вызова",
 			"manual_url_no_query": "Недействительный URL обратного вызова: отсутствуют параметры запроса",
 			"manual_url_missing_params": "Недействительный URL обратного вызова: отсутствуют обязательные параметры (code и state)",
@@ -264,22 +264,22 @@
 	},
 	"docsLink": {
 		"label": "Docs",
-		"url": "https://docs.zoocode.dev"
+		"url": "https://docs.brocode.dev"
 	},
-	"zooAuth": {
+	"broAuth": {
 		"errors": {
-			"invalid_token_received": "Zoo Code: Получен недействительный token аутентификации.",
-			"token_verification_failed": "Zoo Code: Не удалось проверить token.",
-			"invalid_token": "Zoo Code: Недействительный token.",
-			"could_not_verify_token": "Zoo Code: Не удалось проверить token.",
-			"session_expired": "Сессия Zoo Code истекла. Войдите снова, чтобы продолжить использовать Zoo Gateway.",
-			"out_of_credits": "Zoo Gateway: недостаточно кредитов. Добавьте кредиты, чтобы продолжить.",
-			"account_unavailable": "Zoo Gateway: ваша учётная запись сейчас недоступна. Обратитесь в поддержку.",
-			"budget_exceeded": "Zoo Gateway: лимит использования достигнут. Дождитесь сброса или пополните счёт."
+			"invalid_token_received": "Bro Code: Получен недействительный token аутентификации.",
+			"token_verification_failed": "Bro Code: Не удалось проверить token.",
+			"invalid_token": "Bro Code: Недействительный token.",
+			"could_not_verify_token": "Bro Code: Не удалось проверить token.",
+			"session_expired": "Сессия Bro Code истекла. Войдите снова, чтобы продолжить использовать Bro Gateway.",
+			"out_of_credits": "Bro Gateway: недостаточно кредитов. Добавьте кредиты, чтобы продолжить.",
+			"account_unavailable": "Bro Gateway: ваша учётная запись сейчас недоступна. Обратитесь в поддержку.",
+			"budget_exceeded": "Bro Gateway: лимит использования достигнут. Дождитесь сброса или пополните счёт."
 		},
 		"info": {
-			"connected": "Zoo Code: Успешно подключено! Теперь ты можешь использовать Zoo Code в качестве AI-провайдера.",
-			"disconnected": "Zoo Code: Успешно отключено."
+			"connected": "Bro Code: Успешно подключено! Теперь ты можешь использовать Bro Code в качестве AI-провайдера.",
+			"disconnected": "Bro Code: Успешно отключено."
 		},
 		"buttons": {
 			"sign_in": "Войти",
@@ -288,9 +288,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Объяснить с Zoo Code",
-		"fix": "Исправить с Zoo Code",
-		"improve": "Улучшить с Zoo Code",
-		"addToContext": "Добавить в Zoo Code"
+		"explain": "Объяснить с Bro Code",
+		"fix": "Исправить с Bro Code",
+		"improve": "Улучшить с Bro Code",
+		"addToContext": "Добавить в Bro Code"
 	}
 }

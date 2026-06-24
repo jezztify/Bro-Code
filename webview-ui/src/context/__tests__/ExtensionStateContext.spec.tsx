@@ -8,23 +8,23 @@ import {
 	type ClineMessage,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
-} from "@roo-code/types"
+} from "@bro-code/types"
 
 import { ExtensionStateContextProvider, useExtensionState, mergeExtensionState } from "../ExtensionStateContext"
 
 const TestComponent = () => {
-	const { allowedCommands, setAllowedCommands, soundEnabled, showRooIgnoredFiles, setShowRooIgnoredFiles } =
+	const { allowedCommands, setAllowedCommands, soundEnabled, showBroIgnoredFiles, setShowBroIgnoredFiles } =
 		useExtensionState()
 
 	return (
 		<div>
 			<div data-testid="allowed-commands">{JSON.stringify(allowedCommands)}</div>
 			<div data-testid="sound-enabled">{JSON.stringify(soundEnabled)}</div>
-			<div data-testid="show-rooignored-files">{JSON.stringify(showRooIgnoredFiles)}</div>
+			<div data-testid="show-broignored-files">{JSON.stringify(showBroIgnoredFiles)}</div>
 			<button data-testid="update-button" onClick={() => setAllowedCommands(["npm install", "git status"])}>
 				Update Commands
 			</button>
-			<button data-testid="toggle-rooignore-button" onClick={() => setShowRooIgnoredFiles(!showRooIgnoredFiles)}>
+			<button data-testid="toggle-broignore-button" onClick={() => setShowBroIgnoredFiles(!showBroIgnoredFiles)}>
 				Update Commands
 			</button>
 		</div>
@@ -171,17 +171,17 @@ describe("ExtensionStateContext", () => {
 		expect(JSON.parse(screen.getByTestId("sound-enabled").textContent!)).toBe(false)
 	})
 
-	it("initializes with showRooIgnoredFiles set to true", () => {
+	it("initializes with showBroIgnoredFiles set to true", () => {
 		render(
 			<ExtensionStateContextProvider>
 				<TestComponent />
 			</ExtensionStateContextProvider>,
 		)
 
-		expect(JSON.parse(screen.getByTestId("show-rooignored-files").textContent!)).toBe(true)
+		expect(JSON.parse(screen.getByTestId("show-broignored-files").textContent!)).toBe(true)
 	})
 
-	it("updates showRooIgnoredFiles through setShowRooIgnoredFiles", () => {
+	it("updates showBroIgnoredFiles through setShowBroIgnoredFiles", () => {
 		render(
 			<ExtensionStateContextProvider>
 				<TestComponent />
@@ -189,14 +189,14 @@ describe("ExtensionStateContext", () => {
 		)
 
 		act(() => {
-			screen.getByTestId("toggle-rooignore-button").click()
+			screen.getByTestId("toggle-broignore-button").click()
 		})
 
-		expect(JSON.parse(screen.getByTestId("show-rooignored-files").textContent!)).toBe(false)
+		expect(JSON.parse(screen.getByTestId("show-broignored-files").textContent!)).toBe(false)
 	})
 
 	it("does not set the chat font-size CSS variable when unset (init)", () => {
-		document.documentElement.style.removeProperty("--zoo-chat-font-size")
+		document.documentElement.style.removeProperty("--bro-chat-font-size")
 
 		render(
 			<ExtensionStateContextProvider>
@@ -205,11 +205,11 @@ describe("ExtensionStateContext", () => {
 		)
 
 		expect(JSON.parse(screen.getByTestId("chat-font-size").textContent!)).toBe(null)
-		expect(document.documentElement.style.getPropertyValue("--zoo-chat-font-size")).toBe("")
+		expect(document.documentElement.style.getPropertyValue("--bro-chat-font-size")).toBe("")
 	})
 
 	it("applies the chat font-size CSS variable when set, and clears it on reset", () => {
-		document.documentElement.style.removeProperty("--zoo-chat-font-size")
+		document.documentElement.style.removeProperty("--bro-chat-font-size")
 
 		render(
 			<ExtensionStateContextProvider>
@@ -222,14 +222,14 @@ describe("ExtensionStateContext", () => {
 		})
 
 		expect(JSON.parse(screen.getByTestId("chat-font-size").textContent!)).toBe(20)
-		expect(document.documentElement.style.getPropertyValue("--zoo-chat-font-size")).toBe("20px")
+		expect(document.documentElement.style.getPropertyValue("--bro-chat-font-size")).toBe("20px")
 
 		act(() => {
 			screen.getByTestId("reset-font-size-button").click()
 		})
 
 		expect(JSON.parse(screen.getByTestId("chat-font-size").textContent!)).toBe(null)
-		expect(document.documentElement.style.getPropertyValue("--zoo-chat-font-size")).toBe("")
+		expect(document.documentElement.style.getPropertyValue("--bro-chat-font-size")).toBe("")
 	})
 
 	it("updates allowedCommands through setAllowedCommands", () => {
@@ -340,7 +340,7 @@ describe("mergeExtensionState", () => {
 			maxWorkspaceFiles: 100,
 			apiConfiguration: { providerId: "openrouter" } as ProviderSettings,
 			telemetrySetting: "unset",
-			showRooIgnoredFiles: true,
+			showBroIgnoredFiles: true,
 			enableSubfolderRules: false,
 			renderContext: "sidebar",
 			cloudUserInfo: null,
@@ -410,7 +410,7 @@ describe("mergeExtensionState", () => {
 			maxWorkspaceFiles: 100,
 			apiConfiguration: {},
 			telemetrySetting: "unset",
-			showRooIgnoredFiles: true,
+			showBroIgnoredFiles: true,
 			enableSubfolderRules: false,
 			renderContext: "sidebar",
 			cloudUserInfo: null,

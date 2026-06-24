@@ -1,4 +1,4 @@
-import { type SerializedCustomToolDefinition, parametersSchema } from "@roo-code/types"
+import { type SerializedCustomToolDefinition, parametersSchema } from "@bro-code/types"
 
 import type { StoredCustomTool } from "./types.js"
 

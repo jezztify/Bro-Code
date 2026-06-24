@@ -11,7 +11,7 @@ vitest.mock("vscode", () => ({
 
 const mockCaptureException = vitest.fn()
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@bro-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureException: (...args: unknown[]) => mockCaptureException(...args),

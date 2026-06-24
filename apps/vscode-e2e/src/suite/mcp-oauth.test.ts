@@ -74,7 +74,7 @@ function handleMcpRequest(req: http.IncomingMessage, res: http.ServerResponse, e
 	})
 }
 
-suite("Roo Code MCP OAuth", function () {
+suite("Bro Code MCP OAuth", function () {
 	setDefaultSuiteTimeout(this)
 
 	let tempDir: string
@@ -90,7 +90,7 @@ suite("Roo Code MCP OAuth", function () {
 		// without needing a real browser redirect.
 		process.env.MCP_OAUTH_TEST_MODE = "true"
 
-		tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "roo-test-mcp-oauth-"))
+		tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "bro-test-mcp-oauth-"))
 
 		mockServer = http.createServer((req, res) => {
 			const url = req.url || ""
@@ -198,10 +198,10 @@ suite("Roo Code MCP OAuth", function () {
 		})
 
 		const workspaceDir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || tempDir
-		const rooDir = path.join(workspaceDir, ".roo")
-		await fs.mkdir(rooDir, { recursive: true })
+		const broDir = path.join(workspaceDir, ".bro")
+		await fs.mkdir(broDir, { recursive: true })
 
-		testFiles = { mcpConfig: path.join(rooDir, "mcp.json") }
+		testFiles = { mcpConfig: path.join(broDir, "mcp.json") }
 		// Config is written by each test to control when the connection starts,
 		// ensuring all endpoint hits are captured after endpointsHit is cleared.
 
@@ -230,12 +230,12 @@ suite("Roo Code MCP OAuth", function () {
 			}
 		}
 
-		// Only remove .roo/mcp.json if it's inside the ephemeral tempDir — never
+		// Only remove .bro/mcp.json if it's inside the ephemeral tempDir — never
 		// touch a real workspace's config.
 		const workspaceDir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || tempDir
 		if (workspaceDir === tempDir || workspaceDir.startsWith(tempDir + path.sep)) {
 			try {
-				await fs.unlink(path.join(workspaceDir, ".roo", "mcp.json"))
+				await fs.unlink(path.join(workspaceDir, ".bro", "mcp.json"))
 			} catch {
 				// ignore
 			}
@@ -266,7 +266,7 @@ suite("Roo Code MCP OAuth", function () {
 	test("Should complete the full OAuth flow when connecting to an OAuth-protected MCP server", async function () {
 		// Write the config to trigger the initial connection attempt.
 		const workspaceDir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || tempDir
-		const mcpConfigPath = path.join(workspaceDir, ".roo", "mcp.json")
+		const mcpConfigPath = path.join(workspaceDir, ".bro", "mcp.json")
 
 		await fs.writeFile(
 			mcpConfigPath,
@@ -327,7 +327,7 @@ suite("Roo Code MCP OAuth", function () {
 	// full OAuth flow runs; if a token is already stored it is reused directly.
 	async function ensureOAuthTokenCached() {
 		const workspaceDir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || tempDir
-		const mcpConfigPath = path.join(workspaceDir, ".roo", "mcp.json")
+		const mcpConfigPath = path.join(workspaceDir, ".bro", "mcp.json")
 
 		await fs.writeFile(
 			mcpConfigPath,
@@ -351,7 +351,7 @@ suite("Roo Code MCP OAuth", function () {
 
 	test("Should reuse stored token on reconnect without re-running the full OAuth flow", async function () {
 		const workspaceDir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || tempDir
-		const mcpConfigPath = path.join(workspaceDir, ".roo", "mcp.json")
+		const mcpConfigPath = path.join(workspaceDir, ".bro", "mcp.json")
 
 		await ensureOAuthTokenCached()
 		endpointsHit.clear()

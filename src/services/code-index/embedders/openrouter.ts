@@ -9,8 +9,8 @@ import {
 import { getDefaultModelId, getModelQueryPrefix } from "../../../shared/embeddingModels"
 import { t } from "../../../i18n"
 import { withValidationErrorHandling, HttpError, formatEmbeddingError } from "../shared/validation-helpers"
-import { TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryEventName } from "@bro-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
 import { Mutex } from "async-mutex"
 import { handleOpenAIError } from "../../../api/providers/utils/error-handler"
 
@@ -76,8 +76,8 @@ export class OpenRouterEmbedder implements IEmbedder {
 				baseURL: this.baseUrl,
 				apiKey: apiKey,
 				defaultHeaders: {
-					"HTTP-Referer": "https://github.com/Zoo-Code-Org/Zoo-Code",
-					"X-Title": "Zoo Code",
+					"HTTP-Referer": "https://github.com/Bro-Code-Org/Bro-Code",
+					"X-Title": "Bro Code",
 				},
 			})
 		} catch (error) {

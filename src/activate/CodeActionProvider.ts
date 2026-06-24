@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 
-import { CodeActionId } from "@roo-code/types"
+import { CodeActionId } from "@bro-code/types"
 import { Package } from "../shared/package"
 
 import { getCodeActionCommand } from "../utils/commands"

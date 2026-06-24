@@ -3,7 +3,7 @@ import * as path from "path"
 import { LanguageParser, loadRequiredLanguageParsers } from "./languageParser"
 import { fileExistsAtPath } from "../../utils/fs"
 import { parseMarkdown } from "./markdownParser"
-import { RooIgnoreController } from "../../core/ignore/RooIgnoreController"
+import { BroIgnoreController } from "../../core/ignore/BroIgnoreController"
 import { QueryCapture } from "web-tree-sitter"
 
 // Private constant
@@ -96,7 +96,7 @@ export { extensions }
 
 export async function parseSourceCodeDefinitionsForFile(
 	filePath: string,
-	rooIgnoreController?: RooIgnoreController,
+	broIgnoreController?: BroIgnoreController,
 ): Promise<string | undefined> {
 	// check if the file exists
 	const fileExists = await fileExistsAtPath(path.resolve(filePath))
@@ -114,7 +114,7 @@ export async function parseSourceCodeDefinitionsForFile(
 	// Special case for markdown files
 	if (ext === ".md" || ext === ".markdown") {
 		// Check if we have permission to access this file
-		if (rooIgnoreController && !rooIgnoreController.validateAccess(filePath)) {
+		if (broIgnoreController && !broIgnoreController.validateAccess(filePath)) {
 			return undefined
 		}
 
@@ -140,7 +140,7 @@ export async function parseSourceCodeDefinitionsForFile(
 	const languageParsers = await loadRequiredLanguageParsers([filePath])
 
 	// Parse the file if we have a parser for it
-	const definitions = await parseFile(filePath, languageParsers, rooIgnoreController)
+	const definitions = await parseFile(filePath, languageParsers, broIgnoreController)
 	if (definitions) {
 		return `# ${path.basename(filePath)}\n${definitions}`
 	}
@@ -169,7 +169,7 @@ This approach allows us to focus on the most relevant parts of the code (defined
  *
  * @param filePath - Path to the file to parse
  * @param languageParsers - Map of language parsers
- * @param rooIgnoreController - Optional controller to check file access permissions
+ * @param broIgnoreController - Optional controller to check file access permissions
  * @returns A formatted string with code definitions or null if no definitions found
  */
 
@@ -288,16 +288,16 @@ function processCaptures(captures: QueryCapture[], lines: string[], language: st
  *
  * @param filePath - Path to the file to parse
  * @param languageParsers - Map of language parsers
- * @param rooIgnoreController - Optional controller to check file access permissions
+ * @param broIgnoreController - Optional controller to check file access permissions
  * @returns A formatted string with code definitions or null if no definitions found
  */
 async function parseFile(
 	filePath: string,
 	languageParsers: LanguageParser,
-	rooIgnoreController?: RooIgnoreController,
+	broIgnoreController?: BroIgnoreController,
 ): Promise<string | null> {
 	// Check if we have permission to access this file
-	if (rooIgnoreController && !rooIgnoreController.validateAccess(filePath)) {
+	if (broIgnoreController && !broIgnoreController.validateAccess(filePath)) {
 		return null
 	}
 

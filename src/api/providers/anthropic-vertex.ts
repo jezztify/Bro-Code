@@ -9,7 +9,7 @@ import {
 	vertexModels,
 	ANTHROPIC_DEFAULT_MAX_TOKENS,
 	VERTEX_1M_CONTEXT_MODEL_IDS,
-} from "@roo-code/types"
+} from "@bro-code/types"
 
 import { ApiHandlerOptions } from "../../shared/api"
 

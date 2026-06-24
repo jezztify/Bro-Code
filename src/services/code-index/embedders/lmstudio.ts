@@ -6,8 +6,8 @@ import { getDefaultModelId, getModelQueryPrefix } from "../../../shared/embeddin
 import { MAX_ITEM_TOKENS } from "../constants"
 import { t } from "../../../i18n"
 import { withValidationErrorHandling, sanitizeErrorMessage } from "../shared/validation-helpers"
-import { TelemetryService } from "@roo-code/telemetry"
-import { TelemetryEventName } from "@roo-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
+import { TelemetryEventName } from "@bro-code/types"
 
 const LMSTUDIO_EMBEDDING_TIMEOUT_MS = 60000
 const LMSTUDIO_VALIDATION_TIMEOUT_MS = 30000

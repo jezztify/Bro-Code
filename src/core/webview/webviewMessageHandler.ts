@@ -2,7 +2,7 @@ import { safeWriteJson } from "../../utils/safeWriteJson"
 import * as path from "path"
 import * as os from "os"
 import * as fs from "fs/promises"
-import { getRooDirectoriesForCwd } from "../../services/roo-config/index.js"
+import { getBroDirectoriesForCwd } from "../../services/bro-config/index.js"
 import pWaitFor from "p-wait-for"
 import * as vscode from "vscode"
 
@@ -17,19 +17,19 @@ import {
 	type WebviewMessage,
 	type EditQueuedMessagePayload,
 	TelemetryEventName,
-	RooCodeSettings,
+	BroCodeSettings,
 	ExperimentId,
 	checkoutDiffPayloadSchema,
 	checkoutRestorePayloadSchema,
 	getCompletionCheckpoint,
-} from "@roo-code/types"
-import { customToolRegistry } from "@roo-code/core"
-import { CloudService } from "@roo-code/cloud"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@bro-code/types"
+import { customToolRegistry } from "@bro-code/core"
+import { CloudService } from "@bro-code/cloud"
+import { TelemetryService } from "@bro-code/telemetry"
 
 import { type ApiMessage } from "../task-persistence/apiMessages"
 import { saveTaskMessages } from "../task-persistence"
-import { importRooTaskHistory } from "../task-persistence/importRooTaskHistory"
+import { importBroTaskHistory } from "../task-persistence/importBroTaskHistory"
 
 import { ClineProvider } from "./ClineProvider"
 import { handleCheckpointRestoreOperation } from "./checkpointRestoreHandler"
@@ -73,7 +73,7 @@ import { getOpenAiModels } from "../../api/providers/openai"
 import { getVsCodeLmModels } from "../../api/providers/vscode-lm"
 import { openMention } from "../mentions"
 import { resolveImageMentions } from "../mentions/resolveImageMentions"
-import { RooIgnoreController } from "../ignore/RooIgnoreController"
+import { BroIgnoreController } from "../ignore/BroIgnoreController"
 import { getWorkspacePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { Mode, defaultModeSlug } from "../../shared/modes"
@@ -206,7 +206,7 @@ export const webviewMessageHandler = async (
 			text,
 			images,
 			cwd: getCurrentCwd(),
-			rooIgnoreController: currentTask?.rooIgnoreController,
+			broIgnoreController: currentTask?.broIgnoreController,
 			maxImageFileSize: state.maxImageFileSize,
 			maxTotalImageSize: state.maxTotalImageSize,
 		})
@@ -777,7 +777,7 @@ export const webviewMessageHandler = async (
 						}
 					}
 
-					await provider.contextProxy.setValue(key as keyof RooCodeSettings, newValue)
+					await provider.contextProxy.setValue(key as keyof BroCodeSettings, newValue)
 				}
 
 				await provider.postStateToWebview()
@@ -918,7 +918,7 @@ export const webviewMessageHandler = async (
 
 			break
 		}
-		case "importRooHistory": {
+		case "importBroHistory": {
 			let latestProgress = {
 				copiedFileCount: 0,
 				totalFileCount: 0,
@@ -928,20 +928,20 @@ export const webviewMessageHandler = async (
 
 			try {
 				await provider.postMessageToWebview({
-					type: "rooHistoryImportProgress",
-					rooHistoryImportProgress: {
+					type: "broHistoryImportProgress",
+					broHistoryImportProgress: {
 						status: "starting",
 						...latestProgress,
 					},
 				})
 
-				const result = await importRooTaskHistory(
+				const result = await importBroTaskHistory(
 					provider.contextProxy.globalStorageUri.fsPath,
 					async (progress) => {
 						latestProgress = progress
 						await provider.postMessageToWebview({
-							type: "rooHistoryImportProgress",
-							rooHistoryImportProgress: {
+							type: "broHistoryImportProgress",
+							broHistoryImportProgress: {
 								status: "copying",
 								...progress,
 							},
@@ -951,27 +951,27 @@ export const webviewMessageHandler = async (
 
 				if (result.foundTaskCount === 0) {
 					await provider.postMessageToWebview({
-						type: "rooHistoryImportProgress",
-						rooHistoryImportProgress: {
+						type: "broHistoryImportProgress",
+						broHistoryImportProgress: {
 							status: "finished",
 							...latestProgress,
 						},
 					})
 					vscode.window.showWarningMessage(
-						t("common:warnings.rooHistoryImport.nothingFound", { domain: result.rooExtensionDomain }),
+						t("common:warnings.broHistoryImport.nothingFound", { domain: result.rooExtensionDomain }),
 					)
 					break
 				}
 
-				// Refresh history whenever Roo tasks were found — even if all already existed —
+				// Refresh history whenever Bro tasks were found — even if all already existed —
 				// so a retry after a partial-copy failure still reconciles the store.
 				provider.taskHistoryStore.invalidateAll()
 				await provider.taskHistoryStore.reconcile()
 				await provider.taskHistoryStore.flushIndex()
 				await provider.postStateToWebview()
 				await provider.postMessageToWebview({
-					type: "rooHistoryImportProgress",
-					rooHistoryImportProgress: {
+					type: "broHistoryImportProgress",
+					broHistoryImportProgress: {
 						status: "finished",
 						...latestProgress,
 						copiedFileCount: result.importedFileCount,
@@ -983,24 +983,24 @@ export const webviewMessageHandler = async (
 
 				if (result.importedTaskCount === 0) {
 					vscode.window.showWarningMessage(
-						t("common:warnings.rooHistoryImport.alreadyImported", { count: result.foundTaskCount }),
+						t("common:warnings.broHistoryImport.alreadyImported", { count: result.foundTaskCount }),
 					)
 				} else {
 					vscode.window.showInformationMessage(
-						t("common:info.rooHistoryImport.success", { count: result.importedTaskCount }),
+						t("common:info.broHistoryImport.success", { count: result.importedTaskCount }),
 					)
 				}
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error)
-				provider.log(`[importRooHistory] failed: ${message}`)
+				provider.log(`[importBroHistory] failed: ${message}`)
 				await provider.postMessageToWebview({
-					type: "rooHistoryImportProgress",
-					rooHistoryImportProgress: {
+					type: "broHistoryImportProgress",
+					broHistoryImportProgress: {
 						status: "failed",
 						...latestProgress,
 					},
 				})
-				vscode.window.showErrorMessage(t("common:errors.rooHistoryImport", { error: message }))
+				vscode.window.showErrorMessage(t("common:errors.broHistoryImport", { error: message }))
 			}
 			break
 		}
@@ -1035,7 +1035,7 @@ export const webviewMessageHandler = async (
 				: {
 						openrouter: {},
 						"vercel-ai-gateway": {},
-						"zoo-gateway": {},
+						"bro-gateway": {},
 						litellm: {},
 						requesty: {},
 						unbound: {},
@@ -1079,11 +1079,11 @@ export const webviewMessageHandler = async (
 				},
 				{ key: "vercel-ai-gateway", options: { provider: "vercel-ai-gateway" } },
 				{
-					key: "zoo-gateway",
+					key: "bro-gateway",
 					options: {
-						provider: "zoo-gateway",
-						apiKey: apiConfiguration.zooSessionToken,
-						baseUrl: apiConfiguration.zooGatewayBaseUrl,
+						provider: "bro-gateway",
+						apiKey: apiConfiguration.broSessionToken,
+						baseUrl: apiConfiguration.broGatewayBaseUrl,
 					},
 				},
 			]
@@ -1334,12 +1334,12 @@ export const webviewMessageHandler = async (
 			}
 			break
 		}
-		case "requestRooModels": {
+		case "requestBroModels": {
 			provider.postMessageToWebview({
 				type: "singleRouterModelFetchResponse",
 				success: false,
 				error: getRouterRemovalMessage(),
-				values: { provider: "roo" },
+				values: { provider: "bro" },
 			})
 			break
 		}
@@ -1579,7 +1579,7 @@ export const webviewMessageHandler = async (
 			break
 		}
 		case "openKeyboardShortcuts": {
-			// Open VSCode keyboard shortcuts settings and optionally filter to show the Roo Code commands
+			// Open VSCode keyboard shortcuts settings and optionally filter to show the Bro Code commands
 			const searchQuery = message.text || ""
 			if (searchQuery) {
 				// Open with a search query pre-filled
@@ -1606,11 +1606,11 @@ export const webviewMessageHandler = async (
 			}
 
 			const workspaceFolder = getCurrentCwd()
-			const rooDir = path.join(workspaceFolder, ".roo")
-			const mcpPath = path.join(rooDir, "mcp.json")
+			const broDir = path.join(workspaceFolder, ".bro")
+			const mcpPath = path.join(broDir, "mcp.json")
 
 			try {
-				await fs.mkdir(rooDir, { recursive: true })
+				await fs.mkdir(broDir, { recursive: true })
 				const exists = await fileExistsAtPath(mcpPath)
 
 				if (!exists) {
@@ -2031,26 +2031,26 @@ export const webviewMessageHandler = async (
 					20, // Use default limit, as filtering is now done in the backend
 				)
 
-				// Get the RooIgnoreController from the current task, or create a new one
+				// Get the BroIgnoreController from the current task, or create a new one
 				const currentTask = provider.getCurrentTask()
-				let rooIgnoreController = currentTask?.rooIgnoreController
-				let tempController: RooIgnoreController | undefined
+				let broIgnoreController = currentTask?.broIgnoreController
+				let tempController: BroIgnoreController | undefined
 
 				// If no current task or no controller, create a temporary one
-				if (!rooIgnoreController) {
-					tempController = new RooIgnoreController(workspacePath)
+				if (!broIgnoreController) {
+					tempController = new BroIgnoreController(workspacePath)
 					await tempController.initialize()
-					rooIgnoreController = tempController
+					broIgnoreController = tempController
 				}
 
 				try {
-					// Get showRooIgnoredFiles setting from state
-					const { showRooIgnoredFiles = false } = (await provider.getState()) ?? {}
+					// Get showBroIgnoredFiles setting from state
+					const { showBroIgnoredFiles = false } = (await provider.getState()) ?? {}
 
-					// Filter results using RooIgnoreController if showRooIgnoredFiles is false
+					// Filter results using BroIgnoreController if showBroIgnoredFiles is false
 					let filteredResults = results
-					if (!showRooIgnoredFiles && rooIgnoreController) {
-						const allowedPaths = rooIgnoreController.filterPaths(results.map((r) => r.path))
+					if (!showBroIgnoredFiles && broIgnoreController) {
+						const allowedPaths = broIgnoreController.filterPaths(results.map((r) => r.path))
 						filteredResults = results.filter((r) => allowedPaths.includes(r.path))
 					}
 
@@ -2087,7 +2087,7 @@ export const webviewMessageHandler = async (
 		}
 		case "refreshCustomTools": {
 			try {
-				const toolDirs = getRooDirectoriesForCwd(getCurrentCwd()).map((dir) => path.join(dir, "tools"))
+				const toolDirs = getBroDirectoriesForCwd(getCurrentCwd()).map((dir) => path.join(dir, "tools"))
 				await customToolRegistry.loadFromDirectories(toolDirs)
 
 				await provider.postMessageToWebview({
@@ -2329,14 +2329,14 @@ export const webviewMessageHandler = async (
 				if (scope === "project") {
 					const workspacePath = getWorkspacePath()
 					if (workspacePath) {
-						rulesFolderPath = path.join(workspacePath, ".roo", `rules-${message.slug}`)
+						rulesFolderPath = path.join(workspacePath, ".bro", `rules-${message.slug}`)
 					} else {
-						rulesFolderPath = path.join(".roo", `rules-${message.slug}`)
+						rulesFolderPath = path.join(".bro", `rules-${message.slug}`)
 					}
 				} else {
 					// Global scope - use OS home directory
 					const homeDir = os.homedir()
-					rulesFolderPath = path.join(homeDir, ".roo", `rules-${message.slug}`)
+					rulesFolderPath = path.join(homeDir, ".bro", `rules-${message.slug}`)
 				}
 
 				// Check if the rules folder exists
@@ -2592,9 +2592,9 @@ export const webviewMessageHandler = async (
 			await provider.postStateToWebview()
 			break
 		}
-		case "rooCloudSignIn": {
+		case "broCloudSignIn": {
 			if (!isCloudServiceAvailable()) {
-				provider.log("CloudService unavailable; ignoring rooCloudSignIn")
+				provider.log("CloudService unavailable; ignoring broCloudSignIn")
 				showCloudUnavailableMessage()
 				break
 			}
@@ -2627,7 +2627,7 @@ export const webviewMessageHandler = async (
 			}
 			break
 		}
-		case "rooCloudSignOut": {
+		case "broCloudSignOut": {
 			if (!isCloudServiceAvailable()) {
 				await provider.postStateToWebview()
 				provider.postMessageToWebview({ type: "authenticatedUser", userInfo: undefined })
@@ -2684,9 +2684,9 @@ export const webviewMessageHandler = async (
 			}
 			break
 		}
-		case "rooCloudManualUrl": {
+		case "broCloudManualUrl": {
 			if (!isCloudServiceAvailable()) {
-				provider.log("CloudService unavailable; ignoring rooCloudManualUrl")
+				provider.log("CloudService unavailable; ignoring broCloudManualUrl")
 				showCloudUnavailableMessage()
 				break
 			}
@@ -2734,27 +2734,27 @@ export const webviewMessageHandler = async (
 		}
 		case "clearCloudAuthSkipModel": {
 			// Clear the flag that indicates auth completed without model selection
-			await provider.context.globalState.update("roo-auth-skip-model", undefined)
+			await provider.context.globalState.update("bro-auth-skip-model", undefined)
 			await provider.postStateToWebview()
 			break
 		}
-		case "zooCodeSignOut": {
+		case "broCodeSignOut": {
 			try {
-				const { disconnectZooCode } = await import("../../services/zoo-code-auth")
-				await disconnectZooCode()
+				const { disconnectBroCode } = await import("../../services/bro-code-auth")
+				await disconnectBroCode()
 
-				// Clear zooSessionToken from ALL provider profiles with apiProvider === "zoo-gateway".
-				// Profiles are user-renameable, so we cannot rely on a hardcoded name like "Zoo Gateway".
-				// We must scan all profiles and clear tokens from any that use the zoo-gateway provider.
+				// Clear broSessionToken from ALL provider profiles with apiProvider === "bro-gateway".
+				// Profiles are user-renameable, so we cannot rely on a hardcoded name like "Bro Gateway".
+				// We must scan all profiles and clear tokens from any that use the bro-gateway provider.
 				try {
 					const allProfiles = await provider.providerSettingsManager.listConfig()
-					// Check if Zoo Gateway is the currently active profile by apiProvider identity
+					// Check if Bro Gateway is the currently active profile by apiProvider identity
 					const currentSettings = provider.contextProxy.getProviderSettings()
-					const isZooGatewayActive = currentSettings.apiProvider === "zoo-gateway"
+					const isBroGatewayActive = currentSettings.apiProvider === "bro-gateway"
 					const currentApiConfigName = provider.contextProxy.getValues().currentApiConfigName
 
 					for (const entry of allProfiles) {
-						if (entry.apiProvider !== "zoo-gateway") {
+						if (entry.apiProvider !== "bro-gateway") {
 							continue
 						}
 
@@ -2763,43 +2763,43 @@ export const webviewMessageHandler = async (
 						// otherwise sign-out would leave later profiles with a stale token.
 						try {
 							const profile = await provider.providerSettingsManager.getProfile({ name: entry.name })
-							const { zooSessionToken: _removed, ...cleanedProfile } = profile
+							const { broSessionToken: _removed, ...cleanedProfile } = profile
 
 							// If this is the currently active profile, ALWAYS push to the in-memory
 							// handler — even when the persisted profile has already been cleared —
 							// because currentSettings (and therefore the live API handler) may still
 							// carry a stale token from before sign-out. Persisted-only profiles get
 							// rewritten only when they previously had a token to avoid no-op disk writes.
-							const isThisProfileActive = isZooGatewayActive && currentApiConfigName === entry.name
+							const isThisProfileActive = isBroGatewayActive && currentApiConfigName === entry.name
 
 							if (isThisProfileActive) {
 								await provider.upsertProviderProfile(entry.name, cleanedProfile, true)
 								provider.log(
-									`[zooCodeSignOut] Cleared zooSessionToken from "${entry.name}" profile and updated in-memory handler`,
+									`[broCodeSignOut] Cleared broSessionToken from "${entry.name}" profile and updated in-memory handler`,
 								)
-							} else if (profile.zooSessionToken) {
+							} else if (profile.broSessionToken) {
 								await provider.providerSettingsManager.saveConfig(entry.name, cleanedProfile)
-								provider.log(`[zooCodeSignOut] Cleared zooSessionToken from "${entry.name}" profile`)
+								provider.log(`[broCodeSignOut] Cleared broSessionToken from "${entry.name}" profile`)
 							}
 						} catch (profileError) {
 							// Log but continue to the next profile so one failure doesn't
 							// leave other profiles holding a stale token.
 							provider.log(
-								`[zooCodeSignOut] Failed to clear profile token for "${entry.name}": ${profileError instanceof Error ? profileError.message : String(profileError)}`,
+								`[broCodeSignOut] Failed to clear profile token for "${entry.name}": ${profileError instanceof Error ? profileError.message : String(profileError)}`,
 							)
 						}
 					}
 				} catch (profileError) {
 					// listConfig itself failed — nothing to iterate.
 					provider.log(
-						`[zooCodeSignOut] Failed to list profiles for token cleanup: ${profileError instanceof Error ? profileError.message : String(profileError)}`,
+						`[broCodeSignOut] Failed to list profiles for token cleanup: ${profileError instanceof Error ? profileError.message : String(profileError)}`,
 					)
 				}
 
 				await provider.postStateToWebview()
 			} catch (error) {
 				provider.log(
-					`Failed to sign out of Zoo Code: ${error instanceof Error ? error.message : String(error)}`,
+					`Failed to sign out of Bro Code: ${error instanceof Error ? error.message : String(error)}`,
 				)
 			}
 			break
@@ -3466,7 +3466,7 @@ export const webviewMessageHandler = async (
 				// Determine the commands directory based on source
 				let commandsDir: string
 				if (source === "global") {
-					const globalConfigDir = path.join(os.homedir(), ".roo")
+					const globalConfigDir = path.join(os.homedir(), ".bro")
 					commandsDir = path.join(globalConfigDir, "commands")
 				} else {
 					if (!vscode.workspace.workspaceFolders?.length) {
@@ -3479,7 +3479,7 @@ export const webviewMessageHandler = async (
 						vscode.window.showErrorMessage(t("common:errors.no_workspace_for_project_command"))
 						break
 					}
-					commandsDir = path.join(workspaceRoot, ".roo", "commands")
+					commandsDir = path.join(workspaceRoot, ".bro", "commands")
 				}
 
 				// Ensure the commands directory exists
@@ -3652,7 +3652,7 @@ export const webviewMessageHandler = async (
 				try {
 					const tmpDir = os.tmpdir()
 					const timestamp = Date.now()
-					const tempFileName = `roo-preview-${timestamp}.md`
+					const tempFileName = `bro-preview-${timestamp}.md`
 					const tempFilePath = path.join(tmpDir, tempFileName)
 
 					await fs.writeFile(tempFilePath, message.text, "utf8")
@@ -3740,7 +3740,7 @@ export const webviewMessageHandler = async (
 				// Create a temporary file
 				const tmpDir = os.tmpdir()
 				const timestamp = Date.now()
-				const tempFileName = `roo-debug-${message.type === "openDebugApiHistory" ? "api" : "ui"}-${currentTask.taskId.slice(0, 8)}-${timestamp}.json`
+				const tempFileName = `bro-debug-${message.type === "openDebugApiHistory" ? "api" : "ui"}-${currentTask.taskId.slice(0, 8)}-${timestamp}.json`
 				const tempFilePath = path.join(tmpDir, tempFileName)
 
 				await fs.writeFile(tempFilePath, prettifiedContent, "utf8")

@@ -1,86 +1,86 @@
 import { z } from "zod"
 
-import { rooCodeSettingsSchema } from "./global-settings.js"
+import { broCodeSettingsSchema } from "./global-settings.js"
 
 /**
- * Roo CLI stdin commands
+ * Bro CLI stdin commands
  */
 
-export const rooCliCommandNames = ["start", "message", "cancel", "ping", "shutdown"] as const
+export const broCliCommandNames = ["start", "message", "cancel", "ping", "shutdown"] as const
 
-export const rooCliCommandNameSchema = z.enum(rooCliCommandNames)
+export const broCliCommandNameSchema = z.enum(broCliCommandNames)
 
-export type RooCliCommandName = z.infer<typeof rooCliCommandNameSchema>
+export type BroCliCommandName = z.infer<typeof broCliCommandNameSchema>
 
-export const rooCliCommandBaseSchema = z.object({
-	command: rooCliCommandNameSchema,
+export const broCliCommandBaseSchema = z.object({
+	command: broCliCommandNameSchema,
 	requestId: z.string().min(1),
 })
 
-export type RooCliCommandBase = z.infer<typeof rooCliCommandBaseSchema>
+export type BroCliCommandBase = z.infer<typeof broCliCommandBaseSchema>
 
-const rooCliSessionIdSchema = z
+const broCliSessionIdSchema = z
 	.string()
 	.trim()
 	.regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
 
-export const rooCliStartCommandSchema = rooCliCommandBaseSchema.extend({
+export const broCliStartCommandSchema = broCliCommandBaseSchema.extend({
 	command: z.literal("start"),
 	prompt: z.string(),
-	taskId: rooCliSessionIdSchema.optional(),
+	taskId: broCliSessionIdSchema.optional(),
 	images: z.array(z.string()).optional(),
-	configuration: rooCodeSettingsSchema.optional(),
+	configuration: broCodeSettingsSchema.optional(),
 })
 
-export type RooCliStartCommand = z.infer<typeof rooCliStartCommandSchema>
+export type BroCliStartCommand = z.infer<typeof broCliStartCommandSchema>
 
-export const rooCliMessageCommandSchema = rooCliCommandBaseSchema.extend({
+export const broCliMessageCommandSchema = broCliCommandBaseSchema.extend({
 	command: z.literal("message"),
 	prompt: z.string(),
 	images: z.array(z.string()).optional(),
 })
 
-export type RooCliMessageCommand = z.infer<typeof rooCliMessageCommandSchema>
+export type BroCliMessageCommand = z.infer<typeof broCliMessageCommandSchema>
 
-export const rooCliCancelCommandSchema = rooCliCommandBaseSchema.extend({
+export const broCliCancelCommandSchema = broCliCommandBaseSchema.extend({
 	command: z.literal("cancel"),
 })
 
-export type RooCliCancelCommand = z.infer<typeof rooCliCancelCommandSchema>
+export type BroCliCancelCommand = z.infer<typeof broCliCancelCommandSchema>
 
-export const rooCliPingCommandSchema = rooCliCommandBaseSchema.extend({
+export const broCliPingCommandSchema = broCliCommandBaseSchema.extend({
 	command: z.literal("ping"),
 })
 
-export type RooCliPingCommand = z.infer<typeof rooCliPingCommandSchema>
+export type BroCliPingCommand = z.infer<typeof broCliPingCommandSchema>
 
-export const rooCliShutdownCommandSchema = rooCliCommandBaseSchema.extend({
+export const broCliShutdownCommandSchema = broCliCommandBaseSchema.extend({
 	command: z.literal("shutdown"),
 })
 
-export type RooCliShutdownCommand = z.infer<typeof rooCliShutdownCommandSchema>
+export type BroCliShutdownCommand = z.infer<typeof broCliShutdownCommandSchema>
 
-export const rooCliInputCommandSchema = z.discriminatedUnion("command", [
-	rooCliStartCommandSchema,
-	rooCliMessageCommandSchema,
-	rooCliCancelCommandSchema,
-	rooCliPingCommandSchema,
-	rooCliShutdownCommandSchema,
+export const broCliInputCommandSchema = z.discriminatedUnion("command", [
+	broCliStartCommandSchema,
+	broCliMessageCommandSchema,
+	broCliCancelCommandSchema,
+	broCliPingCommandSchema,
+	broCliShutdownCommandSchema,
 ])
 
-export type RooCliInputCommand = z.infer<typeof rooCliInputCommandSchema>
+export type BroCliInputCommand = z.infer<typeof broCliInputCommandSchema>
 
 /**
- * Roo CLI stream-json output
+ * Bro CLI stream-json output
  */
 
-export const rooCliOutputFormats = ["text", "json", "stream-json"] as const
+export const broCliOutputFormats = ["text", "json", "stream-json"] as const
 
-export const rooCliOutputFormatSchema = z.enum(rooCliOutputFormats)
+export const broCliOutputFormatSchema = z.enum(broCliOutputFormats)
 
-export type RooCliOutputFormat = z.infer<typeof rooCliOutputFormatSchema>
+export type BroCliOutputFormat = z.infer<typeof broCliOutputFormatSchema>
 
-export const rooCliEventTypes = [
+export const broCliEventTypes = [
 	"system",
 	"control",
 	"queue",
@@ -93,42 +93,42 @@ export const rooCliEventTypes = [
 	"result",
 ] as const
 
-export const rooCliEventTypeSchema = z.enum(rooCliEventTypes)
+export const broCliEventTypeSchema = z.enum(broCliEventTypes)
 
-export type RooCliEventType = z.infer<typeof rooCliEventTypeSchema>
+export type BroCliEventType = z.infer<typeof broCliEventTypeSchema>
 
-export const rooCliControlSubtypes = ["ack", "done", "error"] as const
+export const broCliControlSubtypes = ["ack", "done", "error"] as const
 
-export const rooCliControlSubtypeSchema = z.enum(rooCliControlSubtypes)
+export const broCliControlSubtypeSchema = z.enum(broCliControlSubtypes)
 
-export type RooCliControlSubtype = z.infer<typeof rooCliControlSubtypeSchema>
+export type BroCliControlSubtype = z.infer<typeof broCliControlSubtypeSchema>
 
-export const rooCliQueueItemSchema = z.object({
+export const broCliQueueItemSchema = z.object({
 	id: z.string().min(1),
 	text: z.string().optional(),
 	imageCount: z.number().optional(),
 	timestamp: z.number().optional(),
 })
 
-export type RooCliQueueItem = z.infer<typeof rooCliQueueItemSchema>
+export type BroCliQueueItem = z.infer<typeof broCliQueueItemSchema>
 
-export const rooCliToolUseSchema = z.object({
+export const broCliToolUseSchema = z.object({
 	name: z.string(),
 	input: z.record(z.unknown()).optional(),
 })
 
-export type RooCliToolUse = z.infer<typeof rooCliToolUseSchema>
+export type BroCliToolUse = z.infer<typeof broCliToolUseSchema>
 
-export const rooCliToolResultSchema = z.object({
+export const broCliToolResultSchema = z.object({
 	name: z.string(),
 	output: z.string().optional(),
 	error: z.string().optional(),
 	exitCode: z.number().optional(),
 })
 
-export type RooCliToolResult = z.infer<typeof rooCliToolResultSchema>
+export type BroCliToolResult = z.infer<typeof broCliToolResultSchema>
 
-export const rooCliCostSchema = z.object({
+export const broCliCostSchema = z.object({
 	totalCost: z.number().optional(),
 	inputTokens: z.number().optional(),
 	outputTokens: z.number().optional(),
@@ -136,14 +136,14 @@ export const rooCliCostSchema = z.object({
 	cacheReads: z.number().optional(),
 })
 
-export type RooCliCost = z.infer<typeof rooCliCostSchema>
+export type BroCliCost = z.infer<typeof broCliCostSchema>
 
-export const rooCliStreamEventSchema = z
+export const broCliStreamEventSchema = z
 	.object({
-		type: rooCliEventTypeSchema.optional(),
+		type: broCliEventTypeSchema.optional(),
 		subtype: z.string().optional(),
 		requestId: z.string().optional(),
-		command: rooCliCommandNameSchema.optional(),
+		command: broCliCommandNameSchema.optional(),
 		taskId: z.string().optional(),
 		code: z.string().optional(),
 		content: z.string().optional(),
@@ -151,32 +151,32 @@ export const rooCliStreamEventSchema = z
 		id: z.number().optional(),
 		done: z.boolean().optional(),
 		queueDepth: z.number().optional(),
-		queue: z.array(rooCliQueueItemSchema).optional(),
+		queue: z.array(broCliQueueItemSchema).optional(),
 		schemaVersion: z.number().optional(),
 		protocol: z.string().optional(),
 		capabilities: z.array(z.string()).optional(),
-		tool_use: rooCliToolUseSchema.optional(),
-		tool_result: rooCliToolResultSchema.optional(),
-		cost: rooCliCostSchema.optional(),
+		tool_use: broCliToolUseSchema.optional(),
+		tool_result: broCliToolResultSchema.optional(),
+		cost: broCliCostSchema.optional(),
 	})
 	.passthrough()
 
-export type RooCliStreamEvent = z.infer<typeof rooCliStreamEventSchema>
+export type BroCliStreamEvent = z.infer<typeof broCliStreamEventSchema>
 
-export const rooCliControlEventSchema = rooCliStreamEventSchema.extend({
+export const broCliControlEventSchema = broCliStreamEventSchema.extend({
 	type: z.literal("control"),
-	subtype: rooCliControlSubtypeSchema,
+	subtype: broCliControlSubtypeSchema,
 	requestId: z.string().min(1),
 })
 
-export type RooCliControlEvent = z.infer<typeof rooCliControlEventSchema>
+export type BroCliControlEvent = z.infer<typeof broCliControlEventSchema>
 
-export const rooCliFinalOutputSchema = z.object({
+export const broCliFinalOutputSchema = z.object({
 	type: z.literal("result"),
 	success: z.boolean(),
 	content: z.string().optional(),
-	cost: rooCliCostSchema.optional(),
-	events: z.array(rooCliStreamEventSchema),
+	cost: broCliCostSchema.optional(),
+	events: z.array(broCliStreamEventSchema),
 })
 
-export type RooCliFinalOutput = z.infer<typeof rooCliFinalOutputSchema>
+export type BroCliFinalOutput = z.infer<typeof broCliFinalOutputSchema>

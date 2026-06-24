@@ -6,7 +6,7 @@ import * as vscode from "vscode"
 import ignore from "ignore"
 import { arePathsEqual } from "../../utils/path"
 import { getBinPath } from "../../services/ripgrep"
-import { directoryExists } from "../../services/roo-config"
+import { directoryExists } from "../../services/bro-config"
 import { DIRS_TO_IGNORE } from "./constants"
 
 /**
@@ -582,7 +582,7 @@ function shouldIncludeRegularDirectory(dirName: string, fullDirPath: string, con
  */
 function shouldIncludeDirectory(dirName: string, fullDirPath: string, context: ScanContext): boolean {
 	// If this is the explicitly targeted directory, allow it even if it's hidden
-	// This preserves the ability to explicitly target hidden directories like .roo-memory
+	// This preserves the ability to explicitly target hidden directories like .bro-memory
 	if (context.isTargetDir) {
 		return shouldIncludeTargetDirectory(dirName)
 	}

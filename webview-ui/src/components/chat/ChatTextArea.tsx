@@ -3,11 +3,11 @@ import { useEvent } from "react-use"
 import DynamicTextArea from "react-textarea-autosize"
 import { VolumeX, Image, WandSparkles, SendHorizontal, X, ListEnd, Square } from "lucide-react"
 
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@bro-code/types"
 
-import { mentionRegex, mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@roo/context-mentions"
-import { WebviewMessage } from "@roo/WebviewMessage"
-import { Mode, getAllModes } from "@roo/modes"
+import { mentionRegex, mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@bro/context-mentions"
+import { WebviewMessage } from "@bro/WebviewMessage"
+import { Mode, getAllModes } from "@bro/modes"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
@@ -31,7 +31,7 @@ import { AutoApproveDropdown } from "./AutoApproveDropdown"
 import { MAX_IMAGES_PER_MESSAGE } from "./ChatView"
 import ContextMenu from "./ContextMenu"
 import { IndexingStatusBadge } from "./IndexingStatusBadge"
-import { ZooCodeAuthBadge } from "./ZooCodeAuthBadge"
+import { BroCodeAuthBadge } from "./BroCodeAuthBadge"
 import { usePromptHistory } from "./hooks/usePromptHistory"
 
 interface ChatTextAreaProps {
@@ -1343,7 +1343,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							</StandardTooltip>
 						)}
 						{!isEditMode ? <IndexingStatusBadge /> : null}
-						{!isEditMode ? <ZooCodeAuthBadge /> : null}
+						{!isEditMode ? <BroCodeAuthBadge /> : null}
 					</div>
 				</div>
 			</div>

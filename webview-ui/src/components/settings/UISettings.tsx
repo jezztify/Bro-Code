@@ -3,10 +3,10 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import { telemetryClient } from "@/utils/TelemetryClient"
 import {
-	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
-	DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
-	DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES,
-} from "@roo-code/types"
+	DEFAULT_AUTO_CLOSE_BRO_OPENED_FILES,
+	DEFAULT_AUTO_CLOSE_BRO_OPENED_FILES_AFTER_USER_EDITED,
+	DEFAULT_AUTO_CLOSE_BRO_OPENED_NEW_FILES,
+} from "@bro-code/types"
 
 import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
@@ -23,9 +23,9 @@ interface UISettingsProps extends HTMLAttributes<HTMLDivElement> {
 	reasoningBlockCollapsed: boolean
 	enterBehavior: "send" | "newline"
 	chatFontSize?: number
-	autoCloseZooOpenedFiles?: boolean
-	autoCloseZooOpenedFilesAfterUserEdited?: boolean
-	autoCloseZooOpenedNewFiles?: boolean
+	autoCloseBroOpenedFiles?: boolean
+	autoCloseBroOpenedFilesAfterUserEdited?: boolean
+	autoCloseBroOpenedNewFiles?: boolean
 	setCachedStateField: SetCachedStateField<keyof ExtensionStateContextType>
 }
 
@@ -33,9 +33,9 @@ export const UISettings = ({
 	reasoningBlockCollapsed,
 	enterBehavior,
 	chatFontSize,
-	autoCloseZooOpenedFiles,
-	autoCloseZooOpenedFilesAfterUserEdited,
-	autoCloseZooOpenedNewFiles,
+	autoCloseBroOpenedFiles,
+	autoCloseBroOpenedFilesAfterUserEdited,
+	autoCloseBroOpenedNewFiles,
 	setCachedStateField,
 	...props
 }: UISettingsProps) => {
@@ -158,65 +158,65 @@ export const UISettings = ({
 						</div>
 					</SearchableSetting>
 
-					{/* Auto-close Zoo opened files */}
+					{/* Auto-close Bro opened files */}
 					<SearchableSetting
-						settingId="ui-auto-close-zoo-opened-files"
+						settingId="ui-auto-close-bro-opened-files"
 						section="ui"
-						label={t("settings:ui.autoCloseZooOpenedFiles.label")}>
+						label={t("settings:ui.autoCloseBroOpenedFiles.label")}>
 						<div className="flex flex-col gap-1">
 							<VSCodeCheckbox
-								checked={autoCloseZooOpenedFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES}
-								onChange={(e: any) => setCachedStateField("autoCloseZooOpenedFiles", e.target.checked)}
-								data-testid="auto-close-zoo-opened-files-checkbox">
-								<span className="font-medium">{t("settings:ui.autoCloseZooOpenedFiles.label")}</span>
+								checked={autoCloseBroOpenedFiles ?? DEFAULT_AUTO_CLOSE_BRO_OPENED_FILES}
+								onChange={(e: any) => setCachedStateField("autoCloseBroOpenedFiles", e.target.checked)}
+								data-testid="auto-close-bro-opened-files-checkbox">
+								<span className="font-medium">{t("settings:ui.autoCloseBroOpenedFiles.label")}</span>
 							</VSCodeCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
-								{t("settings:ui.autoCloseZooOpenedFiles.description")}
+								{t("settings:ui.autoCloseBroOpenedFiles.description")}
 							</div>
 						</div>
 					</SearchableSetting>
 
-					{/* Auto-close Zoo opened files after user interaction */}
+					{/* Auto-close Bro opened files after user interaction */}
 					<SearchableSetting
-						settingId="ui-auto-close-zoo-opened-files-after-user-edited"
+						settingId="ui-auto-close-bro-opened-files-after-user-edited"
 						section="ui"
-						label={t("settings:ui.autoCloseZooOpenedFilesAfterUserEdited.label")}>
+						label={t("settings:ui.autoCloseBroOpenedFilesAfterUserEdited.label")}>
 						<div className="flex flex-col gap-1">
 							<VSCodeCheckbox
 								checked={
-									autoCloseZooOpenedFilesAfterUserEdited ??
-									DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED
+									autoCloseBroOpenedFilesAfterUserEdited ??
+									DEFAULT_AUTO_CLOSE_BRO_OPENED_FILES_AFTER_USER_EDITED
 								}
 								onChange={(e: any) =>
-									setCachedStateField("autoCloseZooOpenedFilesAfterUserEdited", e.target.checked)
+									setCachedStateField("autoCloseBroOpenedFilesAfterUserEdited", e.target.checked)
 								}
-								data-testid="auto-close-zoo-opened-files-after-user-edited-checkbox">
+								data-testid="auto-close-bro-opened-files-after-user-edited-checkbox">
 								<span className="font-medium">
-									{t("settings:ui.autoCloseZooOpenedFilesAfterUserEdited.label")}
+									{t("settings:ui.autoCloseBroOpenedFilesAfterUserEdited.label")}
 								</span>
 							</VSCodeCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
-								{t("settings:ui.autoCloseZooOpenedFilesAfterUserEdited.description")}
+								{t("settings:ui.autoCloseBroOpenedFilesAfterUserEdited.description")}
 							</div>
 						</div>
 					</SearchableSetting>
 
-					{/* Auto-close Zoo opened new files */}
+					{/* Auto-close Bro opened new files */}
 					<SearchableSetting
-						settingId="ui-auto-close-zoo-opened-new-files"
+						settingId="ui-auto-close-bro-opened-new-files"
 						section="ui"
-						label={t("settings:ui.autoCloseZooOpenedNewFiles.label")}>
+						label={t("settings:ui.autoCloseBroOpenedNewFiles.label")}>
 						<div className="flex flex-col gap-1">
 							<VSCodeCheckbox
-								checked={autoCloseZooOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_NEW_FILES}
+								checked={autoCloseBroOpenedNewFiles ?? DEFAULT_AUTO_CLOSE_BRO_OPENED_NEW_FILES}
 								onChange={(e: any) =>
-									setCachedStateField("autoCloseZooOpenedNewFiles", e.target.checked)
+									setCachedStateField("autoCloseBroOpenedNewFiles", e.target.checked)
 								}
-								data-testid="auto-close-zoo-opened-new-files-checkbox">
-								<span className="font-medium">{t("settings:ui.autoCloseZooOpenedNewFiles.label")}</span>
+								data-testid="auto-close-bro-opened-new-files-checkbox">
+								<span className="font-medium">{t("settings:ui.autoCloseBroOpenedNewFiles.label")}</span>
 							</VSCodeCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
-								{t("settings:ui.autoCloseZooOpenedNewFiles.description")}
+								{t("settings:ui.autoCloseBroOpenedNewFiles.description")}
 							</div>
 						</div>
 					</SearchableSetting>

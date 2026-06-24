@@ -7,20 +7,20 @@ const {
 	mockReadFile,
 	mockReaddir,
 	mockLstat,
-	mockGetRooDirectoriesForCwd,
-	mockGetAllRooDirectoriesForCwd,
+	mockGetBroDirectoriesForCwd,
+	mockGetAllBroDirectoriesForCwd,
 	mockGetAgentsDirectoriesForCwd,
-	mockGetGlobalRooDirectory,
+	mockGetGlobalBroDirectory,
 } = vi.hoisted(() => ({
 	mockHomedir: vi.fn(),
 	mockStat: vi.fn(),
 	mockReadFile: vi.fn(),
 	mockReaddir: vi.fn(),
 	mockLstat: vi.fn(),
-	mockGetRooDirectoriesForCwd: vi.fn(),
-	mockGetAllRooDirectoriesForCwd: vi.fn(),
+	mockGetBroDirectoriesForCwd: vi.fn(),
+	mockGetAllBroDirectoriesForCwd: vi.fn(),
 	mockGetAgentsDirectoriesForCwd: vi.fn(),
-	mockGetGlobalRooDirectory: vi.fn(),
+	mockGetGlobalBroDirectory: vi.fn(),
 }))
 
 // Mock os module
@@ -41,31 +41,31 @@ vi.mock("fs/promises", () => ({
 	},
 }))
 
-// Mock the roo-config service
-vi.mock("../../../../services/roo-config", () => ({
-	getRooDirectoriesForCwd: mockGetRooDirectoriesForCwd,
-	getAllRooDirectoriesForCwd: mockGetAllRooDirectoriesForCwd,
+// Mock the bro-config service
+vi.mock("../../../../services/bro-config", () => ({
+	getBroDirectoriesForCwd: mockGetBroDirectoriesForCwd,
+	getAllBroDirectoriesForCwd: mockGetAllBroDirectoriesForCwd,
 	getAgentsDirectoriesForCwd: mockGetAgentsDirectoriesForCwd,
-	getGlobalRooDirectory: mockGetGlobalRooDirectory,
+	getGlobalBroDirectory: mockGetGlobalBroDirectory,
 }))
 
 import { loadRuleFiles, addCustomInstructions } from "../custom-instructions"
 
-describe("custom-instructions global .roo support", () => {
+describe("custom-instructions global .bro support", () => {
 	const mockCwd = "/mock/project"
 	const mockHomeDir = "/mock/home"
-	const globalRooDir = path.join(mockHomeDir, ".roo")
-	const projectRooDir = path.join(mockCwd, ".roo")
+	const globalBroDir = path.join(mockHomeDir, ".bro")
+	const projectBroDir = path.join(mockCwd, ".bro")
 
 	beforeEach(() => {
 		vi.resetAllMocks()
 		mockHomedir.mockReturnValue(mockHomeDir)
-		mockGetRooDirectoriesForCwd.mockReturnValue([globalRooDir, projectRooDir])
-		// getAllRooDirectoriesForCwd is now async and returns the same directories by default
-		mockGetAllRooDirectoriesForCwd.mockResolvedValue([globalRooDir, projectRooDir])
-		// getAgentsDirectoriesForCwd returns parent directories (without .roo)
+		mockGetBroDirectoriesForCwd.mockReturnValue([globalBroDir, projectBroDir])
+		// getAllBroDirectoriesForCwd is now async and returns the same directories by default
+		mockGetAllBroDirectoriesForCwd.mockResolvedValue([globalBroDir, projectBroDir])
+		// getAgentsDirectoriesForCwd returns parent directories (without .bro)
 		mockGetAgentsDirectoriesForCwd.mockResolvedValue([mockCwd])
-		mockGetGlobalRooDirectory.mockReturnValue(globalRooDir)
+		mockGetGlobalBroDirectory.mockReturnValue(globalBroDir)
 		// Default lstat to reject (file not found)
 		mockLstat.mockRejectedValue(new Error("ENOENT"))
 	})
@@ -173,7 +173,7 @@ describe("custom-instructions global .roo support", () => {
 			expect(globalIndex).toBeLessThan(projectIndex)
 		})
 
-		it("should fall back to legacy .roorules file when no .roo/rules directories exist", async () => {
+		it("should fall back to legacy .brorules file when no .bro/rules directories exist", async () => {
 			// Mock directory existence - neither exist
 			mockStat
 				.mockRejectedValueOnce(new Error("ENOENT")) // global rules dir doesn't exist
@@ -184,7 +184,7 @@ describe("custom-instructions global .roo support", () => {
 
 			const result = await loadRuleFiles(mockCwd)
 
-			expect(result).toContain("# Rules from .roorules:")
+			expect(result).toContain("# Rules from .brorules:")
 			expect(result).toContain("legacy rule content")
 		})
 
@@ -198,7 +198,7 @@ describe("custom-instructions global .roo support", () => {
 			// The safeReadFile function catches ENOENT errors and returns empty string
 			// So we don't need to mock rejections, just empty responses
 			mockReadFile
-				.mockResolvedValueOnce("") // .roorules returns empty (simulating ENOENT caught by safeReadFile)
+				.mockResolvedValueOnce("") // .brorules returns empty (simulating ENOENT caught by safeReadFile)
 				.mockResolvedValueOnce("") // .clinerules returns empty (simulating ENOENT caught by safeReadFile)
 
 			const result = await loadRuleFiles(mockCwd)
@@ -242,7 +242,7 @@ describe("custom-instructions global .roo support", () => {
 				.mockResolvedValueOnce("global mode rule content")
 				.mockResolvedValueOnce("project mode rule content")
 				.mockResolvedValueOnce("") // AGENTS.md file (empty)
-				.mockResolvedValueOnce("") // .roorules legacy file (empty)
+				.mockResolvedValueOnce("") // .brorules legacy file (empty)
 				.mockResolvedValueOnce("") // .clinerules legacy file (empty)
 
 			const result = await addCustomInstructions("", "", mockCwd, mode)
@@ -266,12 +266,12 @@ describe("custom-instructions global .roo support", () => {
 
 			// Mock legacy mode file reading by path so optional file checks cannot affect ordering.
 			mockReadFile.mockImplementation(async (filePath: string) =>
-				filePath.endsWith(".roorules-code") ? "legacy mode rule content" : "",
+				filePath.endsWith(".brorules-code") ? "legacy mode rule content" : "",
 			)
 
 			const result = await addCustomInstructions("", "", mockCwd, mode)
 
-			expect(result).toContain("# Rules from .roorules-code:")
+			expect(result).toContain("# Rules from .brorules-code:")
 			expect(result).toContain("legacy mode rule content")
 		})
 	})

@@ -1,7 +1,7 @@
 import type { JWTInput } from "google-auth-library"
 
-import { looksLikeFilePath } from "@roo-code/types"
-import { safeJsonParse } from "@roo-code/core"
+import { looksLikeFilePath } from "@bro-code/types"
+import { safeJsonParse } from "@bro-code/core"
 
 // Detects when the "Google Cloud Credentials" field has received a filesystem
 // path instead of the raw JSON contents of a service-account key file. Users
@@ -11,7 +11,7 @@ import { safeJsonParse } from "@roo-code/core"
 // undefined when the field is empty, path-shaped, or unparseable.
 //
 // The path-shape predicate is shared with the webview UI warning via
-// @roo-code/types/looksLikeFilePath so both surfaces stay in agreement.
+// @bro-code/types/looksLikeFilePath so both surfaces stay in agreement.
 export function parseVertexJsonCredentials(value: string | undefined): JWTInput | undefined {
 	const trimmed = value?.trim()
 	if (!trimmed) {

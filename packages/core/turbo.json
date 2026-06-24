@@ -3,7 +3,7 @@
 	"extends": ["//"],
 	"tasks": {
 		"test:unit": {
-			"dependsOn": ["@roo-code/types#build"],
+			"dependsOn": ["@bro-code/types#build"],
 			"inputs": [
 				"src/**",
 				"!src/**/*.integration.spec.ts",
@@ -15,7 +15,7 @@
 			]
 		},
 		"test:integration": {
-			"dependsOn": ["@roo-code/types#build"],
+			"dependsOn": ["@bro-code/types#build"],
 			"inputs": [
 				"src/custom-tools/*.ts",
 				"src/custom-tools/**/*.integration.spec.ts",
@@ -29,7 +29,7 @@
 			]
 		},
 		"test:coverage:unit": {
-			"dependsOn": ["@roo-code/types#build"],
+			"dependsOn": ["@bro-code/types#build"],
 			"inputs": [
 				"src/**",
 				"!src/**/*.integration.spec.ts",
@@ -42,7 +42,7 @@
 			"outputs": ["coverage/unit/**"]
 		},
 		"test:coverage:integration": {
-			"dependsOn": ["@roo-code/types#build"],
+			"dependsOn": ["@bro-code/types#build"],
 			"inputs": [
 				"src/custom-tools/*.ts",
 				"src/custom-tools/**/*.integration.spec.ts",
@@ -57,7 +57,7 @@
 			"outputs": ["coverage/integration/**"]
 		},
 		"test:coverage": {
-			"dependsOn": ["@roo-code/types#build"],
+			"dependsOn": ["@bro-code/types#build"],
 			"inputs": [
 				"src/**",
 				"package.json",

@@ -7,9 +7,9 @@ import {
 	type RouterModels,
 	type ExtensionMessage,
 	opencodeGoDefaultModelId,
-} from "@roo-code/types"
+} from "@bro-code/types"
 
-import type { RouterName } from "@roo/api"
+import type { RouterName } from "@bro/api"
 
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"

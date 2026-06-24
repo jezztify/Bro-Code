@@ -18,7 +18,7 @@ import {
 	openRouterDefaultModelId,
 	vscodeLlmModels,
 	vscodeLlmDefaultModelId,
-} from "@roo-code/types"
+} from "@bro-code/types"
 
 import { useSelectedModel } from "../useSelectedModel"
 import { useRouterModels } from "../useRouterModels"

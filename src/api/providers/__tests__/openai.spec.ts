@@ -4,7 +4,7 @@ import { OpenAiHandler, getOpenAiModels } from "../openai"
 import { ApiHandlerOptions } from "../../../shared/api"
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
-import { openAiModelInfoSaneDefaults, DEEP_SEEK_DEFAULT_TEMPERATURE } from "@roo-code/types"
+import { openAiModelInfoSaneDefaults, DEEP_SEEK_DEFAULT_TEMPERATURE } from "@bro-code/types"
 import { Package } from "../../../shared/package"
 import axios from "axios"
 
@@ -119,9 +119,9 @@ describe("OpenAiHandler", () => {
 				baseURL: expect.any(String),
 				apiKey: expect.any(String),
 				defaultHeaders: {
-					"HTTP-Referer": "https://github.com/Zoo-Code-Org/Zoo-Code",
-					"X-Title": "Zoo Code",
-					"User-Agent": `ZooCode/${Package.version}`,
+					"HTTP-Referer": "https://github.com/Bro-Code-Org/Bro-Code",
+					"X-Title": "Bro Code",
+					"User-Agent": `BroCode/${Package.version}`,
 				},
 				timeout: MOCK_TIMEOUT_MS,
 			})

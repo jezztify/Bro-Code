@@ -11,9 +11,9 @@
 </sub>
 </div>
 
-# 為 Zoo Code 做出貢獻
+# 為 Bro Code 做出貢獻
 
-Zoo Code 是一個由社群驅動的專案，我們非常重視每一份貢獻。為了簡化協作流程，我們採用 [「Issue 優先」的方法](#issue-優先方法)，這意味著所有的 [Pull Request (PR)](#提交-pull-request) 都必須先連結到一個 GitHub Issue。請仔細閱讀本指南。
+Bro Code 是一個由社群驅動的專案，我們非常重視每一份貢獻。為了簡化協作流程，我們採用 [「Issue 優先」的方法](#issue-優先方法)，這意味著所有的 [Pull Request (PR)](#提交-pull-request) 都必須先連結到一個 GitHub Issue。請仔細閱讀本指南。
 
 ## 目錄
 
@@ -54,10 +54,10 @@ Zoo Code 是一個由社群驅動的專案，我們非常重視每一份貢獻�
 
 在您的 PR 中提及與這些領域的一致性。
 
-### 3. 加入 Zoo Code 社群
+### 3. 加入 Bro Code 社群
 
 - **Discord：**加入我們的 [Discord](https://discord.gg/VxfP4Vx3gX)。
-- **Reddit：**加入我們的 [Reddit](https://www.reddit.com/r/ZooCode/)。
+- **Reddit：**加入我們的 [Reddit](https://www.reddit.com/r/BroCode/)。
 
 ## 尋找和規劃您的貢獻
 
@@ -71,7 +71,7 @@ Zoo Code 是一個由社群驅動的專案，我們非常重視每一份貢獻�
 
 所有貢獻都始於使用我們精簡範本的 GitHub Issue。
 
-- **檢查現有 Issue**：在 [GitHub Issues](https://github.com/Zoo-Code-Org/Zoo-Code/issues) 中搜尋。
+- **檢查現有 Issue**：在 [GitHub Issues](https://github.com/Bro-Code-Org/Bro-Code/issues) 中搜尋。
 - **使用以下範本建立 Issue**：
     - **增強功能：** 「Enhancement Request」範本（著重於使用者利益的淺顯描述）。
     - **錯誤** 「Bug Report」範本（最少的重現步驟 + 預期與實際結果 + 版本）。
@@ -80,17 +80,17 @@ Zoo Code 是一個由社群驅動的專案，我們非常重視每一份貢獻�
 
 ### 決定做什麼
 
-- 若要查看 issue，請前往 [GitHub Issues 頁面](https://github.com/Zoo-Code-Org/Zoo-Code/issues)。
-- 如需文件，請造訪 [Zoo Code Docs](https://github.com/Zoo-Code-Org/Zoo-Code-Docs)。
+- 若要查看 issue，請前往 [GitHub Issues 頁面](https://github.com/Bro-Code-Org/Bro-Code/issues)。
+- 如需文件，請造訪 [Bro Code Docs](https://github.com/Bro-Code-Org/Bro-Code-Docs)。
 
 ### 回報錯誤
 
 - 首先檢查現有的報告。
-- 使用 [「Bug Report」範本](https://github.com/Zoo-Code-Org/Zoo-Code/issues/new/choose) 建立一個新的錯誤回報，並提供：
+- 使用 [「Bug Report」範本](https://github.com/Bro-Code-Org/Bro-Code/issues/new/choose) 建立一個新的錯誤回報，並提供：
     - 清晰、編號的重現步驟
     - 預期與實際結果
-    - Zoo Code 版本（必填）；如果相關，還需提供 API 供應商/模型
-- **安全問題**：透過 [安全公告 (Security Advisories)](https://github.com/Zoo-Code-Org/Zoo-Code/security/advisories/new) 私下回報。
+    - Bro Code 版本（必填）；如果相關，還需提供 API 供應商/模型
+- **安全問題**：透過 [安全公告 (Security Advisories)](https://github.com/Bro-Code-Org/Bro-Code/security/advisories/new) 私下回報。
 
 ## 開發和提交流程
 
@@ -99,7 +99,7 @@ Zoo Code 是一個由社群驅動的專案，我們非常重視每一份貢獻�
 1. **Fork 與 Clone：**
 
 ```
-git clone https://github.com/YOUR_USERNAME/Zoo-Code.git
+git clone https://github.com/YOUR_USERNAME/Bro-Code.git
 ```
 
 2. **安裝相依套件：**
@@ -166,4 +166,4 @@ Pull Request 應當可審查、經過測試且可維護。在開啟 PR 之前，
 
 ## 法律資訊
 
-透過貢獻，您同意您的貢獻將根據 Apache 2.0 授權條款進行授權，這與 Zoo Code 的授權一致。
+透過貢獻，您同意您的貢獻將根據 Apache 2.0 授權條款進行授權，這與 Bro Code 的授權一致。

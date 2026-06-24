@@ -39,8 +39,8 @@ jobs:
                   package_name=$(node -p "require('./src/package.json').name")
                   publisher=$(node -p "require('./src/package.json').publisher")
 
-                  test "$package_name" = "zoo-code"
-                  test "$publisher" = "ZooCodeOrganization"
+                  test "$package_name" = "bro-code"
+                  test "$publisher" = "BroCodeOrganization"
 
             - name: Validate release metadata
               run: |
@@ -51,8 +51,8 @@ jobs:
 
             - name: Build workspace packages
               run: |
-                  pnpm --filter @roo-code/build build
-                  pnpm --filter @roo-code/vscode-webview build
+                  pnpm --filter @bro-code/build build
+                  pnpm --filter @bro-code/vscode-webview build
 
             - name: Bundle extension and verify README sync
               env:
@@ -68,25 +68,25 @@ jobs:
                   package_version=$(node -p "require('./src/package.json').version")
                   pnpm --filter ./src vsix
 
-                  vsix_path="bin/zoo-code-${package_version}.vsix"
+                  vsix_path="bin/bro-code-${package_version}.vsix"
                   test -f "$vsix_path"
 
-                  unzip -l "$vsix_path" > /tmp/zoo-code-vsix-contents.txt
-                  grep -q "extension/package.json" /tmp/zoo-code-vsix-contents.txt
-                  grep -q "extension/package.nls.json" /tmp/zoo-code-vsix-contents.txt
-                  grep -q "extension/dist/extension.js" /tmp/zoo-code-vsix-contents.txt
-                  grep -q "extension/webview-ui/audio/celebration.wav" /tmp/zoo-code-vsix-contents.txt
-                  grep -q "extension/webview-ui/build/assets/index.js" /tmp/zoo-code-vsix-contents.txt
-                  grep -q "extension/assets/codicons/codicon.ttf" /tmp/zoo-code-vsix-contents.txt
-                  grep -q "extension/assets/vscode-material-icons/icons/3d.svg" /tmp/zoo-code-vsix-contents.txt
+                  unzip -l "$vsix_path" > /tmp/bro-code-vsix-contents.txt
+                  grep -q "extension/package.json" /tmp/bro-code-vsix-contents.txt
+                  grep -q "extension/package.nls.json" /tmp/bro-code-vsix-contents.txt
+                  grep -q "extension/dist/extension.js" /tmp/bro-code-vsix-contents.txt
+                  grep -q "extension/webview-ui/audio/celebration.wav" /tmp/bro-code-vsix-contents.txt
+                  grep -q "extension/webview-ui/build/assets/index.js" /tmp/bro-code-vsix-contents.txt
+                  grep -q "extension/assets/codicons/codicon.ttf" /tmp/bro-code-vsix-contents.txt
+                  grep -q "extension/assets/vscode-material-icons/icons/3d.svg" /tmp/bro-code-vsix-contents.txt
 
             - name: Validate packaged manifest identity
               run: |
                   package_version=$(node -p "require('./src/package.json').version")
-                  vsix_path="bin/zoo-code-${package_version}.vsix"
+                  vsix_path="bin/bro-code-${package_version}.vsix"
 
                   artifact_name=$(unzip -p "$vsix_path" extension/package.json | jq -r '.name')
                   artifact_publisher=$(unzip -p "$vsix_path" extension/package.json | jq -r '.publisher')
 
-                  test "$artifact_name" = "zoo-code"
-                  test "$artifact_publisher" = "ZooCodeOrganization"
+                  test "$artifact_name" = "bro-code"
+                  test "$artifact_publisher" = "BroCodeOrganization"

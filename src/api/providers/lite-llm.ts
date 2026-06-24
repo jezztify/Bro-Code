@@ -1,7 +1,7 @@
 import OpenAI from "openai"
 import { Anthropic } from "@anthropic-ai/sdk" // Keep for type usage only
 
-import { litellmDefaultModelId, litellmDefaultModelInfo } from "@roo-code/types"
+import { litellmDefaultModelId, litellmDefaultModelInfo } from "@bro-code/types"
 
 import { calculateApiCostOpenAI } from "../../shared/cost"
 
@@ -225,14 +225,14 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 
 		// LiteLLM recognizes X-<vendor>-Session-ID for per-conversation request correlation.
 		// This header enables LiteLLM to group related API calls by task for logging and tracing.
-		// Unlike Zoo gateways (which use X-Zoo-Task-ID to correlate requests across multiple
+		// Unlike Bro gateways (which use X-Bro-Task-ID to correlate requests across multiple
 		// models within a single conversation), this header is specific to the LiteLLM provider
 		// and facilitates provider-level logging and debugging on LiteLLM's admin panel.
 		// Matches the convention used by Claude Code (x-claude-code-session-id) and
 		// GitHub Copilot (x-copilot-session-id).
 		const requestHeaders: Record<string, string> = {}
 		if (metadata?.taskId) {
-			requestHeaders["X-Zoo-Session-ID"] = metadata.taskId
+			requestHeaders["X-Bro-Session-ID"] = metadata.taskId
 		}
 
 		try {

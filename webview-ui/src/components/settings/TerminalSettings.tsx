@@ -7,7 +7,7 @@ import { buildDocLink } from "@src/utils/docLinks"
 import { useEvent, useMount } from "react-use"
 import { Terminal } from "lucide-react"
 
-import { type ExtensionMessage, type TerminalOutputPreviewSize } from "@roo-code/types"
+import { type ExtensionMessage, type TerminalOutputPreviewSize } from "@bro-code/types"
 
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Button } from "@/components/ui"
@@ -45,7 +45,7 @@ type TerminalSettingsProps = HTMLAttributes<HTMLDivElement> & {
 
 // Sentinel value that maps to `undefined` (use VS Code's default shell).
 // The Select component cannot accept empty-string item values.
-export const DEFAULT_PROFILE_VALUE = "__zoo_code_follow_vscode_sentinel__"
+export const DEFAULT_PROFILE_VALUE = "__bro_code_follow_vscode_sentinel__"
 
 export const TerminalSettings = ({
 	terminalOutputPreviewSize,

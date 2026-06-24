@@ -1,6 +1,6 @@
 import * as assert from "assert"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { BroCodeEventName, type ClineMessage } from "@bro-code/types"
 
 import { setDefaultSuiteTimeout } from "../test-utils"
 import { waitUntilCompleted } from "../utils"
@@ -222,7 +222,7 @@ suite("Gemini provider", function () {
 				}
 			}
 
-			api.on(RooCodeEventName.Message, messageHandler)
+			api.on(BroCodeEventName.Message, messageHandler)
 
 			try {
 				const taskId = await api.startNewTask({
@@ -232,7 +232,7 @@ suite("Gemini provider", function () {
 
 				await waitUntilCompleted({ api, taskId })
 			} finally {
-				api.off(RooCodeEventName.Message, messageHandler)
+				api.off(BroCodeEventName.Message, messageHandler)
 			}
 
 			const firstRequest = requests.find((request) => request.lastUserMessage.includes(promptTag))

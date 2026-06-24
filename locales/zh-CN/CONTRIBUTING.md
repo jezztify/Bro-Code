@@ -11,9 +11,9 @@
 </sub>
 </div>
 
-# 为 Zoo Code 做贡献
+# 为 Bro Code 做贡献
 
-Zoo Code 是一个由社区驱动的项目，我们非常重视每一份贡献。为了简化协作，我们采用 [“问题优先” 的方法](#问题优先方法)，这意味着所有的 [拉取请求 (PR)](#提交拉取请求) 都必须首先链接到一个 GitHub 问题。请仔细阅读本指南。
+Bro Code 是一个由社区驱动的项目，我们非常重视每一份贡献。为了简化协作，我们采用 [“问题优先” 的方法](#问题优先方法)，这意味着所有的 [拉取请求 (PR)](#提交拉取请求) 都必须首先链接到一个 GitHub 问题。请仔细阅读本指南。
 
 ## 目录
 
@@ -54,10 +54,10 @@ Zoo Code 是一个由社区驱动的项目，我们非常重视每一份贡献�
 
 在您的 PR 中提及与这些领域的一致性。
 
-### 3. 加入 Zoo Code 社区
+### 3. 加入 Bro Code 社区
 
 - **Discord：**加入我们的 [Discord](https://discord.gg/VxfP4Vx3gX)。
-- **Reddit：**加入我们的 [Reddit](https://www.reddit.com/r/ZooCode/)。
+- **Reddit：**加入我们的 [Reddit](https://www.reddit.com/r/BroCode/)。
 
 ## 寻找和规划您的贡献
 
@@ -71,7 +71,7 @@ Zoo Code 是一个由社区驱动的项目，我们非常重视每一份贡献�
 
 所有贡献都始于使用我们精简模板的 GitHub 问题。
 
-- **检查现有问题**：在 [GitHub 问题](https://github.com/Zoo-Code-Org/Zoo-Code/issues) 中搜索。
+- **检查现有问题**：在 [GitHub 问题](https://github.com/Bro-Code-Org/Bro-Code/issues) 中搜索。
 - **使用以下模板创建问题**：
     - **增强功能：** “增强请求”模板（侧重于用户利益的简单语言）。
     - **错误：** “错误报告”模板（最少的复现步骤 + 预期与实际 + 版本）。
@@ -80,17 +80,17 @@ Zoo Code 是一个由社区驱动的项目，我们非常重视每一份贡献�
 
 ### 决定做什么
 
-- 如需查看 issue，请访问 [GitHub Issues 页面](https://github.com/Zoo-Code-Org/Zoo-Code/issues)。
-- 如需文档，请访问 [Zoo Code 文档](https://github.com/Zoo-Code-Org/Zoo-Code-Docs)。
+- 如需查看 issue，请访问 [GitHub Issues 页面](https://github.com/Bro-Code-Org/Bro-Code/issues)。
+- 如需文档，请访问 [Bro Code 文档](https://github.com/Bro-Code-Org/Bro-Code-Docs)。
 
 ### 报告错误
 
 - 首先检查现有的报告。
-- 使用 [“错误报告”模板](https://github.com/Zoo-Code-Org/Zoo-Code/issues/new/choose) 创建一个新错误，并提供：
+- 使用 [“错误报告”模板](https://github.com/Bro-Code-Org/Bro-Code/issues/new/choose) 创建一个新错误，并提供：
     - 清晰、编号的复现步骤
     - 预期与实际结果
-    - Zoo Code 版本（必需）；如果相关，还需提供 API 提供商/模型
-- **安全问题**：通过 [安全公告](https://github.com/Zoo-Code-Org/Zoo-Code/security/advisories/new) 私下报告。
+    - Bro Code 版本（必需）；如果相关，还需提供 API 提供商/模型
+- **安全问题**：通过 [安全公告](https://github.com/Bro-Code-Org/Bro-Code/security/advisories/new) 私下报告。
 
 ## 开发和提交流程
 
@@ -99,7 +99,7 @@ Zoo Code 是一个由社区驱动的项目，我们非常重视每一份贡献�
 1. **复刻和克隆：**
 
 ```
-git clone https://github.com/YOUR_USERNAME/Zoo-Code.git
+git clone https://github.com/YOUR_USERNAME/Bro-Code.git
 ```
 
 2. **安装依赖项：**
@@ -166,4 +166,4 @@ pnpm install
 
 ## 法律
 
-通过贡献，您同意您的贡献将根据 Apache 2.0 许可证进行许可，这与 Zoo Code 的许可一致。
+通过贡献，您同意您的贡献将根据 Apache 2.0 许可证进行许可，这与 Bro Code 的许可一致。

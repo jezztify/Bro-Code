@@ -5,8 +5,8 @@ describe("isSupportedProvider", () => {
 		expect(isSupportedProvider(provider)).toBe(true)
 	})
 
-	it("returns false for 'roo' (retired provider)", () => {
-		expect(isSupportedProvider("roo")).toBe(false)
+	it("returns false for 'bro' (retired provider)", () => {
+		expect(isSupportedProvider("bro")).toBe(false)
 	})
 
 	it("returns false for unknown provider", () => {

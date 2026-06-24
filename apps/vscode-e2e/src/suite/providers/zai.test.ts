@@ -1,6 +1,6 @@
 import * as assert from "assert"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { BroCodeEventName, type ClineMessage } from "@bro-code/types"
 
 import { waitUntilCompleted } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
@@ -210,7 +210,7 @@ suite("Z.ai GLM provider", function () {
 		const api = globalThis.api
 		const messages: ClineMessage[] = []
 
-		api.on(RooCodeEventName.Message, ({ message }) => {
+		api.on(BroCodeEventName.Message, ({ message }) => {
 			if (message.type === "say" && message.partial === false) {
 				messages.push(message)
 			}
@@ -256,7 +256,7 @@ suite("Z.ai GLM provider", function () {
 		const api = globalThis.api
 		const messages: ClineMessage[] = []
 
-		api.on(RooCodeEventName.Message, ({ message }) => {
+		api.on(BroCodeEventName.Message, ({ message }) => {
 			if (message.type === "say" && message.partial === false) {
 				messages.push(message)
 			}

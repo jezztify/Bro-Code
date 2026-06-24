@@ -93,86 +93,86 @@ describe("UISettings", () => {
 		})
 	})
 
-	describe("auto-close Zoo-opened files checkboxes", () => {
+	describe("auto-close Bro-opened files checkboxes", () => {
 		it("renders all three auto-close checkboxes", () => {
 			const { getByTestId } = render(
 				<UISettings
 					{...defaultProps}
-					autoCloseZooOpenedFiles={true}
-					autoCloseZooOpenedFilesAfterUserEdited={false}
-					autoCloseZooOpenedNewFiles={false}
+					autoCloseBroOpenedFiles={true}
+					autoCloseBroOpenedFilesAfterUserEdited={false}
+					autoCloseBroOpenedNewFiles={false}
 				/>,
 			)
-			expect(getByTestId("auto-close-zoo-opened-files-checkbox")).toBeTruthy()
-			expect(getByTestId("auto-close-zoo-opened-files-after-user-edited-checkbox")).toBeTruthy()
-			expect(getByTestId("auto-close-zoo-opened-new-files-checkbox")).toBeTruthy()
+			expect(getByTestId("auto-close-bro-opened-files-checkbox")).toBeTruthy()
+			expect(getByTestId("auto-close-bro-opened-files-after-user-edited-checkbox")).toBeTruthy()
+			expect(getByTestId("auto-close-bro-opened-new-files-checkbox")).toBeTruthy()
 		})
 
-		it("autoCloseZooOpenedFiles checkbox reflects true prop", () => {
-			const { getByTestId } = render(<UISettings {...defaultProps} autoCloseZooOpenedFiles={true} />)
-			const checkbox = getByTestId("auto-close-zoo-opened-files-checkbox") as HTMLInputElement
+		it("autoCloseBroOpenedFiles checkbox reflects true prop", () => {
+			const { getByTestId } = render(<UISettings {...defaultProps} autoCloseBroOpenedFiles={true} />)
+			const checkbox = getByTestId("auto-close-bro-opened-files-checkbox") as HTMLInputElement
 			expect(checkbox.checked).toBe(true)
 		})
 
-		it("autoCloseZooOpenedFiles checkbox reflects false prop", () => {
-			const { getByTestId } = render(<UISettings {...defaultProps} autoCloseZooOpenedFiles={false} />)
-			const checkbox = getByTestId("auto-close-zoo-opened-files-checkbox") as HTMLInputElement
+		it("autoCloseBroOpenedFiles checkbox reflects false prop", () => {
+			const { getByTestId } = render(<UISettings {...defaultProps} autoCloseBroOpenedFiles={false} />)
+			const checkbox = getByTestId("auto-close-bro-opened-files-checkbox") as HTMLInputElement
 			expect(checkbox.checked).toBe(false)
 		})
 
-		it("autoCloseZooOpenedFiles checkbox defaults to unchecked when prop is unset", () => {
-			// Omitting the prop simulates the opt-in default (false). A regression that
-			// flips the fallback back to `?? true` would make this checkbox checked.
+		it("autoCloseBroOpenedFiles checkbox defaults to checked when prop is unset", () => {
+			// Omitting the prop simulates the opt-out default (true). A regression that
+			// flips the fallback back to `?? false` would make this checkbox unchecked.
 			const { getByTestId } = render(<UISettings {...defaultProps} />)
-			const checkbox = getByTestId("auto-close-zoo-opened-files-checkbox") as HTMLInputElement
-			expect(checkbox.checked).toBe(false)
+			const checkbox = getByTestId("auto-close-bro-opened-files-checkbox") as HTMLInputElement
+			expect(checkbox.checked).toBe(true)
 		})
 
-		it("calls setCachedStateField with autoCloseZooOpenedFiles when toggled", async () => {
+		it("calls setCachedStateField with autoCloseBroOpenedFiles when toggled", async () => {
 			const setCachedStateField = vi.fn()
 			const { getByTestId } = render(
 				<UISettings
 					{...defaultProps}
-					autoCloseZooOpenedFiles={true}
+					autoCloseBroOpenedFiles={true}
 					setCachedStateField={setCachedStateField}
 				/>,
 			)
-			const checkbox = getByTestId("auto-close-zoo-opened-files-checkbox")
+			const checkbox = getByTestId("auto-close-bro-opened-files-checkbox")
 			fireEvent.click(checkbox)
 			await waitFor(() => {
-				expect(setCachedStateField).toHaveBeenCalledWith("autoCloseZooOpenedFiles", false)
+				expect(setCachedStateField).toHaveBeenCalledWith("autoCloseBroOpenedFiles", false)
 			})
 		})
 
-		it("calls setCachedStateField with autoCloseZooOpenedFilesAfterUserEdited when toggled", async () => {
+		it("calls setCachedStateField with autoCloseBroOpenedFilesAfterUserEdited when toggled", async () => {
 			const setCachedStateField = vi.fn()
 			const { getByTestId } = render(
 				<UISettings
 					{...defaultProps}
-					autoCloseZooOpenedFilesAfterUserEdited={false}
+					autoCloseBroOpenedFilesAfterUserEdited={false}
 					setCachedStateField={setCachedStateField}
 				/>,
 			)
-			const checkbox = getByTestId("auto-close-zoo-opened-files-after-user-edited-checkbox")
+			const checkbox = getByTestId("auto-close-bro-opened-files-after-user-edited-checkbox")
 			fireEvent.click(checkbox)
 			await waitFor(() => {
-				expect(setCachedStateField).toHaveBeenCalledWith("autoCloseZooOpenedFilesAfterUserEdited", true)
+				expect(setCachedStateField).toHaveBeenCalledWith("autoCloseBroOpenedFilesAfterUserEdited", true)
 			})
 		})
 
-		it("calls setCachedStateField with autoCloseZooOpenedNewFiles when toggled", async () => {
+		it("calls setCachedStateField with autoCloseBroOpenedNewFiles when toggled", async () => {
 			const setCachedStateField = vi.fn()
 			const { getByTestId } = render(
 				<UISettings
 					{...defaultProps}
-					autoCloseZooOpenedNewFiles={false}
+					autoCloseBroOpenedNewFiles={false}
 					setCachedStateField={setCachedStateField}
 				/>,
 			)
-			const checkbox = getByTestId("auto-close-zoo-opened-new-files-checkbox")
+			const checkbox = getByTestId("auto-close-bro-opened-new-files-checkbox")
 			fireEvent.click(checkbox)
 			await waitFor(() => {
-				expect(setCachedStateField).toHaveBeenCalledWith("autoCloseZooOpenedNewFiles", true)
+				expect(setCachedStateField).toHaveBeenCalledWith("autoCloseBroOpenedNewFiles", true)
 			})
 		})
 	})

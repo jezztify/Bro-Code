@@ -11,9 +11,9 @@
 </sub>
 </div>
 
-# Zoo Code'a Katkıda Bulunma
+# Bro Code'a Katkıda Bulunma
 
-Zoo Code topluluk tarafından yürütülen bir projedir ve her katkıyı derinden takdir ediyoruz. İşbirliğini kolaylaştırmak için [Önce Sorun Yaklaşımı](#önce-sorun-yaklaşımı) temelinde çalışıyoruz, bu da tüm [Çekme İsteklerinin (PR'ler)](#pull-request-guidelines) önce bir GitHub Sorununa bağlanması gerektiği anlamına gelir. Lütfen bu kılavuzu dikkatlice inceleyin.
+Bro Code topluluk tarafından yürütülen bir projedir ve her katkıyı derinden takdir ediyoruz. İşbirliğini kolaylaştırmak için [Önce Sorun Yaklaşımı](#önce-sorun-yaklaşımı) temelinde çalışıyoruz, bu da tüm [Çekme İsteklerinin (PR'ler)](#pull-request-guidelines) önce bir GitHub Sorununa bağlanması gerektiği anlamına gelir. Lütfen bu kılavuzu dikkatlice inceleyin.
 
 ## İçindekiler
 
@@ -54,10 +54,10 @@ Yol haritamız projenin yönünü belirler. Katkılarınızı bu temel hedeflerl
 
 PR'lerinizde bu alanlarla uyumu belirtin.
 
-### 3. Zoo Code topluluğuna katıl
+### 3. Bro Code topluluğuna katıl
 
 - **Discord:** [Discord](https://discord.gg/VxfP4Vx3gX) sunucumuza katıl.
-- **Reddit:** [Reddit](https://www.reddit.com/r/ZooCode/) topluluğumuza katıl.
+- **Reddit:** [Reddit](https://www.reddit.com/r/BroCode/) topluluğumuza katıl.
 
 ## Katkınızı Bulma ve Planlama
 
@@ -71,7 +71,7 @@ PR'lerinizde bu alanlarla uyumu belirtin.
 
 Tüm katkılar, basit şablonlarımızı kullanarak bir GitHub Sorunu ile başlar.
 
-- **Mevcut sorunları kontrol edin**: [GitHub Sorunları](https://github.com/Zoo-Code-Org/Zoo-Code/issues)nda arama yapın.
+- **Mevcut sorunları kontrol edin**: [GitHub Sorunları](https://github.com/Bro-Code-Org/Bro-Code/issues)nda arama yapın.
 - **Bir sorun oluşturun**:
     - **İyileştirmeler:** "İyileştirme İsteği" şablonu (kullanıcı yararına odaklanan sade bir dil).
     - **Hatalar:** "Hata Raporu" şablonu (minimum yeniden oluşturma + beklenen vs gerçek + sürüm).
@@ -80,17 +80,17 @@ Tüm katkılar, basit şablonlarımızı kullanarak bir GitHub Sorunu ile başla
 
 ### Ne Üzerinde Çalışılacağına Karar Verme
 
-- Issue bulmak için [GitHub Issues sayfasına](https://github.com/Zoo-Code-Org/Zoo-Code/issues) bak.
-- Belgeler için [Zoo Code Belgeleri](https://github.com/Zoo-Code-Org/Zoo-Code-Docs)ni ziyaret edin.
+- Issue bulmak için [GitHub Issues sayfasına](https://github.com/Bro-Code-Org/Bro-Code/issues) bak.
+- Belgeler için [Bro Code Belgeleri](https://github.com/Bro-Code-Org/Bro-Code-Docs)ni ziyaret edin.
 
 ### Hataları Bildirme
 
 - Önce mevcut raporları kontrol edin.
-- Aşağıdakilerle ["Hata Raporu" şablonunu](https://github.com/Zoo-Code-Org/Zoo-Code/issues/new/choose) kullanarak yeni bir hata oluşturun:
+- Aşağıdakilerle ["Hata Raporu" şablonunu](https://github.com/Bro-Code-Org/Bro-Code/issues/new/choose) kullanarak yeni bir hata oluşturun:
     - Açık, numaralandırılmış yeniden oluşturma adımları
     - Beklenen vs gerçek sonuç
-    - Zoo Code sürümü (gerekli); ilgiliyse API sağlayıcısı/modeli
-- **Güvenlik sorunları**: [Güvenlik tavsiyeleri](https://github.com/Zoo-Code-Org/Zoo-Code/security/advisories/new) aracılığıyla özel olarak bildirin.
+    - Bro Code sürümü (gerekli); ilgiliyse API sağlayıcısı/modeli
+- **Güvenlik sorunları**: [Güvenlik tavsiyeleri](https://github.com/Bro-Code-Org/Bro-Code/security/advisories/new) aracılığıyla özel olarak bildirin.
 
 ## Geliştirme ve Gönderme Süreci
 
@@ -99,7 +99,7 @@ Tüm katkılar, basit şablonlarımızı kullanarak bir GitHub Sorunu ile başla
 1. **Çatallayın ve Klonlayın:**
 
 ```
-git clone https://github.com/YOUR_USERNAME/Zoo-Code.git
+git clone https://github.com/YOUR_USERNAME/Bro-Code.git
 ```
 
 2. **Bağımlılıkları Yükleyin:**
@@ -168,4 +168,4 @@ Anlamadığınız veya inceleme sürecinde sürdüremeyeceğiniz YZ tarafından 
 
 ## Yasal
 
-Katkıda bulunarak, katkılarınızın Zoo Code'un lisanslamasıyla tutarlı olan Apache 2.0 Lisansı altında lisanslanacağını kabul etmiş olursunuz.
+Katkıda bulunarak, katkılarınızın Bro Code'un lisanslamasıyla tutarlı olan Apache 2.0 Lisansı altında lisanslanacağını kabul etmiş olursunuz.

@@ -41,7 +41,7 @@ vi.mock("fs/promises")
 
 import * as vscode from "vscode"
 
-import { ModeConfig } from "@roo-code/types"
+import { ModeConfig } from "@bro-code/types"
 
 import { SYSTEM_PROMPT } from "../system"
 import { McpHub } from "../../../services/mcp/McpHub"
@@ -75,7 +75,7 @@ __setMockImplementation(
 		globalCustomInstructions: string,
 		cwd: string,
 		mode: string,
-		options?: { language?: string; rooIgnoreInstructions?: string; settings?: Record<string, any> },
+		options?: { language?: string; broIgnoreInstructions?: string; settings?: Record<string, any> },
 	) => {
 		const sections = []
 
@@ -224,7 +224,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // globalCustomInstructions
 			experiments,
 			undefined, // language
-			undefined, // rooIgnoreInstructions
+			undefined, // broIgnoreInstructions
 		)
 
 		expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/consistent-system-prompt.snap")
@@ -245,7 +245,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // globalCustomInstructions
 			experiments,
 			undefined, // language
-			undefined, // rooIgnoreInstructions
+			undefined, // broIgnoreInstructions
 		)
 
 		expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/with-mcp-hub-provided.snap")
@@ -264,7 +264,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // globalCustomInstructions
 			experiments,
 			undefined, // language
-			undefined, // rooIgnoreInstructions
+			undefined, // broIgnoreInstructions
 		)
 
 		expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/with-undefined-mcp-hub.snap")
@@ -312,7 +312,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // globalCustomInstructions
 			undefined, // experiments
 			undefined, // language
-			undefined, // rooIgnoreInstructions
+			undefined, // broIgnoreInstructions
 		)
 
 		expect(prompt).toContain("Language Preference:")
@@ -371,7 +371,7 @@ describe("SYSTEM_PROMPT", () => {
 			"Global instructions", // globalCustomInstructions
 			experiments,
 			undefined, // language
-			undefined, // rooIgnoreInstructions
+			undefined, // broIgnoreInstructions
 		)
 
 		// Role definition should be at the top
@@ -405,7 +405,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // globalCustomInstructions
 			undefined, // experiments
 			undefined, // language
-			undefined, // rooIgnoreInstructions
+			undefined, // broIgnoreInstructions
 		)
 
 		// Role definition from promptComponent should be at the top
@@ -434,7 +434,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // globalCustomInstructions
 			undefined, // experiments
 			undefined, // language
-			undefined, // rooIgnoreInstructions
+			undefined, // broIgnoreInstructions
 		)
 
 		// Should use the default mode's role definition
@@ -460,7 +460,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // globalCustomInstructions
 			experiments,
 			undefined, // language
-			undefined, // rooIgnoreInstructions
+			undefined, // broIgnoreInstructions
 			settings, // settings
 		)
 
@@ -488,7 +488,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // globalCustomInstructions
 			experiments,
 			undefined, // language
-			undefined, // rooIgnoreInstructions
+			undefined, // broIgnoreInstructions
 			settings, // settings
 		)
 
@@ -516,7 +516,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // globalCustomInstructions
 			experiments,
 			undefined, // language
-			undefined, // rooIgnoreInstructions
+			undefined, // broIgnoreInstructions
 			settings, // settings
 		)
 
@@ -544,7 +544,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // globalCustomInstructions
 			experiments,
 			undefined, // language
-			undefined, // rooIgnoreInstructions
+			undefined, // broIgnoreInstructions
 			settings, // settings
 		)
 
@@ -603,7 +603,7 @@ describe("SYSTEM_PROMPT", () => {
 				undefined, // globalCustomInstructions
 				experiments,
 				undefined, // language
-				undefined, // rooIgnoreInstructions
+				undefined, // broIgnoreInstructions
 			)
 
 			expect(prompt).not.toContain("MCP servers")

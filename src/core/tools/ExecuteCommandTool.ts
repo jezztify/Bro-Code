@@ -4,8 +4,8 @@ import * as vscode from "vscode"
 
 import delay from "delay"
 
-import { CommandExecutionStatus, DEFAULT_TERMINAL_OUTPUT_PREVIEW_SIZE, PersistedCommandOutput } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { CommandExecutionStatus, DEFAULT_TERMINAL_OUTPUT_PREVIEW_SIZE, PersistedCommandOutput } from "@bro-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
 
 import { Task } from "../task/Task"
 
@@ -15,9 +15,9 @@ import { unescapeHtmlEntities } from "../../utils/text-normalization"
 import { parseCommand } from "../../shared/parse-command"
 import {
 	ExitCodeDetails,
-	RooTerminalCallbacks,
-	RooTerminalProvider,
-	RooTerminalProcess,
+	BroTerminalCallbacks,
+	BroTerminalProvider,
+	BroTerminalProcess,
 	ShellIntegrationError,
 	ShellIntegrationErrorDetails,
 } from "../../integrations/terminal/types"
@@ -36,7 +36,7 @@ export function canRetryShellIntegrationError(error: unknown): error is ShellInt
 }
 
 export function getTerminalProviderForExecution(terminalShellIntegrationDisabled: boolean): {
-	terminalProvider: RooTerminalProvider
+	terminalProvider: BroTerminalProvider
 	isCmdExeFallback: boolean
 } {
 	const isCmdExeFallback = !terminalShellIntegrationDisabled && Terminal.isActiveShellCmdExe()
@@ -57,7 +57,7 @@ export function resolveAgentTimeoutMs(timeoutSeconds: number | null | undefined)
 	// In CLI runtime, stdin harnesses expect command lifetime to be governed
 	// solely by commandExecutionTimeout (user setting), not model-provided
 	// background timeouts.
-	return process.env.ROO_CLI_RUNTIME === "1" ? 0 : requestedAgentTimeout
+	return process.env.BRO_CLI_RUNTIME === "1" ? 0 : requestedAgentTimeout
 }
 
 export class ExecuteCommandTool extends BaseTool<"execute_command"> {
@@ -77,11 +77,11 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 
 			const canonicalCommand = unescapeHtmlEntities(command)
 
-			const ignoredFileAttemptedToAccess = task.rooIgnoreController?.validateCommand(canonicalCommand)
+			const ignoredFileAttemptedToAccess = task.broIgnoreController?.validateCommand(canonicalCommand)
 
 			if (ignoredFileAttemptedToAccess) {
-				await task.say("rooignore_error", ignoredFileAttemptedToAccess)
-				pushToolResult(formatResponse.rooIgnoreError(ignoredFileAttemptedToAccess))
+				await task.say("broignore_error", ignoredFileAttemptedToAccess)
+				pushToolResult(formatResponse.broIgnoreError(ignoredFileAttemptedToAccess))
 				return
 			}
 
@@ -340,8 +340,8 @@ export async function executeCommandInTerminal(
 		resolveOnCompleted = resolve
 	})
 
-	const callbacks: RooTerminalCallbacks = {
-		onLine: async (lines: string, process: RooTerminalProcess) => {
+	const callbacks: BroTerminalCallbacks = {
+		onLine: async (lines: string, process: BroTerminalProcess) => {
 			accumulatedOutput += lines
 
 			// Trim accumulated output to prevent unbounded memory growth

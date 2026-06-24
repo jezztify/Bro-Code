@@ -1,6 +1,6 @@
 {
 	"extension": {
-		"name": "Zoo Code",
+		"name": "Bro Code",
 		"description": "Une équipe complète de développeurs IA dans votre éditeur."
 	},
 	"number_format": {
@@ -111,9 +111,9 @@
 			"thinking_complete_safety": "(Réflexion terminée, mais la sortie a été bloquée en raison des paramètres de sécurité.)",
 			"thinking_complete_recitation": "(Réflexion terminée, mais la sortie a été bloquée en raison de la vérification de récitation.)"
 		},
-		"roo": {
-			"authenticationRequired": "Le fournisseur Roo nécessite une authentification cloud. Veuillez vous connecter à Roo Code Cloud.",
-			"routerRemoved": "Roo Code Router a été supprimé. Sélectionne et configure un autre fournisseur."
+		"bro": {
+			"authenticationRequired": "Le fournisseur Bro nécessite une authentification cloud. Veuillez vous connecter à Bro Code Cloud.",
+			"routerRemoved": "Bro Code Router a été supprimé. Sélectionne et configure un autre fournisseur."
 		},
 		"api": {
 			"invalidKeyInvalidChars": "La clé API contient des caractères invalides.",
@@ -142,16 +142,16 @@
 			"unexpectedStreamError": "Unexpected error processing response stream",
 			"completionError": "OpenAI Codex completion error: {{message}}"
 		},
-		"rooHistoryImport": "Échec de l'importation de l'historique Roo Code : {{error}}"
+		"broHistoryImport": "Échec de l'importation de l'historique Roo Code : {{error}}"
 	},
 	"warnings": {
 		"no_terminal_content": "Aucun contenu de terminal sélectionné",
 		"missing_task_files": "Les fichiers de cette tâche sont introuvables. Souhaitez-vous la supprimer de la liste des tâches ?",
-		"auto_import_failed": "Échec de l'importation automatique des paramètres ZooCode : {{error}}",
-		"rooHistoryImport": {
+		"auto_import_failed": "Échec de l'importation automatique des paramètres BroCode : {{error}}",
+		"broHistoryImport": {
 			"nothingFound": "Aucun historique de tâches Roo Code trouvé à importer depuis {{domain}}.",
-			"alreadyImported_one": "L'historique de {{count}} tâche Roo Code a déjà été importé dans Zoo Code.",
-			"alreadyImported_other": "Les {{count}} historiques de tâches Roo Code ont déjà été importés dans Zoo Code."
+			"alreadyImported_one": "L'historique de {{count}} tâche Roo Code a déjà été importé dans Bro Code.",
+			"alreadyImported_other": "Les {{count}} historiques de tâches Roo Code ont déjà été importés dans Bro Code."
 		}
 	},
 	"info": {
@@ -161,7 +161,7 @@
 		"custom_storage_path_set": "Chemin de stockage personnalisé défini : {{path}}",
 		"default_storage_path": "Retour au chemin de stockage par défaut",
 		"settings_imported": "Paramètres importés avec succès.",
-		"auto_import_success": "Paramètres ZooCode importés automatiquement depuis {{filename}}",
+		"auto_import_success": "Paramètres BroCode importés automatiquement depuis {{filename}}",
 		"share_link_copied": "Lien de partage copié dans le presse-papiers",
 		"image_copied_to_clipboard": "URI de données d'image copiée dans le presse-papiers",
 		"image_saved": "Image enregistrée dans {{path}}",
@@ -169,12 +169,12 @@
 		"public_share_link_copied": "Lien de partage public copié dans le presse-papiers !",
 		"mode_exported": "Mode '{{mode}}' exporté avec succès",
 		"mode_imported": "Mode importé avec succès",
-		"roo": {
-			"signInUnavailable": "La connexion à Roo Code Cloud n'est pas disponible pour le moment. Configure un autre fournisseur pour continuer."
+		"bro": {
+			"signInUnavailable": "La connexion à Bro Code Cloud n'est pas disponible pour le moment. Configure un autre fournisseur pour continuer."
 		},
-		"rooHistoryImport": {
-			"success_one": "{{count}} historique de tâche Roo Code importé dans Zoo Code.",
-			"success_other": "{{count}} historiques de tâches Roo Code importés dans Zoo Code."
+		"broHistoryImport": {
+			"success_one": "{{count}} historique de tâche Roo Code importé dans Bro Code.",
+			"success_other": "{{count}} historiques de tâches Roo Code importés dans Bro Code."
 		}
 	},
 	"answers": {
@@ -201,12 +201,12 @@
 	},
 	"storage": {
 		"prompt_custom_path": "Entrez le chemin de stockage personnalisé pour l'historique des conversations, laissez vide pour utiliser l'emplacement par défaut",
-		"path_placeholder": "D:\\ZooCodeStorage",
-		"enter_absolute_path": "Veuillez entrer un chemin absolu (ex. D:\\ZooCodeStorage ou /home/user/storage)",
+		"path_placeholder": "D:\\BroCodeStorage",
+		"enter_absolute_path": "Veuillez entrer un chemin absolu (ex. D:\\BroCodeStorage ou /home/user/storage)",
 		"enter_valid_path": "Veuillez entrer un chemin valide"
 	},
 	"input": {
-		"task_prompt": "Que doit faire Zoo ?",
+		"task_prompt": "Que doit faire Bro ?",
 		"task_placeholder": "Écris ta tâche ici"
 	},
 	"settings": {
@@ -214,8 +214,8 @@
 	},
 	"customModes": {
 		"errors": {
-			"yamlParseError": "YAML invalide dans le fichier .roomodes à la ligne {{line}}. Vérifie :\n• L'indentation correcte (utilise des espaces, pas de tabulations)\n• Les guillemets et crochets correspondants\n• La syntaxe YAML valide",
-			"schemaValidationError": "Format invalide des modes personnalisés dans .roomodes :\n{{issues}}",
+			"yamlParseError": "YAML invalide dans le fichier .bromodes à la ligne {{line}}. Vérifie :\n• L'indentation correcte (utilise des espaces, pas de tabulations)\n• Les guillemets et crochets correspondants\n• La syntaxe YAML valide",
+			"schemaValidationError": "Format invalide des modes personnalisés dans .bromodes :\n{{issues}}",
 			"invalidFormat": "Format invalide des modes personnalisés. Assure-toi que tes paramètres suivent le format YAML correct.",
 			"updateFailed": "Échec de la mise à jour du mode personnalisé : {{error}}",
 			"deleteFailed": "Échec de la suppression du mode personnalisé : {{error}}",
@@ -236,8 +236,8 @@
 	},
 	"mdm": {
 		"errors": {
-			"cloud_auth_required": "Votre organisation nécessite une authentification Zoo Code Cloud. Veuillez vous connecter pour continuer.",
-			"organization_mismatch": "Vous devez être authentifié avec le compte Zoo Code Cloud de votre organisation.",
+			"cloud_auth_required": "Votre organisation nécessite une authentification Bro Code Cloud. Veuillez vous connecter pour continuer.",
+			"organization_mismatch": "Vous devez être authentifié avec le compte Bro Code Cloud de votre organisation.",
 			"manual_url_empty": "Veuillez entrer une URL de callback valide",
 			"manual_url_no_query": "URL de callback invalide : paramètres de requête manquants",
 			"manual_url_missing_params": "URL de callback invalide : paramètres requis manquants (code et state)",
@@ -264,22 +264,22 @@
 	},
 	"docsLink": {
 		"label": "Docs",
-		"url": "https://docs.zoocode.dev"
+		"url": "https://docs.brocode.dev"
 	},
-	"zooAuth": {
+	"broAuth": {
 		"errors": {
-			"invalid_token_received": "Zoo Code: Jeton d'authentification invalide reçu.",
-			"token_verification_failed": "Zoo Code: La vérification du jeton a échoué.",
-			"invalid_token": "Zoo Code: Jeton invalide.",
-			"could_not_verify_token": "Zoo Code: Impossible de vérifier le jeton.",
-			"session_expired": "Session Zoo Code expirée. Reconnectez-vous pour continuer à utiliser Zoo Gateway.",
-			"out_of_credits": "Zoo Gateway : crédits insuffisants. Ajoutez des crédits pour continuer.",
-			"account_unavailable": "Zoo Gateway : votre compte n'est pas disponible actuellement. Contactez le support.",
-			"budget_exceeded": "Zoo Gateway : budget d'utilisation atteint. Attendez la réinitialisation ou rechargez."
+			"invalid_token_received": "Bro Code: Jeton d'authentification invalide reçu.",
+			"token_verification_failed": "Bro Code: La vérification du jeton a échoué.",
+			"invalid_token": "Bro Code: Jeton invalide.",
+			"could_not_verify_token": "Bro Code: Impossible de vérifier le jeton.",
+			"session_expired": "Session Bro Code expirée. Reconnectez-vous pour continuer à utiliser Bro Gateway.",
+			"out_of_credits": "Bro Gateway : crédits insuffisants. Ajoutez des crédits pour continuer.",
+			"account_unavailable": "Bro Gateway : votre compte n'est pas disponible actuellement. Contactez le support.",
+			"budget_exceeded": "Bro Gateway : budget d'utilisation atteint. Attendez la réinitialisation ou rechargez."
 		},
 		"info": {
-			"connected": "Zoo Code: Connecté avec succès ! Vous pouvez maintenant utiliser Zoo Code comme fournisseur d'IA.",
-			"disconnected": "Zoo Code: Déconnecté avec succès."
+			"connected": "Bro Code: Connecté avec succès ! Vous pouvez maintenant utiliser Bro Code comme fournisseur d'IA.",
+			"disconnected": "Bro Code: Déconnecté avec succès."
 		},
 		"buttons": {
 			"sign_in": "Se connecter",
@@ -288,9 +288,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Expliquer avec Zoo Code",
-		"fix": "Corriger avec Zoo Code",
-		"improve": "Améliorer avec Zoo Code",
-		"addToContext": "Ajouter à Zoo Code"
+		"explain": "Expliquer avec Bro Code",
+		"fix": "Corriger avec Bro Code",
+		"improve": "Améliorer avec Bro Code",
+		"addToContext": "Ajouter à Bro Code"
 	}
 }

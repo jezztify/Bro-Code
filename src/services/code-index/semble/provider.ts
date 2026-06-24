@@ -7,8 +7,8 @@ import { CodeIndexStateManager } from "../state-manager"
 import { SembleCLI } from "./semble-cli"
 import { downloadSemble, isSembleSupportedPlatform, SEMBLE_VERSION } from "./semble-downloader"
 import { ISembleProvider, SembleConfig, SembleContentType, SembleSearchResult, SEMBLE_DEFAULTS } from "./types"
-import { TelemetryService } from "@roo-code/telemetry"
-import { TelemetryEventName } from "@roo-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
+import { TelemetryEventName } from "@bro-code/types"
 import { t } from "../../../i18n"
 
 /**
@@ -239,7 +239,7 @@ export class SembleProvider implements ISembleProvider {
 	// --- Private Helpers ---
 
 	/**
-	 * Converts Semble CLI results to Zoo's VectorStoreSearchResult format.
+	 * Converts Semble CLI results to Bro's VectorStoreSearchResult format.
 	 *
 	 * Semble v0.4.0+ returns results in a flat format (no `chunk` wrapper):
 	 *   { file_path, start_line, end_line, score, content }

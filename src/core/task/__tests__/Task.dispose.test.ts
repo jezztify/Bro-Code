@@ -1,4 +1,4 @@
-import { ProviderSettings } from "@roo-code/types"
+import { ProviderSettings } from "@bro-code/types"
 
 import { Task } from "../Task"
 import { ClineProvider } from "../../webview/ClineProvider"
@@ -22,8 +22,8 @@ vi.mock("../../../integrations/terminal/OutputInterceptor", () => ({
 		cleanup: vi.fn().mockResolvedValue(undefined),
 	},
 }))
-vi.mock("../../ignore/RooIgnoreController")
-vi.mock("../../protect/RooProtectedController")
+vi.mock("../../ignore/BroIgnoreController")
+vi.mock("../../protect/BroProtectedController")
 vi.mock("../../context-tracking/FileContextTracker")
 vi.mock("../../../integrations/editor/DiffViewProvider")
 vi.mock("../../tools/ToolRepetitionDetector")
@@ -34,7 +34,7 @@ vi.mock("../../../api", () => ({
 }))
 
 // Mock TelemetryService
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@bro-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureTaskCreated: vi.fn(),

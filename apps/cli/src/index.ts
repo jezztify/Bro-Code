@@ -7,8 +7,8 @@ import { run, logout, status, listCommands, listModes, listModels, listSessions,
 const program = new Command()
 
 program
-	.name("roo")
-	.description("Roo Code CLI - starts an interactive session by default, use -p/--print for non-interactive output")
+	.name("bro")
+	.description("Bro Code CLI - starts an interactive session by default, use -p/--print for non-interactive output")
 	.version(VERSION)
 	.enablePositionalOptions()
 	.passThroughOptions()
@@ -121,16 +121,16 @@ applyListOptions(listCommand.command("sessions").description("List task sessions
 
 program
 	.command("upgrade")
-	.description("Upgrade Roo Code CLI to the latest version")
+	.description("Upgrade Bro Code CLI to the latest version")
 	.action(async () => {
 		await runUpgradeAction(() => upgrade())
 	})
 
-const authCommand = program.command("auth").description("Inspect or remove legacy Roo auth tokens")
+const authCommand = program.command("auth").description("Inspect or remove legacy Bro auth tokens")
 
 authCommand
 	.command("logout")
-	.description("Remove a stored legacy Roo auth token")
+	.description("Remove a stored legacy Bro auth token")
 	.option("-v, --verbose", "Enable verbose output", false)
 	.action(async (options: { verbose: boolean }) => {
 		const result = await logout({ verbose: options.verbose })
@@ -139,7 +139,7 @@ authCommand
 
 authCommand
 	.command("status")
-	.description("Show whether a legacy Roo auth token is still stored")
+	.description("Show whether a legacy Bro auth token is still stored")
 	.option("-v, --verbose", "Enable verbose output", false)
 	.action(async (options: { verbose: boolean }) => {
 		await status({ verbose: options.verbose })

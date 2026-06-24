@@ -11,9 +11,9 @@
 </sub>
 </div>
 
-# Đóng góp cho Zoo Code
+# Đóng góp cho Bro Code
 
-Zoo Code là một dự án do cộng đồng điều khiển và chúng tôi vô cùng trân trọng mọi đóng góp. Để hợp lý hóa việc cộng tác, chúng tôi hoạt động trên cơ sở [Ưu tiên vấn đề](#cách-tiếp-cận-ưu-tiên-vấn-đề), có nghĩa là tất cả các [Yêu cầu kéo (PR)](#gửi-yêu-cầu-kéo) trước tiên phải được liên kết với một Vấn đề trên GitHub. Vui lòng xem kỹ hướng dẫn này.
+Bro Code là một dự án do cộng đồng điều khiển và chúng tôi vô cùng trân trọng mọi đóng góp. Để hợp lý hóa việc cộng tác, chúng tôi hoạt động trên cơ sở [Ưu tiên vấn đề](#cách-tiếp-cận-ưu-tiên-vấn-đề), có nghĩa là tất cả các [Yêu cầu kéo (PR)](#gửi-yêu-cầu-kéo) trước tiên phải được liên kết với một Vấn đề trên GitHub. Vui lòng xem kỹ hướng dẫn này.
 
 ## Bảng mục lục
 
@@ -54,10 +54,10 @@ Lộ trình của chúng tôi hướng dẫn định hướng của dự án. H�
 
 Hãy đề cập đến sự phù hợp với các lĩnh vực này trong PR của bạn.
 
-### 3. Tham gia cộng đồng Zoo Code
+### 3. Tham gia cộng đồng Bro Code
 
 - **Discord:** Tham gia [Discord](https://discord.gg/VxfP4Vx3gX) của chúng tôi.
-- **Reddit:** Tham gia [Reddit](https://www.reddit.com/r/ZooCode/) của chúng tôi.
+- **Reddit:** Tham gia [Reddit](https://www.reddit.com/r/BroCode/) của chúng tôi.
 
 ## Tìm kiếm và lập kế hoạch đóng góp của bạn
 
@@ -71,7 +71,7 @@ Hãy đề cập đến sự phù hợp với các lĩnh vực này trong PR c�
 
 Tất cả các đóng góp đều bắt đầu bằng một Vấn đề trên GitHub bằng cách sử dụng các mẫu gọn nhẹ của chúng tôi.
 
-- **Kiểm tra các vấn đề hiện có**: Tìm kiếm trong [Vấn đề trên GitHub](https://github.com/Zoo-Code-Org/Zoo-Code/issues).
+- **Kiểm tra các vấn đề hiện có**: Tìm kiếm trong [Vấn đề trên GitHub](https://github.com/Bro-Code-Org/Bro-Code/issues).
 - **Tạo một vấn đề** bằng cách sử dụng:
     - **Cải tiến:** mẫu "Yêu cầu cải tiến" (ngôn ngữ đơn giản tập trung vào lợi ích của người dùng).
     - **Lỗi:** mẫu "Báo cáo lỗi" (tái tạo tối thiểu + mong đợi so với thực tế + phiên bản).
@@ -80,17 +80,17 @@ Tất cả các đóng góp đều bắt đầu bằng một Vấn đề trên G
 
 ### Quyết định nên làm gì
 
-- Hãy xem [trang GitHub Issues](https://github.com/Zoo-Code-Org/Zoo-Code/issues) để tìm issues.
-- Để biết tài liệu, hãy truy cập [Tài liệu Zoo Code](https://github.com/Zoo-Code-Org/Zoo-Code-Docs).
+- Hãy xem [trang GitHub Issues](https://github.com/Bro-Code-Org/Bro-Code/issues) để tìm issues.
+- Để biết tài liệu, hãy truy cập [Tài liệu Bro Code](https://github.com/Bro-Code-Org/Bro-Code-Docs).
 
 ### Báo cáo lỗi
 
 - Trước tiên hãy kiểm tra các báo cáo hiện có.
-- Tạo một lỗi mới bằng cách sử dụng [mẫu "Báo cáo lỗi"](https://github.com/Zoo-Code-Org/Zoo-Code/issues/new/choose) với:
+- Tạo một lỗi mới bằng cách sử dụng [mẫu "Báo cáo lỗi"](https://github.com/Bro-Code-Org/Bro-Code/issues/new/choose) với:
     - Các bước tái tạo rõ ràng, được đánh số
     - Kết quả mong đợi so với thực tế
-    - Phiên bản Zoo Code (bắt buộc); nhà cung cấp/mô hình API nếu có liên quan
-- **Vấn đề bảo mật**: Báo cáo riêng tư qua [tư vấn bảo mật](https://github.com/Zoo-Code-Org/Zoo-Code/security/advisories/new).
+    - Phiên bản Bro Code (bắt buộc); nhà cung cấp/mô hình API nếu có liên quan
+- **Vấn đề bảo mật**: Báo cáo riêng tư qua [tư vấn bảo mật](https://github.com/Bro-Code-Org/Bro-Code/security/advisories/new).
 
 ## Quy trình phát triển và gửi
 
@@ -99,7 +99,7 @@ Tất cả các đóng góp đều bắt đầu bằng một Vấn đề trên G
 1. **Rẽ nhánh & Sao chép:**
 
 ```
-git clone https://github.com/YOUR_USERNAME/Zoo-Code.git
+git clone https://github.com/YOUR_USERNAME/Bro-Code.git
 ```
 
 2. **Cài đặt các phụ thuộc:**
@@ -166,4 +166,4 @@ Vui lòng không gửi các thay đổi do AI tạo ra mà bạn không hiểu h
 
 ## Pháp lý
 
-Bằng cách đóng góp, bạn đồng ý rằng những đóng góp của bạn sẽ được cấp phép theo Giấy phép Apache 2.0, phù hợp với việc cấp phép của Zoo Code.
+Bằng cách đóng góp, bạn đồng ý rằng những đóng góp của bạn sẽ được cấp phép theo Giấy phép Apache 2.0, phù hợp với việc cấp phép của Bro Code.

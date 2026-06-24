@@ -11,22 +11,22 @@ import {
 	type GlobalSettings,
 	type SecretState,
 	type GlobalState,
-	type RooCodeSettings,
+	type BroCodeSettings,
 	providerSettingsSchema,
 	globalSettingsSchema,
 	isSecretStateKey,
 	isProviderName,
 	isRetiredProvider,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@bro-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
 
 import { logger } from "../../utils/logging"
 import { supportPrompt } from "../../shared/support-prompt"
-import { downgradeLegacyRooConfig } from "./routerRemoval"
+import { downgradeLegacyBroConfig } from "./routerRemoval"
 
 type GlobalStateKey = keyof GlobalState
 type SecretStateKey = keyof SecretState
-type RooCodeSettingsKey = keyof RooCodeSettings
+type BroCodeSettingsKey = keyof BroCodeSettings
 
 const PASS_THROUGH_STATE_KEYS = ["taskHistory"]
 
@@ -92,8 +92,8 @@ export class ContextProxy {
 		// Migration: Check for old nested image generation settings and migrate them
 		await this.migrateImageGenerationSettings()
 
-		// Migration: Downgrade legacy Roo Code Router state before generic sanitization.
-		await this.migrateLegacyRooApiProvider()
+		// Migration: Downgrade legacy Bro Code Router state before generic sanitization.
+		await this.migrateLegacyBroApiProvider()
 
 		// Migration: Sanitize invalid/removed API providers
 		await this.migrateInvalidApiProvider()
@@ -228,11 +228,11 @@ export class ContextProxy {
 	}
 
 	/**
-	 * Migrates legacy Roo Code Router selections into a setup-needed state.
+	 * Migrates legacy Bro Code Router selections into a setup-needed state.
 	 */
-	private async migrateLegacyRooApiProvider() {
+	private async migrateLegacyBroApiProvider() {
 		try {
-			const { config: migratedState, migrated } = downgradeLegacyRooConfig(
+			const { config: migratedState, migrated } = downgradeLegacyBroConfig(
 				this.stateCache as Record<string, unknown>,
 			)
 
@@ -240,16 +240,16 @@ export class ContextProxy {
 				return
 			}
 
-			logger.info("[ContextProxy] Migrating legacy Roo Code Router state to setup-needed fallback")
+			logger.info("[ContextProxy] Migrating legacy Bro Code Router state to setup-needed fallback")
 			this.stateCache = migratedState as GlobalState
 			await Promise.all([
 				this.originalContext.globalState.update("apiProvider", undefined),
 				this.originalContext.globalState.update("apiModelId", undefined),
-				this.originalContext.globalState.update("rooApiKey", undefined),
+				this.originalContext.globalState.update("broApiKey", undefined),
 			])
 		} catch (error) {
 			logger.error(
-				`Error during Roo Code Router migration: ${error instanceof Error ? error.message : String(error)}`,
+				`Error during Bro Code Router migration: ${error instanceof Error ? error.message : String(error)}`,
 			)
 		}
 	}
@@ -476,9 +476,9 @@ export class ContextProxy {
 	 * Sanitizes provider values by resetting unknown apiProvider values.
 	 * Active and retired providers are preserved.
 	 */
-	private sanitizeProviderValues(values: RooCodeSettings): RooCodeSettings {
-		const { config: rooSanitizedValues } = downgradeLegacyRooConfig(values as Record<string, unknown>)
-		let sanitizedValues = rooSanitizedValues as RooCodeSettings
+	private sanitizeProviderValues(values: BroCodeSettings): BroCodeSettings {
+		const { config: broSanitizedValues } = downgradeLegacyBroConfig(values as Record<string, unknown>)
+		let sanitizedValues = broSanitizedValues as BroCodeSettings
 
 		// Remove legacy Claude Code CLI wrapper keys that may still exist in global state.
 		// These keys were used by a removed local CLI runner and are no longer part of ProviderSettings.
@@ -488,7 +488,7 @@ export class ContextProxy {
 			if (key in sanitizedValues) {
 				const copy = { ...sanitizedValues } as Record<string, unknown>
 				delete copy[key as string]
-				sanitizedValues = copy as RooCodeSettings
+				sanitizedValues = copy as BroCodeSettings
 			}
 		}
 
@@ -502,7 +502,7 @@ export class ContextProxy {
 			)
 			// Return a new values object without the invalid apiProvider
 			const { apiProvider, ...restValues } = sanitizedValues
-			return restValues as RooCodeSettings
+			return restValues as BroCodeSettings
 		}
 		return sanitizedValues
 	}
@@ -532,22 +532,22 @@ export class ContextProxy {
 	}
 
 	/**
-	 * RooCodeSettings
+	 * BroCodeSettings
 	 */
 
-	public async setValue<K extends RooCodeSettingsKey>(key: K, value: RooCodeSettings[K]) {
+	public async setValue<K extends BroCodeSettingsKey>(key: K, value: BroCodeSettings[K]) {
 		return isSecretStateKey(key)
 			? this.storeSecret(key as SecretStateKey, value as string)
 			: this.updateGlobalState(key as GlobalStateKey, value)
 	}
 
-	public getValue<K extends RooCodeSettingsKey>(key: K): RooCodeSettings[K] {
+	public getValue<K extends BroCodeSettingsKey>(key: K): BroCodeSettings[K] {
 		return isSecretStateKey(key)
-			? (this.getSecret(key as SecretStateKey) as RooCodeSettings[K])
-			: (this.getGlobalState(key as GlobalStateKey) as RooCodeSettings[K])
+			? (this.getSecret(key as SecretStateKey) as BroCodeSettings[K])
+			: (this.getGlobalState(key as GlobalStateKey) as BroCodeSettings[K])
 	}
 
-	public getValues(): RooCodeSettings {
+	public getValues(): BroCodeSettings {
 		const globalState = this.getAllGlobalState()
 		const secretState = this.getAllSecretState()
 
@@ -555,8 +555,8 @@ export class ContextProxy {
 		return { ...globalState, ...secretState }
 	}
 
-	public async setValues(values: RooCodeSettings) {
-		const entries = Object.entries(values) as [RooCodeSettingsKey, unknown][]
+	public async setValues(values: BroCodeSettings) {
+		const entries = Object.entries(values) as [BroCodeSettingsKey, unknown][]
 		await Promise.all(entries.map(([key, value]) => this.setValue(key, value)))
 	}
 

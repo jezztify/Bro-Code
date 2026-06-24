@@ -1,6 +1,6 @@
 import { LMStudioClient, LLMInstanceInfo, LLMInfo } from "@lmstudio/sdk"
 
-import { ModelInfo, lMStudioDefaultModelInfo } from "@roo-code/types"
+import { ModelInfo, lMStudioDefaultModelInfo } from "@bro-code/types"
 
 import {
 	getLMStudioModels,

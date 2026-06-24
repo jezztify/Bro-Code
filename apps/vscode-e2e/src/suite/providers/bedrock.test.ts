@@ -71,7 +71,7 @@ suite("Bedrock provider", function () {
 		}
 	})
 
-	test("Should complete a task end-to-end via AWS Bedrock with ZooCode# user-agent", async () => {
+	test("Should complete a task end-to-end via AWS Bedrock with BroCode# user-agent", async () => {
 		const api = globalThis.api
 		const taskId = await api.startNewTask({
 			configuration: { mode: "ask", autoApprovalEnabled: true },
@@ -81,18 +81,18 @@ suite("Bedrock provider", function () {
 		await waitUntilCompleted({ api, taskId })
 
 		if (mockServer) {
-			// Verify the AWS SDK transmitted the ZooCode# userAgentAppId.
+			// Verify the AWS SDK transmitted the BroCode# userAgentAppId.
 			// In Node.js mode the SDK appends "app/<appId>" to the full sdkUserAgentValue
 			// and writes it to the "user-agent" header. The "x-amz-user-agent" header only
 			// carries aws-sdk-* segments and never contains the app ID.
 			const userAgent = mockServer.lastRequestHeaders?.["user-agent"] as string | undefined
 			assert.ok(userAgent, "Bedrock request should include user-agent header")
-			assert.ok(userAgent.includes("ZooCode#"), `user-agent should contain "ZooCode#" — got: ${userAgent}`)
+			assert.ok(userAgent.includes("BroCode#"), `user-agent should contain "BroCode#" — got: ${userAgent}`)
 		} else {
 			// Live mode: a successful round-trip proves the identity change didn't break
 			// SDK auth or request formation. The x-amzn-user-agent header is not visible
 			// to us without intercepting at the TLS layer.
-			assert.ok(true, "Task completed successfully via Bedrock with ZooCode# userAgentAppId")
+			assert.ok(true, "Task completed successfully via Bedrock with BroCode# userAgentAppId")
 		}
 	})
 
@@ -137,7 +137,7 @@ suite("Bedrock provider", function () {
 			// The request reached the Bedrock endpoint (no 400 from temperature/thinking).
 			const userAgent = mockServer.lastRequestHeaders?.["user-agent"] as string | undefined
 			assert.ok(userAgent, "Bedrock request should include user-agent header")
-			assert.ok(userAgent.includes("ZooCode#"), `user-agent should contain "ZooCode#" — got: ${userAgent}`)
+			assert.ok(userAgent.includes("BroCode#"), `user-agent should contain "BroCode#" — got: ${userAgent}`)
 		} else {
 			// Live mode: a successful round-trip proves 4.8 request formation works
 			// against real AWS Bedrock (adaptive thinking, no rejected sampling params).

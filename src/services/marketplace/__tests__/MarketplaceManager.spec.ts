@@ -1,6 +1,6 @@
 // npx vitest services/marketplace/__tests__/MarketplaceManager.spec.ts
 
-import type { MarketplaceItem } from "@roo-code/types"
+import type { MarketplaceItem } from "@bro-code/types"
 
 import { MarketplaceManager } from "../MarketplaceManager"
 
@@ -240,14 +240,14 @@ describe("MarketplaceManager", () => {
 
 			// Mock the installer
 			vi.spyOn(manager["installer"], "installItem").mockResolvedValue({
-				filePath: "/test/path/.roomodes",
+				filePath: "/test/path/.bromodes",
 				line: 5,
 			})
 
 			const result = await manager.installMarketplaceItem(item)
 
 			expect(manager["installer"].installItem).toHaveBeenCalledWith(item, { target: "project" })
-			expect(result).toBe("/test/path/.roomodes")
+			expect(result).toBe("/test/path/.bromodes")
 		})
 
 		it("should install an MCP item", async () => {
@@ -262,14 +262,14 @@ describe("MarketplaceManager", () => {
 
 			// Mock the installer
 			vi.spyOn(manager["installer"], "installItem").mockResolvedValue({
-				filePath: "/test/path/.roo/mcp.json",
+				filePath: "/test/path/.bro/mcp.json",
 				line: 3,
 			})
 
 			const result = await manager.installMarketplaceItem(item)
 
 			expect(manager["installer"].installItem).toHaveBeenCalledWith(item, { target: "project" })
-			expect(result).toBe("/test/path/.roo/mcp.json")
+			expect(result).toBe("/test/path/.bro/mcp.json")
 		})
 	})
 

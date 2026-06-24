@@ -1,6 +1,6 @@
 {
 	"extension": {
-		"name": "Zoo Code",
+		"name": "Bro Code",
 		"description": "Toàn bộ đội ngũ phát triển AI trong trình soạn thảo của bạn."
 	},
 	"number_format": {
@@ -111,9 +111,9 @@
 			"thinking_complete_safety": "(Đã suy nghĩ xong nhưng kết quả bị chặn do cài đặt an toàn.)",
 			"thinking_complete_recitation": "(Đã suy nghĩ xong nhưng kết quả bị chặn do kiểm tra trích dẫn.)"
 		},
-		"roo": {
-			"authenticationRequired": "Nhà cung cấp Roo yêu cầu xác thực đám mây. Vui lòng đăng nhập vào Roo Code Cloud.",
-			"routerRemoved": "Roo Code Router đã bị xóa. Vui lòng chọn và cấu hình một nhà cung cấp khác."
+		"bro": {
+			"authenticationRequired": "Nhà cung cấp Bro yêu cầu xác thực đám mây. Vui lòng đăng nhập vào Bro Code Cloud.",
+			"routerRemoved": "Bro Code Router đã bị xóa. Vui lòng chọn và cấu hình một nhà cung cấp khác."
 		},
 		"api": {
 			"invalidKeyInvalidChars": "Khóa API chứa ký tự không hợp lệ.",
@@ -142,16 +142,16 @@
 			"unexpectedStreamError": "Unexpected error processing response stream",
 			"completionError": "OpenAI Codex completion error: {{message}}"
 		},
-		"rooHistoryImport": "Không thể nhập lịch sử Roo Code: {{error}}"
+		"broHistoryImport": "Không thể nhập lịch sử Roo Code: {{error}}"
 	},
 	"warnings": {
 		"no_terminal_content": "Không có nội dung terminal được chọn",
 		"missing_task_files": "Các tệp của nhiệm vụ này bị thiếu. Bạn có muốn xóa nó khỏi danh sách nhiệm vụ không?",
-		"auto_import_failed": "Không thể tự động nhập cài đặt ZooCode: {{error}}",
-		"rooHistoryImport": {
+		"auto_import_failed": "Không thể tự động nhập cài đặt BroCode: {{error}}",
+		"broHistoryImport": {
 			"nothingFound": "Không tìm thấy lịch sử nhiệm vụ Roo Code nào để nhập từ {{domain}}.",
-			"alreadyImported_one": "{{count}} lịch sử nhiệm vụ Roo Code đã được nhập vào Zoo Code.",
-			"alreadyImported_other": "Tất cả {{count}} lịch sử nhiệm vụ Roo Code đã được nhập vào Zoo Code."
+			"alreadyImported_one": "{{count}} lịch sử nhiệm vụ Roo Code đã được nhập vào Bro Code.",
+			"alreadyImported_other": "Tất cả {{count}} lịch sử nhiệm vụ Roo Code đã được nhập vào Bro Code."
 		}
 	},
 	"info": {
@@ -161,7 +161,7 @@
 		"custom_storage_path_set": "Đã thiết lập đường dẫn lưu trữ tùy chỉnh: {{path}}",
 		"default_storage_path": "Đã quay lại sử dụng đường dẫn lưu trữ mặc định",
 		"settings_imported": "Cài đặt đã được nhập thành công.",
-		"auto_import_success": "Cài đặt ZooCode đã được tự động nhập từ {{filename}}",
+		"auto_import_success": "Cài đặt BroCode đã được tự động nhập từ {{filename}}",
 		"share_link_copied": "Liên kết chia sẻ đã được sao chép vào clipboard",
 		"image_copied_to_clipboard": "URI dữ liệu hình ảnh đã được sao chép vào clipboard",
 		"image_saved": "Hình ảnh đã được lưu vào {{path}}",
@@ -169,12 +169,12 @@
 		"public_share_link_copied": "Liên kết chia sẻ công khai đã được sao chép vào clipboard!",
 		"mode_exported": "Chế độ '{{mode}}' đã được xuất thành công",
 		"mode_imported": "Chế độ đã được nhập thành công",
-		"roo": {
-			"signInUnavailable": "Đăng nhập Roo Code Cloud hiện không khả dụng. Hãy cấu hình nhà cung cấp khác để tiếp tục."
+		"bro": {
+			"signInUnavailable": "Đăng nhập Bro Code Cloud hiện không khả dụng. Hãy cấu hình nhà cung cấp khác để tiếp tục."
 		},
-		"rooHistoryImport": {
-			"success_one": "Đã nhập {{count}} lịch sử nhiệm vụ Roo Code vào Zoo Code.",
-			"success_other": "Đã nhập {{count}} lịch sử nhiệm vụ Roo Code vào Zoo Code."
+		"broHistoryImport": {
+			"success_one": "Đã nhập {{count}} lịch sử nhiệm vụ Roo Code vào Bro Code.",
+			"success_other": "Đã nhập {{count}} lịch sử nhiệm vụ Roo Code vào Bro Code."
 		}
 	},
 	"answers": {
@@ -201,12 +201,12 @@
 	},
 	"storage": {
 		"prompt_custom_path": "Nhập đường dẫn lưu trữ tùy chỉnh cho lịch sử hội thoại, để trống để sử dụng vị trí mặc định",
-		"path_placeholder": "D:\\ZooCodeStorage",
-		"enter_absolute_path": "Vui lòng nhập đường dẫn tuyệt đối (ví dụ: D:\\ZooCodeStorage hoặc /home/user/storage)",
+		"path_placeholder": "D:\\BroCodeStorage",
+		"enter_absolute_path": "Vui lòng nhập đường dẫn tuyệt đối (ví dụ: D:\\BroCodeStorage hoặc /home/user/storage)",
 		"enter_valid_path": "Vui lòng nhập đường dẫn hợp lệ"
 	},
 	"input": {
-		"task_prompt": "Bạn muốn Zoo làm gì?",
+		"task_prompt": "Bạn muốn Bro làm gì?",
 		"task_placeholder": "Nhập nhiệm vụ của bạn ở đây"
 	},
 	"settings": {
@@ -214,8 +214,8 @@
 	},
 	"customModes": {
 		"errors": {
-			"yamlParseError": "YAML không hợp lệ trong tệp .roomodes tại dòng {{line}}. Vui lòng kiểm tra:\n• Thụt lề đúng (dùng dấu cách, không dùng tab)\n• Dấu ngoặc kép và ngoặc đơn khớp nhau\n• Cú pháp YAML hợp lệ",
-			"schemaValidationError": "Định dạng chế độ tùy chỉnh không hợp lệ trong .roomodes:\n{{issues}}",
+			"yamlParseError": "YAML không hợp lệ trong tệp .bromodes tại dòng {{line}}. Vui lòng kiểm tra:\n• Thụt lề đúng (dùng dấu cách, không dùng tab)\n• Dấu ngoặc kép và ngoặc đơn khớp nhau\n• Cú pháp YAML hợp lệ",
+			"schemaValidationError": "Định dạng chế độ tùy chỉnh không hợp lệ trong .bromodes:\n{{issues}}",
 			"invalidFormat": "Định dạng chế độ tùy chỉnh không hợp lệ. Vui lòng đảm bảo cài đặt của bạn tuân theo định dạng YAML đúng.",
 			"updateFailed": "Cập nhật chế độ tùy chỉnh thất bại: {{error}}",
 			"deleteFailed": "Xóa chế độ tùy chỉnh thất bại: {{error}}",
@@ -236,8 +236,8 @@
 	},
 	"mdm": {
 		"errors": {
-			"cloud_auth_required": "Tổ chức của bạn yêu cầu xác thực Zoo Code Cloud. Vui lòng đăng nhập để tiếp tục.",
-			"organization_mismatch": "Bạn phải được xác thực bằng tài khoản Zoo Code Cloud của tổ chức.",
+			"cloud_auth_required": "Tổ chức của bạn yêu cầu xác thực Bro Code Cloud. Vui lòng đăng nhập để tiếp tục.",
+			"organization_mismatch": "Bạn phải được xác thực bằng tài khoản Bro Code Cloud của tổ chức.",
 			"manual_url_empty": "Vui lòng nhập URL callback hợp lệ",
 			"manual_url_no_query": "URL callback không hợp lệ: thiếu tham số truy vấn",
 			"manual_url_missing_params": "URL callback không hợp lệ: thiếu tham số bắt buộc (code và state)",
@@ -271,22 +271,22 @@
 	},
 	"docsLink": {
 		"label": "Docs",
-		"url": "https://docs.zoocode.dev"
+		"url": "https://docs.brocode.dev"
 	},
-	"zooAuth": {
+	"broAuth": {
 		"errors": {
-			"invalid_token_received": "Zoo Code: Nhận được token xác thực không hợp lệ.",
-			"token_verification_failed": "Zoo Code: Xác minh token thất bại.",
-			"invalid_token": "Zoo Code: Token không hợp lệ.",
-			"could_not_verify_token": "Zoo Code: Không thể xác minh token.",
-			"session_expired": "Phiên Zoo Code đã hết hạn. Vui lòng đăng nhập lại để tiếp tục sử dụng Zoo Gateway.",
-			"out_of_credits": "Zoo Gateway: không đủ tín dụng. Thêm tín dụng để tiếp tục.",
-			"account_unavailable": "Zoo Gateway: tài khoản của bạn hiện không khả dụng. Vui lòng liên hệ hỗ trợ.",
-			"budget_exceeded": "Zoo Gateway: đã đạt ngân sách sử dụng. Chờ đặt lại ngân sách hoặc nạp thêm."
+			"invalid_token_received": "Bro Code: Nhận được token xác thực không hợp lệ.",
+			"token_verification_failed": "Bro Code: Xác minh token thất bại.",
+			"invalid_token": "Bro Code: Token không hợp lệ.",
+			"could_not_verify_token": "Bro Code: Không thể xác minh token.",
+			"session_expired": "Phiên Bro Code đã hết hạn. Vui lòng đăng nhập lại để tiếp tục sử dụng Bro Gateway.",
+			"out_of_credits": "Bro Gateway: không đủ tín dụng. Thêm tín dụng để tiếp tục.",
+			"account_unavailable": "Bro Gateway: tài khoản của bạn hiện không khả dụng. Vui lòng liên hệ hỗ trợ.",
+			"budget_exceeded": "Bro Gateway: đã đạt ngân sách sử dụng. Chờ đặt lại ngân sách hoặc nạp thêm."
 		},
 		"info": {
-			"connected": "Zoo Code: Kết nối thành công! Bạn có thể sử dụng Zoo Code làm nhà cung cấp AI.",
-			"disconnected": "Zoo Code: Đã ngắt kết nối thành công."
+			"connected": "Bro Code: Kết nối thành công! Bạn có thể sử dụng Bro Code làm nhà cung cấp AI.",
+			"disconnected": "Bro Code: Đã ngắt kết nối thành công."
 		},
 		"buttons": {
 			"sign_in": "Đăng nhập",
@@ -295,9 +295,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Giải thích bằng Zoo Code",
-		"fix": "Sửa bằng Zoo Code",
-		"improve": "Cải thiện bằng Zoo Code",
-		"addToContext": "Thêm vào Zoo Code"
+		"explain": "Giải thích bằng Bro Code",
+		"fix": "Sửa bằng Bro Code",
+		"improve": "Cải thiện bằng Bro Code",
+		"addToContext": "Thêm vào Bro Code"
 	}
 }

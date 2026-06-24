@@ -2,7 +2,7 @@
 
 import React from "react"
 import { render, screen, fireEvent } from "@/utils/test-utils"
-import { openRouterDefaultModelId } from "@roo-code/types"
+import { openRouterDefaultModelId } from "@bro-code/types"
 
 import * as ExtensionStateContext from "@src/context/ExtensionStateContext"
 const { ExtensionStateContextProvider } = ExtensionStateContext
@@ -47,8 +47,8 @@ vi.mock("../../common/Tab", () => ({
 	),
 }))
 
-vi.mock("../RooHero", () => ({
-	default: () => <div data-testid="roo-hero">Roo Hero</div>,
+vi.mock("../BroHero", () => ({
+	default: () => <div data-testid="bro-hero">Bro Hero</div>,
 }))
 
 vi.mock("lucide-react", () => ({
@@ -84,7 +84,7 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 
 // Mock buildDocLink
 vi.mock("@/utils/docLinks", () => ({
-	buildDocLink: (path: string, source: string) => `https://docs.zoocode.dev/${path}?utm_source=${source}`,
+	buildDocLink: (path: string, source: string) => `https://docs.brocode.dev/${path}?utm_source=${source}`,
 }))
 
 const renderWelcomeViewProvider = (extensionState = {}) => {
