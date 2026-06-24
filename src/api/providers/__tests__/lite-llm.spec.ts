@@ -3,7 +3,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 
 import { LiteLLMHandler } from "../lite-llm"
 import { ApiHandlerOptions } from "../../../shared/api"
-import { litellmDefaultModelId, litellmDefaultModelInfo } from "@roo-code/types"
+import { litellmDefaultModelId, litellmDefaultModelInfo } from "@bro-code/types"
 
 // Mock vscode first to avoid import errors
 vi.mock("vscode", () => ({
@@ -1134,7 +1134,7 @@ describe("LiteLLMHandler", () => {
 			},
 		}
 
-		it("should send the X-Zoo-Session-ID header when a taskId is provided", async () => {
+		it("should send the X-Bro-Session-ID header when a taskId is provided", async () => {
 			mockCreate.mockReturnValue({
 				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
 			})
@@ -1147,10 +1147,10 @@ describe("LiteLLMHandler", () => {
 			}
 
 			const requestHeaders = mockCreate.mock.calls[0][1]?.headers
-			expect(requestHeaders).toMatchObject({ "X-Zoo-Session-ID": "task-123" })
+			expect(requestHeaders).toMatchObject({ "X-Bro-Session-ID": "task-123" })
 		})
 
-		it("should not send the X-Zoo-Session-ID header when no taskId is provided", async () => {
+		it("should not send the X-Bro-Session-ID header when no taskId is provided", async () => {
 			mockCreate.mockReturnValue({
 				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
 			})
@@ -1161,10 +1161,10 @@ describe("LiteLLMHandler", () => {
 			}
 
 			const requestHeaders = mockCreate.mock.calls[0][1]?.headers
-			expect(requestHeaders).not.toHaveProperty("X-Zoo-Session-ID")
+			expect(requestHeaders).not.toHaveProperty("X-Bro-Session-ID")
 		})
 
-		it("should not send the X-Zoo-Session-ID header when taskId is an empty string", async () => {
+		it("should not send the X-Bro-Session-ID header when taskId is an empty string", async () => {
 			mockCreate.mockReturnValue({
 				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
 			})
@@ -1177,7 +1177,7 @@ describe("LiteLLMHandler", () => {
 			}
 
 			const requestHeaders = mockCreate.mock.calls[0][1]?.headers
-			expect(requestHeaders).not.toHaveProperty("X-Zoo-Session-ID")
+			expect(requestHeaders).not.toHaveProperty("X-Bro-Session-ID")
 		})
 	})
 })

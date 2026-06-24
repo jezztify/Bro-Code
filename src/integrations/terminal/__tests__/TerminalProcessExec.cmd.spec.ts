@@ -84,7 +84,7 @@ async function testCmdCommand(
 			executeCommand: vi.fn(),
 			cwd: vscode.Uri.file("C:\\test\\path"),
 		},
-		name: "Roo Code",
+		name: "Bro Code",
 		processId: Promise.resolve(123),
 		creationOptions: {},
 		exitStatus: undefined,

@@ -29,17 +29,17 @@ Record mode uses **record-on-miss**: if an existing fixture already matches a re
 
     ```sh
     # OpenRouter (default — most tests)
-    OPENROUTER_API_KEY=<key> pnpm --filter @roo-code/vscode-e2e test:record
+    OPENROUTER_API_KEY=<key> pnpm --filter @bro-code/vscode-e2e test:record
 
     # Anthropic provider (tests that call api.setConfiguration({ apiProvider: "anthropic" }))
     # OPENROUTER_API_KEY is still required — the harness always initialises with OpenRouter.
-    OPENROUTER_API_KEY=<or-key> ANTHROPIC_API_KEY=<key> TEST_FILE=my-anthropic-test.test.js pnpm --filter @roo-code/vscode-e2e test:record
+    OPENROUTER_API_KEY=<or-key> ANTHROPIC_API_KEY=<key> TEST_FILE=my-anthropic-test.test.js pnpm --filter @bro-code/vscode-e2e test:record
     ```
 
     To avoid re-recording unrelated tests, filter to just your file:
 
     ```sh
-    OPENROUTER_API_KEY=<key> TEST_FILE=my-feature.test.js pnpm --filter @roo-code/vscode-e2e test:record
+    OPENROUTER_API_KEY=<key> TEST_FILE=my-feature.test.js pnpm --filter @bro-code/vscode-e2e test:record
     ```
 
     This proxies unmatched requests to the real API and writes `fixtures/openai-*.json` (OpenRouter)
@@ -77,7 +77,7 @@ Record mode uses **record-on-miss**: if an existing fixture already matches a re
 
 8. Verify in mock mode (no API key needed):
     ```sh
-    pnpm --filter @roo-code/vscode-e2e test:ci:mock
+    pnpm --filter @bro-code/vscode-e2e test:ci:mock
     ```
 
 ## Multi-turn tests
@@ -129,9 +129,9 @@ Background API calls from the extension (usage collection, initialization) hit a
 
 | Command                                                                   | Purpose                                                            |
 | ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `pnpm --filter @roo-code/vscode-e2e test:ci:mock`                         | Replay mode — no API key needed, uses fixtures                     |
-| `OPENROUTER_API_KEY=<key> pnpm --filter @roo-code/vscode-e2e test:record` | Record mode — proxies to real API, writes `openai-*.json`          |
-| `OPENROUTER_API_KEY=<key> pnpm --filter @roo-code/vscode-e2e test:ci`     | Real-API mode — runs against live OpenRouter (for drift detection) |
+| `pnpm --filter @bro-code/vscode-e2e test:ci:mock`                         | Replay mode — no API key needed, uses fixtures                     |
+| `OPENROUTER_API_KEY=<key> pnpm --filter @bro-code/vscode-e2e test:record` | Record mode — proxies to real API, writes `openai-*.json`          |
+| `OPENROUTER_API_KEY=<key> pnpm --filter @bro-code/vscode-e2e test:ci`     | Real-API mode — runs against live OpenRouter (for drift detection) |
 
 ## Tests that use a fetch interceptor instead of aimock
 
@@ -152,10 +152,10 @@ The suite always runs (never skips). Set `ZAI_API_KEY` to bypass the interceptor
 
 ```sh
 # Mock mode (default — no key needed, interceptor active)
-pnpm --filter @roo-code/vscode-e2e test:ci:mock
+pnpm --filter @bro-code/vscode-e2e test:ci:mock
 
 # Live mode — bypasses interceptor, calls real Z.ai API
-ZAI_API_KEY=<key> TEST_FILE=zai.test pnpm --filter @roo-code/vscode-e2e test:ci
+ZAI_API_KEY=<key> TEST_FILE=zai.test pnpm --filter @bro-code/vscode-e2e test:ci
 ```
 
 When adding a new test to this suite, add a matching fixture to the `installZAiFetchInterceptor` call in `suiteSetup`. Use a short unique prefix (e.g. `"zai-glm-e2e-mytest:"`) that won't appear in `<environment_details>`.
@@ -169,7 +169,7 @@ The test only runs when aimock is active (replay or record). Live runs without a
 **Record** (refresh fixtures from the real Gemini API):
 
 ```sh
-GEMINI_API_KEY=<key> TEST_FILE=providers/gemini.test pnpm --filter @roo-code/vscode-e2e test:record
+GEMINI_API_KEY=<key> TEST_FILE=providers/gemini.test pnpm --filter @bro-code/vscode-e2e test:record
 ```
 
 After recording, inspect the generated `fixtures/gemini-*.json`, extract the response blocks into `fixtures/gemini.json`, then delete the raw files.
@@ -177,7 +177,7 @@ After recording, inspect the generated `fixtures/gemini-*.json`, extract the res
 **Verify in mock mode** (no key needed):
 
 ```sh
-TEST_FILE=providers/gemini.test pnpm --filter @roo-code/vscode-e2e test:ci:mock
+TEST_FILE=providers/gemini.test pnpm --filter @bro-code/vscode-e2e test:ci:mock
 ```
 
 ### xAI Grok (`suite/providers/xai.test.ts`)
@@ -198,7 +198,7 @@ Having real-API events in the fixture guarantees:
 **Recording** (populate or refresh the fixture from the real xAI API):
 
 ```sh
-XAI_API_KEY=<key> XAI_RECORD=true TEST_FILE=providers/xai.test.js pnpm --filter @roo-code/vscode-e2e test:run
+XAI_API_KEY=<key> XAI_RECORD=true TEST_FILE=providers/xai.test.js pnpm --filter @bro-code/vscode-e2e test:run
 ```
 
 This routes all xAI requests through the real API, captures the SSE events per turn, and writes the local gitignored `fixtures/xai.json` on teardown.
@@ -206,7 +206,7 @@ This routes all xAI requests through the real API, captures the SSE events per t
 **Verifying the recorded fixture in mock mode** (no API key needed):
 
 ```sh
-TEST_FILE=xai.test pnpm --filter @roo-code/vscode-e2e test:ci:mock
+TEST_FILE=xai.test pnpm --filter @bro-code/vscode-e2e test:ci:mock
 ```
 
 When no local recording exists for a model, the interceptor falls back to hand-crafted SSE events (using a hardcoded `readCallId`). CI should use this fallback so the suite remains deterministic and does not depend on large raw provider recordings.
@@ -220,13 +220,13 @@ DeepSeek exposes `deepSeekBaseUrl`, so the suite redirects the OpenAI-compatible
 Record DeepSeek fixtures with the targeted file filter so aimock proxies OpenAI-compatible traffic to `https://api.deepseek.com`:
 
 ```sh
-DEEPSEEK_API_KEY=<key> TEST_FILE=deepseek-v4.test pnpm --filter @roo-code/vscode-e2e test:record
+DEEPSEEK_API_KEY=<key> TEST_FILE=deepseek-v4.test pnpm --filter @bro-code/vscode-e2e test:record
 ```
 
 After converting the generated `openai-*.json` files into stable named fixtures, verify in mock mode:
 
 ```sh
-USE_MOCK=true TEST_FILE=deepseek-v4.test pnpm --filter @roo-code/vscode-e2e test:run
+USE_MOCK=true TEST_FILE=deepseek-v4.test pnpm --filter @bro-code/vscode-e2e test:run
 ```
 
 ## Tests that use a non-default provider

@@ -1,6 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import { type ProviderSettings, getApiProtocol, getModelId, isRetiredProvider } from "@roo-code/types"
+import { type ProviderSettings, getApiProtocol, getModelId, isRetiredProvider } from "@bro-code/types"
 
 import type { ApiHandler } from "../../api"
 import { getEffectiveApiHistory } from "../condense"

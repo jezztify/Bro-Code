@@ -81,7 +81,7 @@ async function main() {
 	try {
 		// Create a temporary workspace folder for tests before installing fixtures that
 		// need workspace-specific paths.
-		testWorkspace = await fs.mkdtemp(path.join(os.tmpdir(), "roo-test-workspace-"))
+		testWorkspace = await fs.mkdtemp(path.join(os.tmpdir(), "bro-test-workspace-"))
 
 		if (useMock) {
 			const fixturesDir = path.resolve(__dirname, "../fixtures")

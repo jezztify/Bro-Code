@@ -8,7 +8,7 @@
 				"toolCalls": [
 					{
 						"name": "execute_command",
-						"arguments": "{\"command\":\"printf 'zoo-profile-override-ok\\\\n' > terminal-profile-e2e/terminal-profile-override.txt\"}",
+						"arguments": "{\"command\":\"printf 'bro-profile-override-ok\\\\n' > terminal-profile-e2e/terminal-profile-override.txt\"}",
 						"id": "call_terminal_profile_override_001"
 					}
 				]
@@ -22,7 +22,7 @@
 				"toolCalls": [
 					{
 						"name": "execute_command",
-						"arguments": "{\"command\":\"printf 'zoo-profile-default-ok\\\\n' > terminal-profile-e2e/terminal-profile-default.txt\"}",
+						"arguments": "{\"command\":\"printf 'bro-profile-default-ok\\\\n' > terminal-profile-e2e/terminal-profile-default.txt\"}",
 						"id": "call_terminal_profile_default_001"
 					}
 				]

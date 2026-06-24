@@ -1,4 +1,4 @@
-import { RooCodeEventName, type RooCodeAPI } from "@roo-code/types"
+import { BroCodeEventName, type BroCodeAPI } from "@bro-code/types"
 
 type WaitForOptions = {
 	timeout?: number
@@ -40,18 +40,18 @@ export const waitFor = (
 }
 
 type WaitUntilAbortedOptions = WaitForOptions & {
-	api: RooCodeAPI
+	api: BroCodeAPI
 	taskId: string
 }
 
 export const waitUntilAborted = async ({ api, taskId, ...options }: WaitUntilAbortedOptions) => {
 	const set = new Set<string>()
-	api.on(RooCodeEventName.TaskAborted, (taskId) => set.add(taskId))
+	api.on(BroCodeEventName.TaskAborted, (taskId) => set.add(taskId))
 	await waitFor(() => set.has(taskId), options)
 }
 
 type WaitUntilCompletedOptions = WaitForOptions & {
-	api: RooCodeAPI
+	api: BroCodeAPI
 	taskId?: string
 	start?: () => Promise<string>
 }
@@ -64,13 +64,13 @@ export const waitUntilCompleted = async ({
 }: WaitUntilCompletedOptions): Promise<string> => {
 	const completed = new Set<string>()
 	const handler = (id: string) => completed.add(id)
-	api.on(RooCodeEventName.TaskCompleted, handler)
+	api.on(BroCodeEventName.TaskCompleted, handler)
 	try {
 		const taskId = passedTaskId ?? (await start!())
 		await waitFor(() => completed.has(taskId), options)
 		return taskId
 	} finally {
-		api.off(RooCodeEventName.TaskCompleted, handler)
+		api.off(BroCodeEventName.TaskCompleted, handler)
 	}
 }
 

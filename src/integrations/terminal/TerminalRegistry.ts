@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 
 import { arePathsEqual } from "../../utils/path"
 
-import { RooTerminal, RooTerminalProvider } from "./types"
+import { BroTerminal, BroTerminalProvider } from "./types"
 import { TerminalProcess } from "./TerminalProcess"
 import { Terminal } from "./Terminal"
 import { ExecaTerminal } from "./ExecaTerminal"
@@ -18,7 +18,7 @@ import { ShellIntegrationManager } from "./ShellIntegrationManager"
 // benefit of keep track of busy terminals even after a task is closed.
 
 export class TerminalRegistry {
-	private static terminals: RooTerminal[] = []
+	private static terminals: BroTerminal[] = []
 	private static nextTerminalId = 1
 	private static disposables: vscode.Disposable[] = []
 	private static isInitialized = false
@@ -66,7 +66,7 @@ export class TerminalRegistry {
 						terminal.busy = true // Mark terminal as busy when shell execution starts
 					} else {
 						console.error(
-							"[onDidStartTerminalShellExecution] Shell execution started, but not from a Roo-registered terminal:",
+							"[onDidStartTerminalShellExecution] Shell execution started, but not from a Bro-registered terminal:",
 							e,
 						)
 					}
@@ -91,7 +91,7 @@ export class TerminalRegistry {
 
 					if (!terminal) {
 						console.error(
-							"[onDidEndTerminalShellExecution] Shell execution ended, but not from a Roo-registered terminal:",
+							"[onDidEndTerminalShellExecution] Shell execution ended, but not from a Bro-registered terminal:",
 							e,
 						)
 
@@ -143,7 +143,7 @@ export class TerminalRegistry {
 		}
 	}
 
-	public static createTerminal(cwd: string, provider: RooTerminalProvider): RooTerminal {
+	public static createTerminal(cwd: string, provider: BroTerminalProvider): BroTerminal {
 		let newTerminal
 
 		if (provider === "vscode") {
@@ -168,11 +168,11 @@ export class TerminalRegistry {
 	public static async getOrCreateTerminal(
 		cwd: string,
 		taskId?: string,
-		provider: RooTerminalProvider = "vscode",
-	): Promise<RooTerminal> {
+		provider: BroTerminalProvider = "vscode",
+	): Promise<BroTerminal> {
 		const terminals = this.getAllTerminals()
 		const reuseKey = provider === "vscode" ? Terminal.getReuseKey() : provider
-		let terminal: RooTerminal | undefined
+		let terminal: BroTerminal | undefined
 
 		// First priority: Find a terminal already assigned to this task with
 		// matching directory.
@@ -246,7 +246,7 @@ export class TerminalRegistry {
 	 * @param taskId Optional task ID to filter terminals by
 	 * @returns Array of Terminal objects
 	 */
-	public static getTerminals(busy: boolean, taskId?: string): RooTerminal[] {
+	public static getTerminals(busy: boolean, taskId?: string): BroTerminal[] {
 		return this.getAllTerminals().filter((t) => {
 			// Filter by busy state.
 			if (t.busy !== busy) {
@@ -269,7 +269,7 @@ export class TerminalRegistry {
 	 * @param busy Whether to get busy or non-busy terminals
 	 * @returns Array of Terminal objects
 	 */
-	public static getBackgroundTerminals(busy?: boolean): RooTerminal[] {
+	public static getBackgroundTerminals(busy?: boolean): BroTerminal[] {
 		return this.getAllTerminals().filter((t) => {
 			// Only get background terminals (taskId undefined).
 			if (t.taskId !== undefined) {
@@ -338,12 +338,12 @@ export class TerminalRegistry {
 		})
 	}
 
-	private static getAllTerminals(): RooTerminal[] {
+	private static getAllTerminals(): BroTerminal[] {
 		this.terminals = this.terminals.filter((t) => !t.isClosed())
 		return this.terminals
 	}
 
-	private static getTerminalById(id: number): RooTerminal | undefined {
+	private static getTerminalById(id: number): BroTerminal | undefined {
 		const terminal = this.terminals.find((t) => t.id === id)
 
 		if (terminal?.isClosed()) {
@@ -359,7 +359,7 @@ export class TerminalRegistry {
 	 * @param terminal The VSCode terminal instance
 	 * @returns The Terminal object, or undefined if not found
 	 */
-	private static getTerminalByVSCETerminal(vsceTerminal: vscode.Terminal): RooTerminal | undefined {
+	private static getTerminalByVSCETerminal(vsceTerminal: vscode.Terminal): BroTerminal | undefined {
 		const found = this.terminals.find((t) => t instanceof Terminal && t.terminal === vsceTerminal)
 
 		if (found?.isClosed()) {

@@ -3,14 +3,14 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { BroCodeEventName, type ClineMessage } from "@bro-code/types"
 
 import { waitFor, sleep } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
 
 const FILESYSTEM_SERVER_NAME = "filesystem"
 const TEST_DIR_NAME = "use-mcp-tool-fixture"
-const TEST_CONFIG_RELATIVE_PATH = ".roo/mcp.json"
+const TEST_CONFIG_RELATIVE_PATH = ".bro/mcp.json"
 const MCP_SERVER_READY_RELATIVE_PATH = `${TEST_DIR_NAME}/mcp-server-ready`
 const READ_FILE_RELATIVE_PATH = `${TEST_DIR_NAME}/mcp-read-target.txt`
 const WRITE_FILE_RELATIVE_PATH = `${TEST_DIR_NAME}/mcp-write-target.txt`
@@ -47,17 +47,17 @@ type TaskRunResult = {
 	errorOccurred: string | null
 }
 
-suite("Roo Code use_mcp_tool Tool", function () {
+suite("Bro Code use_mcp_tool Tool", function () {
 	setDefaultSuiteTimeout(this)
 
 	let workspaceDir: string
 	let testDir: string
-	let rooDir: string
+	let broDir: string
 	let mcpConfigPath: string
 	let mcpServerReadyPath: string
 
 	async function writeFilesystemMcpConfig() {
-		await fs.mkdir(rooDir, { recursive: true })
+		await fs.mkdir(broDir, { recursive: true })
 		await fs.writeFile(
 			mcpConfigPath,
 			JSON.stringify(
@@ -151,7 +151,7 @@ suite("Roo Code use_mcp_tool Tool", function () {
 			}
 		}
 
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			await api.startNewTask({
@@ -167,7 +167,7 @@ suite("Roo Code use_mcp_tool Tool", function () {
 			await waitFor(() => attemptCompletionCalled, { timeout: 45_000 })
 			return { messages, mcpRequest, mcpServerResponse, errorOccurred }
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	}
 
@@ -179,7 +179,7 @@ suite("Roo Code use_mcp_tool Tool", function () {
 
 		workspaceDir = workspaceFolders[0]!.uri.fsPath
 		testDir = path.join(workspaceDir, TEST_DIR_NAME)
-		rooDir = path.join(workspaceDir, ".roo")
+		broDir = path.join(workspaceDir, ".bro")
 		mcpConfigPath = path.join(workspaceDir, TEST_CONFIG_RELATIVE_PATH)
 		mcpServerReadyPath = path.join(workspaceDir, MCP_SERVER_READY_RELATIVE_PATH)
 
@@ -196,7 +196,7 @@ suite("Roo Code use_mcp_tool Tool", function () {
 		}
 
 		await fs.rm(testDir, { recursive: true, force: true })
-		await fs.rm(rooDir, { recursive: true, force: true })
+		await fs.rm(broDir, { recursive: true, force: true })
 	})
 
 	setup(async () => {

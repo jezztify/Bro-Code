@@ -3,7 +3,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { BroCodeEventName, type ClineMessage } from "@bro-code/types"
 
 import { waitUntilCompleted, sleep } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
@@ -99,7 +99,7 @@ function checkInput(input) {
 	},
 }
 
-suite("Roo Code apply_diff Tool", function () {
+suite("Bro Code apply_diff Tool", function () {
 	setDefaultSuiteTimeout(this)
 
 	let workspaceDir: string
@@ -183,7 +183,7 @@ suite("Roo Code apply_diff Tool", function () {
 				errorOccurred = message.text || "Unknown error"
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			await waitUntilCompleted({
@@ -223,7 +223,7 @@ suite("Roo Code apply_diff Tool", function () {
 			)
 			assert.ok(completionMessage, "AI should have acknowledged the updated file content")
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 
@@ -238,7 +238,7 @@ suite("Roo Code apply_diff Tool", function () {
 				errorOccurred = message.text || "Unknown error"
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			await waitUntilCompleted({
@@ -278,7 +278,7 @@ suite("Roo Code apply_diff Tool", function () {
 			)
 			assert.ok(completionMessage, "AI should have acknowledged the multiple replacements")
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 
@@ -293,7 +293,7 @@ suite("Roo Code apply_diff Tool", function () {
 				errorOccurred = message.text || "Unknown error"
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			await waitUntilCompleted({
@@ -330,7 +330,7 @@ suite("Roo Code apply_diff Tool", function () {
 			)
 			assert.ok(completionMessage, "AI should have acknowledged the targeted change")
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 
@@ -341,7 +341,7 @@ suite("Roo Code apply_diff Tool", function () {
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			await waitUntilCompleted({
@@ -379,7 +379,7 @@ suite("Roo Code apply_diff Tool", function () {
 			)
 			assert.ok(completionMessage, "AI should have acknowledged the graceful apply_diff failure")
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 
@@ -394,7 +394,7 @@ suite("Roo Code apply_diff Tool", function () {
 				errorOccurred = message.text || "Unknown error"
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			await waitUntilCompleted({
@@ -434,7 +434,7 @@ suite("Roo Code apply_diff Tool", function () {
 			)
 			assert.ok(completionMessage, "AI should have acknowledged the multi-block apply_diff update")
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 })

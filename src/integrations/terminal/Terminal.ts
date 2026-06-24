@@ -4,7 +4,7 @@ import * as path from "path"
 import * as vscode from "vscode"
 import pWaitFor from "p-wait-for"
 
-import type { RooTerminalCallbacks, RooTerminalProcessResultPromise } from "./types"
+import type { BroTerminalCallbacks, BroTerminalProcessResultPromise } from "./types"
 import { BaseTerminal } from "./BaseTerminal"
 import { TerminalProcess } from "./TerminalProcess"
 import { ShellIntegrationManager } from "./ShellIntegrationManager"
@@ -26,7 +26,7 @@ export class Terminal extends BaseTerminal {
 		if (terminal) {
 			this.terminal = terminal
 		} else {
-			const options: vscode.TerminalOptions = { cwd, name: "Zoo Code", iconPath, env }
+			const options: vscode.TerminalOptions = { cwd, name: "Bro Code", iconPath, env }
 
 			// When the user has chosen a VS Code terminal profile, resolve it to a
 			// shell path/args/env so the integrated terminal uses that shell. When
@@ -46,7 +46,7 @@ export class Terminal extends BaseTerminal {
 				)
 
 				// Preserve profile-specific variables (e.g. locale/PATH), but keep
-				// Zoo Code's shell-integration controls authoritative.
+				// Bro Code's shell-integration controls authoritative.
 				if (profileShell.env) {
 					options.env = { ...profileShell.env, ...env }
 				}
@@ -78,7 +78,7 @@ export class Terminal extends BaseTerminal {
 		return this.terminal.exitStatus !== undefined
 	}
 
-	public override runCommand(command: string, callbacks: RooTerminalCallbacks): RooTerminalProcessResultPromise {
+	public override runCommand(command: string, callbacks: BroTerminalCallbacks): BroTerminalProcessResultPromise {
 		// We set busy before the command is running because the terminal may be
 		// waiting on terminal integration, and we must prevent another instance
 		// from selecting the terminal for use during that time.
@@ -203,7 +203,7 @@ export class Terminal extends BaseTerminal {
 
 	public static getEnv(): Record<string, string> {
 		const env: Record<string, string> = {
-			ROO_ACTIVE: "true",
+			BRO_ACTIVE: "true",
 			PAGER: process.platform === "win32" ? "" : "cat",
 
 			// VTE must be disabled because it prevents the prompt command from executing
@@ -320,7 +320,7 @@ export class Terminal extends BaseTerminal {
 	/**
 	 * Reads profiles from trusted settings scopes only. Workspace settings are
 	 * intentionally excluded because opening a repository must not allow its
-	 * `.vscode/settings.json` to select an executable for Zoo Code to launch.
+	 * `.vscode/settings.json` to select an executable for Bro Code to launch.
 	 */
 	public static getConfiguredProfiles(platform: NodeJS.Platform = process.platform): Record<string, unknown> {
 		const platformKey = Terminal.getPlatformProfileKey(platform)

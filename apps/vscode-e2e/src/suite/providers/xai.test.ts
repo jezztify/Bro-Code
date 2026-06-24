@@ -3,7 +3,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { BroCodeEventName, type ClineMessage } from "@bro-code/types"
 
 import { setDefaultSuiteTimeout } from "../test-utils"
 import { sleep, waitFor, waitUntilAborted } from "../utils"
@@ -331,7 +331,7 @@ async function runXAIToolProbe(
 		}
 	}
 
-	api.on(RooCodeEventName.Message, messageHandler)
+	api.on(BroCodeEventName.Message, messageHandler)
 	let taskId: string | undefined
 
 	try {
@@ -369,8 +369,8 @@ async function runXAIToolProbe(
 			}
 		}
 
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
-		api.on(RooCodeEventName.TaskAborted, taskAbortedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskAborted, taskAbortedHandler)
 
 		try {
 			await waitFor(() => taskCompleted || taskAborted || mistakeLimitReached, {
@@ -396,8 +396,8 @@ async function runXAIToolProbe(
 
 			throw error
 		} finally {
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
-			api.off(RooCodeEventName.TaskAborted, taskAbortedHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.TaskAborted, taskAbortedHandler)
 		}
 
 		return {
@@ -416,7 +416,7 @@ async function runXAIToolProbe(
 			},
 		}
 	} finally {
-		api.off(RooCodeEventName.Message, messageHandler)
+		api.off(BroCodeEventName.Message, messageHandler)
 
 		if (taskId && !taskCompleted && !taskAborted) {
 			try {

@@ -39,7 +39,7 @@ export const DEFAULT_CONSECUTIVE_MISTAKE_LIMIT = 3
 export const dynamicProviders = [
 	"openrouter",
 	"vercel-ai-gateway",
-	"zoo-gateway",
+	"bro-gateway",
 	"litellm",
 	"requesty",
 	"unbound",
@@ -82,7 +82,7 @@ export const isInternalProvider = (key: string): key is InternalProvider =>
 /**
  * CustomProvider
  *
- * Custom providers are completely configurable within Roo Code settings.
+ * Custom providers are completely configurable within Bro Code settings.
  */
 
 export const customProviders = ["openai"] as const
@@ -154,7 +154,7 @@ export const retiredProviderNames = [
 	"groq",
 	"huggingface",
 	"io-intelligence",
-	"roo",
+	"bro",
 ] as const
 
 export const retiredProviderNamesSchema = z.enum(retiredProviderNames)
@@ -410,10 +410,10 @@ const opencodeGoSchema = baseProviderSettingsSchema.extend({
 	opencodeGoModelId: z.string().optional(),
 })
 
-const zooGatewaySchema = baseProviderSettingsSchema.extend({
-	zooSessionToken: z.string().optional(),
-	zooGatewayModelId: z.string().optional(),
-	zooGatewayBaseUrl: z.string().optional(),
+const broGatewaySchema = baseProviderSettingsSchema.extend({
+	broSessionToken: z.string().optional(),
+	broGatewayModelId: z.string().optional(),
+	broGatewayBaseUrl: z.string().optional(),
 })
 
 const basetenSchema = apiModelIdProviderModelSchema.extend({
@@ -455,7 +455,7 @@ export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProv
 	qwenCodeSchema.merge(z.object({ apiProvider: z.literal("qwen-code") })),
 	vercelAiGatewaySchema.merge(z.object({ apiProvider: z.literal("vercel-ai-gateway") })),
 	opencodeGoSchema.merge(z.object({ apiProvider: z.literal("opencode-go") })),
-	zooGatewaySchema.merge(z.object({ apiProvider: z.literal("zoo-gateway") })),
+	broGatewaySchema.merge(z.object({ apiProvider: z.literal("bro-gateway") })),
 	defaultSchema,
 ])
 
@@ -491,7 +491,7 @@ export const providerSettingsSchema = z.object({
 	...qwenCodeSchema.shape,
 	...vercelAiGatewaySchema.shape,
 	...opencodeGoSchema.shape,
-	...zooGatewaySchema.shape,
+	...broGatewaySchema.shape,
 	...codebaseIndexProviderSchema.shape,
 })
 
@@ -523,7 +523,7 @@ export const modelIdKeys = [
 	"litellmModelId",
 	"vercelAiGatewayModelId",
 	"opencodeGoModelId",
-	"zooGatewayModelId",
+	"broGatewayModelId",
 ] as const satisfies readonly (keyof ProviderSettings)[]
 
 export type ModelIdKey = (typeof modelIdKeys)[number]
@@ -570,7 +570,7 @@ export const modelIdKeysByProvider: Record<TypicalProvider, ModelIdKey> = {
 	fireworks: "apiModelId",
 	"vercel-ai-gateway": "vercelAiGatewayModelId",
 	"opencode-go": "opencodeGoModelId",
-	"zoo-gateway": "zooGatewayModelId",
+	"bro-gateway": "broGatewayModelId",
 }
 
 /**
@@ -589,10 +589,10 @@ export const getApiProtocol = (provider: ProviderName | undefined, modelId?: str
 		return "anthropic"
 	}
 
-	// Vercel AI Gateway and Zoo Gateway use the anthropic protocol for anthropic models.
+	// Vercel AI Gateway and Bro Gateway use the anthropic protocol for anthropic models.
 	if (
 		provider &&
-		["vercel-ai-gateway", "zoo-gateway"].includes(provider) &&
+		["vercel-ai-gateway", "bro-gateway"].includes(provider) &&
 		modelId &&
 		modelId.toLowerCase().startsWith("anthropic/")
 	) {
@@ -704,7 +704,7 @@ export const MODELS_BY_PROVIDER: Record<
 	unbound: { id: "unbound", label: "Unbound", models: [] },
 	"vercel-ai-gateway": { id: "vercel-ai-gateway", label: "Vercel AI Gateway", models: [] },
 	"opencode-go": { id: "opencode-go", label: "Opencode Go", models: [] },
-	"zoo-gateway": { id: "zoo-gateway", label: "Zoo Gateway", models: [] },
+	"bro-gateway": { id: "bro-gateway", label: "Bro Gateway", models: [] },
 
 	// Local providers; models discovered from localhost endpoints.
 	lmstudio: { id: "lmstudio", label: "LM Studio", models: [] },

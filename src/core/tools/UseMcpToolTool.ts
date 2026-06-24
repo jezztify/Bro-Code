@@ -1,4 +1,4 @@
-import type { ClineAskUseMcpServer, McpExecutionStatus, McpResourceLink } from "@roo-code/types"
+import type { ClineAskUseMcpServer, McpExecutionStatus, McpResourceLink } from "@bro-code/types"
 
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"

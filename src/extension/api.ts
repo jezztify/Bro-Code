@@ -7,20 +7,20 @@ import * as vscode from "vscode"
 import pWaitFor from "p-wait-for"
 
 import {
-	type RooCodeAPI,
-	type RooCodeSettings,
-	type RooCodeEvents,
+	type BroCodeAPI,
+	type BroCodeSettings,
+	type BroCodeEvents,
 	type ProviderSettings,
 	type ProviderSettingsEntry,
 	type TaskEvent,
 	type CreateTaskOptions,
-	RooCodeEventName,
+	BroCodeEventName,
 	TaskCommandName,
 	isSecretStateKey,
 	IpcOrigin,
 	IpcMessageType,
-} from "@roo-code/types"
-import { IpcServer } from "@roo-code/ipc"
+} from "@bro-code/types"
+import { IpcServer } from "@bro-code/ipc"
 
 import { Package } from "../shared/package"
 import { ClineProvider } from "../core/webview/ClineProvider"
@@ -30,7 +30,7 @@ import { openClineInNewTab } from "../activate/registerCommands"
 import { getCommands } from "../services/command/commands"
 import { getModels } from "../api/providers/fetchers/modelCache"
 
-export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
+export class API extends EventEmitter<BroCodeEvents> implements BroCodeAPI {
 	private readonly outputChannel: vscode.OutputChannel
 	private readonly sidebarProvider: ClineProvider
 	private readonly context: vscode.ExtensionContext
@@ -56,7 +56,7 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 				console.log(args)
 			}
 
-			this.logfile = path.join(os.tmpdir(), "roo-code-messages.log")
+			this.logfile = path.join(os.tmpdir(), "bro-code-messages.log")
 		} else {
 			this.log = () => {}
 		}
@@ -70,7 +70,7 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 			this.log(`[API] ipc server started: socketPath=${socketPath}, pid=${process.pid}, ppid=${process.ppid}`)
 
 			ipc.on(IpcMessageType.TaskCommand, async (clientId, command) => {
-				const sendResponse = (eventName: RooCodeEventName, payload: unknown[]) => {
+				const sendResponse = (eventName: BroCodeEventName, payload: unknown[]) => {
 					ipc.send(clientId, {
 						type: IpcMessageType.TaskEvent,
 						origin: IpcOrigin.Server,
@@ -113,7 +113,7 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 						try {
 							const commands = await getCommands(this.sidebarProvider.cwd)
 
-							sendResponse(RooCodeEventName.CommandsResponse, [
+							sendResponse(BroCodeEventName.CommandsResponse, [
 								commands.map((cmd) => ({
 									name: cmd.name,
 									source: cmd.source,
@@ -123,24 +123,24 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 								})),
 							])
 						} catch (error) {
-							sendResponse(RooCodeEventName.CommandsResponse, [[]])
+							sendResponse(BroCodeEventName.CommandsResponse, [[]])
 						}
 
 						break
 					case TaskCommandName.GetModes:
 						try {
 							const modes = await this.sidebarProvider.getModes()
-							sendResponse(RooCodeEventName.ModesResponse, [modes])
+							sendResponse(BroCodeEventName.ModesResponse, [modes])
 						} catch (error) {
-							sendResponse(RooCodeEventName.ModesResponse, [[]])
+							sendResponse(BroCodeEventName.ModesResponse, [[]])
 						}
 
 						break
 					case TaskCommandName.GetModels:
 						try {
-							sendResponse(RooCodeEventName.ModelsResponse, [{}])
+							sendResponse(BroCodeEventName.ModelsResponse, [{}])
 						} catch (error) {
-							sendResponse(RooCodeEventName.ModelsResponse, [{}])
+							sendResponse(BroCodeEventName.ModelsResponse, [{}])
 						}
 
 						break
@@ -158,11 +158,11 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		}
 	}
 
-	public override emit<K extends keyof RooCodeEvents>(
+	public override emit<K extends keyof BroCodeEvents>(
 		eventName: K,
-		...args: K extends keyof RooCodeEvents ? RooCodeEvents[K] : never
+		...args: K extends keyof BroCodeEvents ? BroCodeEvents[K] : never
 	) {
-		const data = { eventName: eventName as RooCodeEventName, payload: args } as TaskEvent
+		const data = { eventName: eventName as BroCodeEventName, payload: args } as TaskEvent
 		this.ipc?.broadcast({ type: IpcMessageType.TaskEvent, origin: IpcOrigin.Server, data })
 		return super.emit(eventName, ...args)
 	}
@@ -173,7 +173,7 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		images,
 		newTab,
 	}: {
-		configuration: RooCodeSettings
+		configuration: BroCodeSettings
 		text?: string
 		images?: string[]
 		newTab?: boolean
@@ -310,16 +310,16 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	}
 
 	private registerListeners(provider: ClineProvider) {
-		provider.on(RooCodeEventName.TaskCreated, (task) => {
+		provider.on(BroCodeEventName.TaskCreated, (task) => {
 			// Task Lifecycle
 
-			task.on(RooCodeEventName.TaskStarted, async () => {
-				this.emit(RooCodeEventName.TaskStarted, task.taskId)
+			task.on(BroCodeEventName.TaskStarted, async () => {
+				this.emit(BroCodeEventName.TaskStarted, task.taskId)
 				await this.fileLog(`[${new Date().toISOString()}] taskStarted -> ${task.taskId}\n`)
 			})
 
-			task.on(RooCodeEventName.TaskCompleted, async (_, tokenUsage, toolUsage) => {
-				this.emit(RooCodeEventName.TaskCompleted, task.taskId, tokenUsage, toolUsage, {
+			task.on(BroCodeEventName.TaskCompleted, async (_, tokenUsage, toolUsage) => {
+				this.emit(BroCodeEventName.TaskCompleted, task.taskId, tokenUsage, toolUsage, {
 					isSubtask: !!task.parentTaskId,
 				})
 
@@ -328,95 +328,95 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 				)
 			})
 
-			task.on(RooCodeEventName.TaskAborted, () => {
-				this.emit(RooCodeEventName.TaskAborted, task.taskId)
+			task.on(BroCodeEventName.TaskAborted, () => {
+				this.emit(BroCodeEventName.TaskAborted, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskFocused, () => {
-				this.emit(RooCodeEventName.TaskFocused, task.taskId)
+			task.on(BroCodeEventName.TaskFocused, () => {
+				this.emit(BroCodeEventName.TaskFocused, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskUnfocused, () => {
-				this.emit(RooCodeEventName.TaskUnfocused, task.taskId)
+			task.on(BroCodeEventName.TaskUnfocused, () => {
+				this.emit(BroCodeEventName.TaskUnfocused, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskActive, () => {
-				this.emit(RooCodeEventName.TaskActive, task.taskId)
+			task.on(BroCodeEventName.TaskActive, () => {
+				this.emit(BroCodeEventName.TaskActive, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskInteractive, () => {
-				this.emit(RooCodeEventName.TaskInteractive, task.taskId)
+			task.on(BroCodeEventName.TaskInteractive, () => {
+				this.emit(BroCodeEventName.TaskInteractive, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskResumable, () => {
-				this.emit(RooCodeEventName.TaskResumable, task.taskId)
+			task.on(BroCodeEventName.TaskResumable, () => {
+				this.emit(BroCodeEventName.TaskResumable, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskIdle, () => {
-				this.emit(RooCodeEventName.TaskIdle, task.taskId)
+			task.on(BroCodeEventName.TaskIdle, () => {
+				this.emit(BroCodeEventName.TaskIdle, task.taskId)
 			})
 
 			// Subtask Lifecycle
 
-			task.on(RooCodeEventName.TaskPaused, () => {
-				this.emit(RooCodeEventName.TaskPaused, task.taskId)
+			task.on(BroCodeEventName.TaskPaused, () => {
+				this.emit(BroCodeEventName.TaskPaused, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskUnpaused, () => {
-				this.emit(RooCodeEventName.TaskUnpaused, task.taskId)
+			task.on(BroCodeEventName.TaskUnpaused, () => {
+				this.emit(BroCodeEventName.TaskUnpaused, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskSpawned, (childTaskId) => {
-				this.emit(RooCodeEventName.TaskSpawned, task.taskId, childTaskId)
+			task.on(BroCodeEventName.TaskSpawned, (childTaskId) => {
+				this.emit(BroCodeEventName.TaskSpawned, task.taskId, childTaskId)
 			})
 
-			task.on(RooCodeEventName.TaskDelegated as any, (childTaskId: string) => {
-				;(this.emit as any)(RooCodeEventName.TaskDelegated, task.taskId, childTaskId)
+			task.on(BroCodeEventName.TaskDelegated as any, (childTaskId: string) => {
+				;(this.emit as any)(BroCodeEventName.TaskDelegated, task.taskId, childTaskId)
 			})
 
-			task.on(RooCodeEventName.TaskDelegationCompleted as any, (childTaskId: string, summary: string) => {
-				;(this.emit as any)(RooCodeEventName.TaskDelegationCompleted, task.taskId, childTaskId, summary)
+			task.on(BroCodeEventName.TaskDelegationCompleted as any, (childTaskId: string, summary: string) => {
+				;(this.emit as any)(BroCodeEventName.TaskDelegationCompleted, task.taskId, childTaskId, summary)
 			})
 
-			task.on(RooCodeEventName.TaskDelegationResumed as any, (childTaskId: string) => {
-				;(this.emit as any)(RooCodeEventName.TaskDelegationResumed, task.taskId, childTaskId)
+			task.on(BroCodeEventName.TaskDelegationResumed as any, (childTaskId: string) => {
+				;(this.emit as any)(BroCodeEventName.TaskDelegationResumed, task.taskId, childTaskId)
 			})
 
 			// Task Execution
 
-			task.on(RooCodeEventName.Message, async (message) => {
-				this.emit(RooCodeEventName.Message, { taskId: task.taskId, ...message })
+			task.on(BroCodeEventName.Message, async (message) => {
+				this.emit(BroCodeEventName.Message, { taskId: task.taskId, ...message })
 
 				if (message.message.partial !== true) {
 					await this.fileLog(`[${new Date().toISOString()}] ${JSON.stringify(message.message, null, 2)}\n`)
 				}
 			})
 
-			task.on(RooCodeEventName.TaskModeSwitched, (taskId, mode) => {
-				this.emit(RooCodeEventName.TaskModeSwitched, taskId, mode)
+			task.on(BroCodeEventName.TaskModeSwitched, (taskId, mode) => {
+				this.emit(BroCodeEventName.TaskModeSwitched, taskId, mode)
 			})
 
-			task.on(RooCodeEventName.TaskAskResponded, () => {
-				this.emit(RooCodeEventName.TaskAskResponded, task.taskId)
+			task.on(BroCodeEventName.TaskAskResponded, () => {
+				this.emit(BroCodeEventName.TaskAskResponded, task.taskId)
 			})
 
-			task.on(RooCodeEventName.QueuedMessagesUpdated, (taskId, messages) => {
-				this.emit(RooCodeEventName.QueuedMessagesUpdated, taskId, messages)
+			task.on(BroCodeEventName.QueuedMessagesUpdated, (taskId, messages) => {
+				this.emit(BroCodeEventName.QueuedMessagesUpdated, taskId, messages)
 			})
 
 			// Task Analytics
 
-			task.on(RooCodeEventName.TaskToolFailed, (taskId, tool, error) => {
-				this.emit(RooCodeEventName.TaskToolFailed, taskId, tool, error)
+			task.on(BroCodeEventName.TaskToolFailed, (taskId, tool, error) => {
+				this.emit(BroCodeEventName.TaskToolFailed, taskId, tool, error)
 			})
 
-			task.on(RooCodeEventName.TaskTokenUsageUpdated, (_, tokenUsage, toolUsage) => {
-				this.emit(RooCodeEventName.TaskTokenUsageUpdated, task.taskId, tokenUsage, toolUsage)
+			task.on(BroCodeEventName.TaskTokenUsageUpdated, (_, tokenUsage, toolUsage) => {
+				this.emit(BroCodeEventName.TaskTokenUsageUpdated, task.taskId, tokenUsage, toolUsage)
 			})
 
 			// Let's go!
 
-			this.emit(RooCodeEventName.TaskCreated, task.taskId)
+			this.emit(BroCodeEventName.TaskCreated, task.taskId)
 		})
 	}
 
@@ -467,13 +467,13 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 
 	// Global Settings Management
 
-	public getConfiguration(): RooCodeSettings {
+	public getConfiguration(): BroCodeSettings {
 		return Object.fromEntries(
 			Object.entries(this.sidebarProvider.getValues()).filter(([key]) => !isSecretStateKey(key)),
 		)
 	}
 
-	public async setConfiguration(values: RooCodeSettings) {
+	public async setConfiguration(values: BroCodeSettings) {
 		await this.sidebarProvider.contextProxy.setValues(values)
 		await this.sidebarProvider.providerSettingsManager.saveConfig(values.currentApiConfigName || "default", values)
 		await this.sidebarProvider.postStateToWebview()

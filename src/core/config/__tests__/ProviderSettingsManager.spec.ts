@@ -2,17 +2,17 @@
 
 import { ExtensionContext } from "vscode"
 
-import type { ProviderSettings } from "@roo-code/types"
+import type { ProviderSettings } from "@bro-code/types"
 
 import { ProviderSettingsManager, ProviderProfiles, SyncCloudProfilesResult } from "../ProviderSettingsManager"
 
 // `export()` builds an API handler per profile to read model capabilities. Mock
-// buildApiHandler with the real @roo-code/types model definitions so the token-field
+// buildApiHandler with the real @bro-code/types model definitions so the token-field
 // filtering is driven by real capability flags, and so this suite stays isolated from
 // sibling specs that also mock "../../../api" (avoids a cross-file mock leak under
 // Vitest's singleFork pool).
 vi.mock("../../../api", async () => {
-	const types = await vi.importActual<typeof import("@roo-code/types")>("@roo-code/types")
+	const types = await vi.importActual<typeof import("@bro-code/types")>("@bro-code/types")
 	const zaiModels = { ...types.internationalZAiModels, ...types.mainlandZAiModels } as Record<string, unknown>
 	const anthropicModels = types.anthropicModels as Record<string, unknown>
 	const modelInfoFor = (config: { apiProvider?: string; apiModelId?: string }) => {
@@ -252,7 +252,7 @@ describe("ProviderSettingsManager", () => {
 			expect(storedConfig.migrations.todoListEnabledMigrated).toEqual(true)
 		})
 
-		it("should migrate legacy Roo provider profiles into a setup-needed fallback", async () => {
+		it("should migrate legacy Bro provider profiles into a setup-needed fallback", async () => {
 			mockSecrets.get.mockResolvedValue(
 				JSON.stringify({
 					currentApiConfigName: "default",
@@ -260,24 +260,24 @@ describe("ProviderSettingsManager", () => {
 						default: {
 							config: {},
 							id: "default",
-							apiProvider: "roo",
-							apiModelId: "roo/code-supernova", // Old model ID
+							apiProvider: "bro",
+							apiModelId: "bro/code-supernova", // Old model ID
 						},
 						test: {
-							apiProvider: "roo",
-							apiModelId: "roo/code-supernova", // Old model ID
+							apiProvider: "bro",
+							apiModelId: "bro/code-supernova", // Old model ID
 						},
 						existing: {
-							apiProvider: "roo",
-							apiModelId: "roo/code-supernova-1-million", // Already migrated
+							apiProvider: "bro",
+							apiModelId: "bro/code-supernova-1-million", // Already migrated
 						},
 						otherProvider: {
 							apiProvider: "anthropic",
-							apiModelId: "roo/code-supernova", // Should not be migrated (different provider)
+							apiModelId: "bro/code-supernova", // Should not be migrated (different provider)
 						},
 						noProvider: {
 							id: "no-provider",
-							apiModelId: "roo/code-supernova", // Should not be migrated (no provider)
+							apiModelId: "bro/code-supernova", // Should not be migrated (no provider)
 						},
 					},
 					migrations: {
@@ -296,7 +296,7 @@ describe("ProviderSettingsManager", () => {
 			const calls = mockSecrets.store.mock.calls
 			const storedConfig = JSON.parse(calls[calls.length - 1][1])
 
-			// Roo provider configs should be downgraded into an unconfigured fallback state
+			// Bro provider configs should be downgraded into an unconfigured fallback state
 			expect(storedConfig.apiConfigs.default.apiProvider).toBeUndefined()
 			expect(storedConfig.apiConfigs.default.apiModelId).toBeUndefined()
 			expect(storedConfig.apiConfigs.test.apiProvider).toBeUndefined()
@@ -305,12 +305,12 @@ describe("ProviderSettingsManager", () => {
 			expect(storedConfig.apiConfigs.existing.apiModelId).toBeUndefined()
 			expect(storedConfig.migrations.routerProviderMigrated).toEqual(true)
 
-			// Non-roo provider configs should not be migrated
-			expect(storedConfig.apiConfigs.otherProvider.apiModelId).toEqual("roo/code-supernova")
-			expect(storedConfig.apiConfigs.noProvider.apiModelId).toEqual("roo/code-supernova")
+			// Non-bro provider configs should not be migrated
+			expect(storedConfig.apiConfigs.otherProvider.apiModelId).toEqual("bro/code-supernova")
+			expect(storedConfig.apiConfigs.noProvider.apiModelId).toEqual("bro/code-supernova")
 		})
 
-		it("should downgrade Roo provider when saving a profile", async () => {
+		it("should downgrade Bro provider when saving a profile", async () => {
 			mockSecrets.get.mockResolvedValue(
 				JSON.stringify({
 					currentApiConfigName: "default",
@@ -323,9 +323,9 @@ describe("ProviderSettingsManager", () => {
 
 			await providerSettingsManager.saveConfig("router-profile", {
 				id: "router-id",
-				apiProvider: "roo",
-				apiModelId: "roo/code-supernova",
-				rooApiKey: "router-key",
+				apiProvider: "bro",
+				apiModelId: "bro/code-supernova",
+				broApiKey: "router-key",
 			} as any)
 
 			const calls = mockSecrets.store.mock.calls
@@ -447,7 +447,7 @@ describe("ProviderSettingsManager", () => {
 				},
 			}
 
-			expect(mockSecrets.store.mock.calls[0][0]).toEqual("roo_cline_config_api_config")
+			expect(mockSecrets.store.mock.calls[0][0]).toEqual("bro_cline_config_api_config")
 			expect(storedConfig).toEqual(expectedConfig)
 		})
 
@@ -497,7 +497,7 @@ describe("ProviderSettingsManager", () => {
 				},
 			}
 
-			expect(mockSecrets.store.mock.calls[0][0]).toEqual("roo_cline_config_api_config")
+			expect(mockSecrets.store.mock.calls[0][0]).toEqual("bro_cline_config_api_config")
 			expect(storedConfig).toEqual(expectedConfig)
 		})
 
@@ -541,7 +541,7 @@ describe("ProviderSettingsManager", () => {
 
 			const storedConfig = JSON.parse(mockSecrets.store.mock.calls[mockSecrets.store.mock.calls.length - 1][1])
 			expect(mockSecrets.store.mock.calls[mockSecrets.store.mock.calls.length - 1][0]).toEqual(
-				"roo_cline_config_api_config",
+				"bro_cline_config_api_config",
 			)
 			expect(storedConfig).toEqual(expectedConfig)
 		})
@@ -962,7 +962,7 @@ describe("ProviderSettingsManager", () => {
 			await providerSettingsManager.resetAllConfigs()
 
 			// Should have called delete with the correct config key
-			expect(mockSecrets.delete).toHaveBeenCalledWith("roo_cline_config_api_config")
+			expect(mockSecrets.delete).toHaveBeenCalledWith("bro_cline_config_api_config")
 		})
 	})
 

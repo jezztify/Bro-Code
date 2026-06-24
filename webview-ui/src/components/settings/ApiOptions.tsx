@@ -9,7 +9,7 @@ import {
 	type ProviderSettings,
 	isRetiredProvider,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
-} from "@roo-code/types"
+} from "@bro-code/types"
 
 import {
 	getProviderServiceConfig,
@@ -25,7 +25,7 @@ import { vscode } from "@src/utils/vscode"
 import { validateApiConfigurationExcludingModelErrors, getModelValidationError } from "@src/utils/validate"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useRouterModels } from "@src/components/ui/hooks/useRouterModels"
-import { useZooGatewayRouterModelsSync } from "@src/components/ui/hooks/useZooGatewayRouterModelsSync"
+import { useBroGatewayRouterModelsSync } from "@src/components/ui/hooks/useBroGatewayRouterModelsSync"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 import { requestLmStudioModels } from "@src/components/ui/hooks/useLmStudioModels"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
@@ -73,7 +73,7 @@ import {
 	Fireworks,
 	VercelAiGateway,
 	OpenCodeGo,
-	ZooGateway,
+	BroGateway,
 	MiniMax,
 	Mimo,
 } from "./providers"
@@ -172,7 +172,7 @@ const ApiOptions = ({
 		typeof apiConfiguration.apiProvider === "string" && isRetiredProvider(apiConfiguration.apiProvider)
 
 	const { data: routerModels, refetch: refetchRouterModels } = useRouterModels()
-	useZooGatewayRouterModelsSync()
+	useBroGatewayRouterModelsSync()
 
 	const { data: openRouterModelProviders } = useOpenRouterModelProviders(
 		apiConfiguration?.openRouterModelId,
@@ -249,10 +249,10 @@ const ApiOptions = ({
 			return
 		}
 
-		// Zoo Gateway renders its own auth-state error inline (sign-in card in
-		// ZooGateway.tsx) so it can react to zooCodeIsAuthenticated changes
+		// Bro Gateway renders its own auth-state error inline (sign-in card in
+		// BroGateway.tsx) so it can react to broCodeIsAuthenticated changes
 		// without re-running this effect or threading auth state through validation.
-		if (apiConfiguration.apiProvider === "zoo-gateway") {
+		if (apiConfiguration.apiProvider === "bro-gateway") {
 			setErrorMessage(undefined)
 			return
 		}
@@ -638,8 +638,8 @@ const ApiOptions = ({
 						/>
 					)}
 
-					{selectedProvider === "zoo-gateway" && (
-						<ZooGateway
+					{selectedProvider === "bro-gateway" && (
+						<BroGateway
 							apiConfiguration={apiConfiguration}
 							setApiConfigurationField={setApiConfigurationField}
 							routerModels={routerModels}

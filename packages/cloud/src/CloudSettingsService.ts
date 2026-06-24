@@ -17,9 +17,9 @@ import {
 	organizationSettingsSchema,
 	userSettingsDataSchema,
 	ORGANIZATION_ALLOW_ALL,
-} from "@roo-code/types"
+} from "@bro-code/types"
 
-import { getRooCodeApiUrl } from "./config.js"
+import { getBroCodeApiUrl } from "./config.js"
 import { RefreshTimer } from "./RefreshTimer.js"
 
 const ORGANIZATION_SETTINGS_CACHE_KEY = "organization-settings"
@@ -112,7 +112,7 @@ export class CloudSettingsService extends EventEmitter<SettingsServiceEvents> im
 		}
 
 		try {
-			const response = await fetch(`${getRooCodeApiUrl()}/api/extension-settings`, {
+			const response = await fetch(`${getBroCodeApiUrl()}/api/extension-settings`, {
 				headers: {
 					Authorization: `Bearer ${token}`,
 				},
@@ -225,7 +225,7 @@ export class CloudSettingsService extends EventEmitter<SettingsServiceEvents> im
 				requestBody.version = currentVersion
 			}
 
-			const response = await fetch(`${getRooCodeApiUrl()}/api/user-settings`, {
+			const response = await fetch(`${getBroCodeApiUrl()}/api/user-settings`, {
 				method: "PATCH",
 				headers: {
 					"Content-Type": "application/json",

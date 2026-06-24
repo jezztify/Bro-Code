@@ -31,8 +31,8 @@ jobs:
           package_name=$(node -p "require('./src/package.json').name")
           publisher=$(node -p "require('./src/package.json').publisher")
 
-          test "$package_name" = "zoo-code"
-          test "$publisher" = "ZooCodeOrganization"
+          test "$package_name" = "bro-code"
+          test "$publisher" = "BroCodeOrganization"
 
       - name: Validate publish ref
         run: |
@@ -64,8 +64,8 @@ jobs:
         env:
           PKG_RELEASE_CHANNEL: prerelease
         run: |
-          pnpm --filter @roo-code/build build
-          pnpm --filter @roo-code/vscode-webview build
+          pnpm --filter @bro-code/build build
+          pnpm --filter @bro-code/vscode-webview build
 
       - name: Package pre-release VSIX
         env:
@@ -79,24 +79,24 @@ jobs:
         env:
           VERSION_NUMBER: ${{ steps.version.outputs.number }}
         run: |
-          vsix_path="bin/zoo-code-${VERSION_NUMBER}.vsix"
-          unzip -l "$vsix_path" > /tmp/zoo-code-vsix-contents.txt
-          grep -q "extension/package.json" /tmp/zoo-code-vsix-contents.txt
-          grep -q "extension/dist/extension.js" /tmp/zoo-code-vsix-contents.txt
-          grep -q "extension/webview-ui/build/assets/index.js" /tmp/zoo-code-vsix-contents.txt
-          grep -q "extension/webview-ui/audio/celebration.wav" /tmp/zoo-code-vsix-contents.txt
+          vsix_path="bin/bro-code-${VERSION_NUMBER}.vsix"
+          unzip -l "$vsix_path" > /tmp/bro-code-vsix-contents.txt
+          grep -q "extension/package.json" /tmp/bro-code-vsix-contents.txt
+          grep -q "extension/dist/extension.js" /tmp/bro-code-vsix-contents.txt
+          grep -q "extension/webview-ui/build/assets/index.js" /tmp/bro-code-vsix-contents.txt
+          grep -q "extension/webview-ui/audio/celebration.wav" /tmp/bro-code-vsix-contents.txt
 
       - name: Validate packaged manifest identity
         env:
           VERSION_NUMBER: ${{ steps.version.outputs.number }}
         run: |
-          vsix_path="bin/zoo-code-${VERSION_NUMBER}.vsix"
+          vsix_path="bin/bro-code-${VERSION_NUMBER}.vsix"
 
           artifact_name=$(unzip -p "$vsix_path" extension/package.json | jq -r '.name')
           artifact_publisher=$(unzip -p "$vsix_path" extension/package.json | jq -r '.publisher')
 
-          test "$artifact_name" = "zoo-code"
-          test "$artifact_publisher" = "ZooCodeOrganization"
+          test "$artifact_name" = "bro-code"
+          test "$artifact_publisher" = "BroCodeOrganization"
 
       # Open VSX is intentionally excluded: it has no pre-release channel concept,
       # so pre-release builds would surface as the latest stable version for all users.
@@ -105,5 +105,5 @@ jobs:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
           VERSION_NUMBER: ${{ steps.version.outputs.number }}
         run: |
-          npx @vscode/vsce publish --pre-release --packagePath "bin/zoo-code-${VERSION_NUMBER}.vsix"
-          echo "Published ZooCodeOrganization.zoo-code ${VERSION_NUMBER} as a VS Code Marketplace pre-release"
+          npx @vscode/vsce publish --pre-release --packagePath "bin/bro-code-${VERSION_NUMBER}.vsix"
+          echo "Published BroCodeOrganization.bro-code ${VERSION_NUMBER} as a VS Code Marketplace pre-release"

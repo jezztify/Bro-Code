@@ -1,6 +1,6 @@
 {
 	"extension": {
-		"name": "Zoo Code",
+		"name": "Bro Code",
 		"description": "エディター内のAIデベロッパーチーム全体。"
 	},
 	"number_format": {
@@ -111,9 +111,9 @@
 			"thinking_complete_safety": "（思考完了、安全設定により出力ブロック）",
 			"thinking_complete_recitation": "（思考完了、引用チェックにより出力ブロック）"
 		},
-		"roo": {
-			"authenticationRequired": "Rooプロバイダーはクラウド認証が必要です。Roo Code Cloudにサインインしてください。",
-			"routerRemoved": "Roo Code Router は削除されました。別のプロバイダーを選択して設定してください。"
+		"bro": {
+			"authenticationRequired": "Broプロバイダーはクラウド認証が必要です。Bro Code Cloudにサインインしてください。",
+			"routerRemoved": "Bro Code Router は削除されました。別のプロバイダーを選択して設定してください。"
 		},
 		"api": {
 			"invalidKeyInvalidChars": "APIキーに無効な文字が含まれています。",
@@ -142,16 +142,16 @@
 			"unexpectedStreamError": "Unexpected error processing response stream",
 			"completionError": "OpenAI Codex completion error: {{message}}"
 		},
-		"rooHistoryImport": "Roo Codeの履歴のインポートに失敗しました: {{error}}"
+		"broHistoryImport": "Roo Codeの履歴のインポートに失敗しました: {{error}}"
 	},
 	"warnings": {
 		"no_terminal_content": "選択されたターミナルコンテンツがありません",
 		"missing_task_files": "このタスクのファイルが見つかりません。タスクリストから削除しますか？",
-		"auto_import_failed": "ZooCode設定の自動インポートに失敗しました：{{error}}",
-		"rooHistoryImport": {
+		"auto_import_failed": "BroCode設定の自動インポートに失敗しました：{{error}}",
+		"broHistoryImport": {
 			"nothingFound": "{{domain}}からインポートするRoo Codeのタスク履歴が見つかりませんでした。",
-			"alreadyImported_one": "{{count}}件のRoo Codeタスク履歴はすでにZoo Codeにインポート済みです。",
-			"alreadyImported_other": "{{count}}件のRoo Codeタスク履歴はすでにZoo Codeにインポート済みです。"
+			"alreadyImported_one": "{{count}}件のRoo Codeタスク履歴はすでにBro Codeにインポート済みです。",
+			"alreadyImported_other": "{{count}}件のRoo Codeタスク履歴はすでにBro Codeにインポート済みです。"
 		}
 	},
 	"info": {
@@ -161,7 +161,7 @@
 		"custom_storage_path_set": "カスタムストレージパスが設定されました：{{path}}",
 		"default_storage_path": "デフォルトのストレージパスに戻りました",
 		"settings_imported": "設定が正常にインポートされました。",
-		"auto_import_success": "ZooCode設定が{{filename}}から自動インポートされました",
+		"auto_import_success": "BroCode設定が{{filename}}から自動インポートされました",
 		"share_link_copied": "共有リンクがクリップボードにコピーされました",
 		"image_copied_to_clipboard": "画像データURIがクリップボードにコピーされました",
 		"image_saved": "画像を{{path}}に保存しました",
@@ -169,12 +169,12 @@
 		"public_share_link_copied": "公開共有リンクがクリップボードにコピーされました！",
 		"mode_exported": "モード「{{mode}}」が正常にエクスポートされました",
 		"mode_imported": "モードが正常にインポートされました",
-		"roo": {
-			"signInUnavailable": "Roo Code Cloud へのサインインは現在利用できません。続行するには別のプロバイダーを設定してください。"
+		"bro": {
+			"signInUnavailable": "Bro Code Cloud へのサインインは現在利用できません。続行するには別のプロバイダーを設定してください。"
 		},
-		"rooHistoryImport": {
-			"success_one": "{{count}}件のRoo CodeタスクをZoo Codeにインポートしました。",
-			"success_other": "{{count}}件のRoo CodeタスクをZoo Codeにインポートしました。"
+		"broHistoryImport": {
+			"success_one": "{{count}}件のRoo CodeタスクをBro Codeにインポートしました。",
+			"success_other": "{{count}}件のRoo CodeタスクをBro Codeにインポートしました。"
 		}
 	},
 	"answers": {
@@ -201,12 +201,12 @@
 	},
 	"storage": {
 		"prompt_custom_path": "会話履歴のカスタムストレージパスを入力してください。デフォルトの場所を使用する場合は空のままにしてください",
-		"path_placeholder": "D:\\ZooCodeStorage",
-		"enter_absolute_path": "絶対パスを入力してください（例：D:\\ZooCodeStorage または /home/user/storage）",
+		"path_placeholder": "D:\\BroCodeStorage",
+		"enter_absolute_path": "絶対パスを入力してください（例：D:\\BroCodeStorage または /home/user/storage）",
 		"enter_valid_path": "有効なパスを入力してください"
 	},
 	"input": {
-		"task_prompt": "Zooにどんなことをさせますか？",
+		"task_prompt": "Broにどんなことをさせますか？",
 		"task_placeholder": "タスクをここに入力してください"
 	},
 	"settings": {
@@ -214,8 +214,8 @@
 	},
 	"customModes": {
 		"errors": {
-			"yamlParseError": ".roomodes ファイルの {{line}} 行目で無効な YAML です。以下を確認してください：\n• 正しいインデント（タブではなくスペースを使用）\n• 引用符と括弧の対応\n• 有効な YAML 構文",
-			"schemaValidationError": ".roomodes のカスタムモード形式が無効です：\n{{issues}}",
+			"yamlParseError": ".bromodes ファイルの {{line}} 行目で無効な YAML です。以下を確認してください：\n• 正しいインデント（タブではなくスペースを使用）\n• 引用符と括弧の対応\n• 有効な YAML 構文",
+			"schemaValidationError": ".bromodes のカスタムモード形式が無効です：\n{{issues}}",
 			"invalidFormat": "カスタムモード形式が無効です。設定が正しい YAML 形式に従っていることを確認してください。",
 			"updateFailed": "カスタムモードの更新に失敗しました：{{error}}",
 			"deleteFailed": "カスタムモードの削除に失敗しました：{{error}}",
@@ -236,8 +236,8 @@
 	},
 	"mdm": {
 		"errors": {
-			"cloud_auth_required": "あなたの組織では Zoo Code Cloud 認証が必要です。続行するにはサインインしてください。",
-			"organization_mismatch": "組織の Zoo Code Cloud アカウントで認証する必要があります。",
+			"cloud_auth_required": "あなたの組織では Bro Code Cloud 認証が必要です。続行するにはサインインしてください。",
+			"organization_mismatch": "組織の Bro Code Cloud アカウントで認証する必要があります。",
 			"manual_url_empty": "有効なコールバック URL を入力してください",
 			"manual_url_no_query": "無効なコールバック URL：クエリパラメータがありません",
 			"manual_url_missing_params": "無効なコールバック URL：必要なパラメータ（code と state）がありません",
@@ -264,22 +264,22 @@
 	},
 	"docsLink": {
 		"label": "Docs",
-		"url": "https://docs.zoocode.dev"
+		"url": "https://docs.brocode.dev"
 	},
-	"zooAuth": {
+	"broAuth": {
 		"errors": {
-			"invalid_token_received": "Zoo Code: 無効な認証 token を受信しました。",
-			"token_verification_failed": "Zoo Code: Token の検証に失敗しました。",
-			"invalid_token": "Zoo Code: 無効な token です。",
-			"could_not_verify_token": "Zoo Code: Token を検証できませんでした。",
-			"session_expired": "Zoo Codeのセッションの有効期限が切れました。Zoo Gatewayを引き続き使用するには、再度サインインしてください。",
-			"out_of_credits": "Zoo Gateway: クレジットが不足しています。続行するにはクレジットを追加してください。",
-			"account_unavailable": "Zoo Gateway: 現在アカウントを利用できません。サポートまでお問い合わせください。",
-			"budget_exceeded": "Zoo Gateway: 利用予算に達しました。リセットを待つかチャージしてください。"
+			"invalid_token_received": "Bro Code: 無効な認証 token を受信しました。",
+			"token_verification_failed": "Bro Code: Token の検証に失敗しました。",
+			"invalid_token": "Bro Code: 無効な token です。",
+			"could_not_verify_token": "Bro Code: Token を検証できませんでした。",
+			"session_expired": "Bro Codeのセッションの有効期限が切れました。Bro Gatewayを引き続き使用するには、再度サインインしてください。",
+			"out_of_credits": "Bro Gateway: クレジットが不足しています。続行するにはクレジットを追加してください。",
+			"account_unavailable": "Bro Gateway: 現在アカウントを利用できません。サポートまでお問い合わせください。",
+			"budget_exceeded": "Bro Gateway: 利用予算に達しました。リセットを待つかチャージしてください。"
 		},
 		"info": {
-			"connected": "Zoo Code: 接続に成功しました！Zoo Code を AI プロバイダーとして使用できます。",
-			"disconnected": "Zoo Code: 正常に切断されました。"
+			"connected": "Bro Code: 接続に成功しました！Bro Code を AI プロバイダーとして使用できます。",
+			"disconnected": "Bro Code: 正常に切断されました。"
 		},
 		"buttons": {
 			"sign_in": "サインイン",
@@ -288,9 +288,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Zoo Codeで説明",
-		"fix": "Zoo Codeで修正",
-		"improve": "Zoo Codeで改善",
-		"addToContext": "Zoo Codeに追加"
+		"explain": "Bro Codeで説明",
+		"fix": "Bro Codeで修正",
+		"improve": "Bro Codeで改善",
+		"addToContext": "Bro Codeに追加"
 	}
 }

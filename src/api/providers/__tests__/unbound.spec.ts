@@ -37,7 +37,7 @@ describe("UnboundHandler", () => {
 		vi.clearAllMocks()
 	})
 
-	it("identifies itself as Zoo Code in the Unbound request headers", () => {
+	it("identifies itself as Bro Code in the Unbound request headers", () => {
 		new UnboundHandler({
 			unboundApiKey: "test-key",
 			unboundModelId: "openai/gpt-4o",
@@ -46,7 +46,7 @@ describe("UnboundHandler", () => {
 		expect(OpenAI).toHaveBeenCalledWith(
 			expect.objectContaining({
 				defaultHeaders: expect.objectContaining({
-					"X-Unbound-Metadata": JSON.stringify({ labels: [{ key: "app", value: "zoo-code" }] }),
+					"X-Unbound-Metadata": JSON.stringify({ labels: [{ key: "app", value: "bro-code" }] }),
 				}),
 			}),
 		)
@@ -141,7 +141,7 @@ describe("UnboundHandler", () => {
 		expect(reasoningChunks).toEqual([{ type: "reasoning", text: "primary thought" }])
 	})
 
-	it("identifies itself as Zoo Code in per-request Unbound metadata", async () => {
+	it("identifies itself as Bro Code in per-request Unbound metadata", async () => {
 		const mockCreate = (OpenAI as unknown as any)().chat.completions.create
 		mockCreate.mockResolvedValue({
 			async *[Symbol.asyncIterator]() {
@@ -174,7 +174,7 @@ describe("UnboundHandler", () => {
 		expect(mockCreate).toHaveBeenCalledWith(
 			expect.objectContaining({
 				unbound_metadata: {
-					originApp: "zoo-code",
+					originApp: "bro-code",
 					taskId: "task-123",
 					mode: "architect",
 				},

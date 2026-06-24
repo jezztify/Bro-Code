@@ -7,8 +7,8 @@ import { CodeIndexStateManager } from "../state-manager"
 import { SembleCLI } from "./semble-cli"
 import { downloadSemble, isSembleSupportedPlatform } from "./semble-downloader"
 import { ISembleProvider, SembleConfig, SembleContentType, SembleSearchResult, SEMBLE_DEFAULTS } from "./types"
-import { TelemetryService } from "@roo-code/telemetry"
-import { TelemetryEventName } from "@roo-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
+import { TelemetryEventName } from "@bro-code/types"
 
 /**
  * Orchestrates code search via the semble CLI.
@@ -233,7 +233,7 @@ export class SembleProvider implements ISembleProvider {
 	// --- Private Helpers ---
 
 	/**
-	 * Converts Semble CLI results to Zoo's VectorStoreSearchResult format.
+	 * Converts Semble CLI results to Bro's VectorStoreSearchResult format.
 	 *
 	 * Semble v0.3.0+ returns results in the format:
 	 *   { chunk: { content, file_path, start_line, end_line, language, location }, score }

@@ -54,7 +54,7 @@ jobs:
               id: run-e2e
               # merge_group and workflow_dispatch always run; cache skip is pull_request only
               if: github.event_name != 'pull_request' || steps.e2e-marker.outputs.cache-hit != 'true'
-              run: xvfb-run -a pnpm --filter @roo-code/vscode-e2e test:ci:mock
+              run: xvfb-run -a pnpm --filter @bro-code/vscode-e2e test:ci:mock
 
             - name: Write mocked E2E pass marker
               if: steps.e2e-marker.outputs.cache-hit != 'true' && steps.run-e2e.outcome == 'success'

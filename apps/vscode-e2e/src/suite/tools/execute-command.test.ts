@@ -3,7 +3,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { BroCodeEventName, type ClineMessage } from "@bro-code/types"
 
 import { sleep, waitUntilCompleted } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
@@ -14,7 +14,7 @@ const SIMPLE_FILE_RELATIVE_PATH = `${TEST_DIR_NAME}/simple-echo.txt`
 const MULTI_COMMAND_FILE_RELATIVE_PATH = `${TEST_DIR_NAME}/multi-command.txt`
 const CUSTOM_CWD_OUTPUT_RELATIVE_PATH = `${CUSTOM_CWD_RELATIVE_PATH}/output.txt`
 
-suite("Roo Code execute_command Tool", function () {
+suite("Bro Code execute_command Tool", function () {
 	setDefaultSuiteTimeout(this)
 
 	let workspaceDir: string
@@ -93,7 +93,7 @@ suite("Roo Code execute_command Tool", function () {
 				errorOccurred = message.text || "Unknown error"
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			await waitUntilCompleted({
@@ -124,7 +124,7 @@ suite("Roo Code execute_command Tool", function () {
 			)
 			assert.ok(completionMessage, "AI should have acknowledged the created file")
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 
@@ -139,7 +139,7 @@ suite("Roo Code execute_command Tool", function () {
 				errorOccurred = message.text || "Unknown error"
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			await waitUntilCompleted({
@@ -170,7 +170,7 @@ suite("Roo Code execute_command Tool", function () {
 			)
 			assert.ok(completionMessage, "AI should have acknowledged the custom cwd execution")
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 
@@ -185,7 +185,7 @@ suite("Roo Code execute_command Tool", function () {
 				errorOccurred = message.text || "Unknown error"
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			await waitUntilCompleted({
@@ -217,7 +217,7 @@ suite("Roo Code execute_command Tool", function () {
 			)
 			assert.ok(completionMessage, "AI should have acknowledged the multi-command run")
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 
@@ -238,7 +238,7 @@ suite("Roo Code execute_command Tool", function () {
 				}
 			}
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			await waitUntilCompleted({
@@ -269,7 +269,7 @@ suite("Roo Code execute_command Tool", function () {
 			)
 			assert.ok(completionMessage, "AI should have acknowledged the long-running command result")
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 })

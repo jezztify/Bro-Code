@@ -1,3 +1,3 @@
-# @roo-code/core
+# @bro-code/core
 
 ## 0.0.1

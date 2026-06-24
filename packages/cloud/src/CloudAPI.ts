@@ -1,8 +1,8 @@
 import { z } from "zod"
 
-import { type AuthService, type ShareVisibility, type ShareResponse, shareResponseSchema } from "@roo-code/types"
+import { type AuthService, type ShareVisibility, type ShareResponse, shareResponseSchema } from "@bro-code/types"
 
-import { getRooCodeApiUrl } from "./config.js"
+import { getBroCodeApiUrl } from "./config.js"
 import { getUserAgent } from "./utils.js"
 import { AuthenticationError, CloudAPIError, NetworkError, TaskNotFoundError } from "./errors.js"
 
@@ -19,7 +19,7 @@ export class CloudAPI {
 	constructor(authService: AuthService, log?: (...args: unknown[]) => void) {
 		this.authService = authService
 		this.log = log || console.log
-		this.baseUrl = getRooCodeApiUrl()
+		this.baseUrl = getBroCodeApiUrl()
 	}
 
 	private async request<T>(

@@ -1,7 +1,7 @@
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
 import type { ToolUse } from "../../shared/tools"
-import { getSuggestionMode } from "@roo-code/types"
+import { getSuggestionMode } from "@bro-code/types"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 

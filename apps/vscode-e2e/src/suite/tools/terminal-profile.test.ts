@@ -15,7 +15,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { BroCodeEventName, type ClineMessage } from "@bro-code/types"
 
 import { sleep, waitUntilCompleted } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
@@ -23,7 +23,7 @@ import { setDefaultSuiteTimeout } from "../test-utils"
 const TEST_DIR_NAME = "terminal-profile-e2e"
 const OVERRIDE_FILE = "terminal-profile-override.txt"
 const DEFAULT_FILE = "terminal-profile-default.txt"
-const PROFILE_NAME = "Zoo E2E Bash"
+const PROFILE_NAME = "Bro E2E Bash"
 
 suite("Terminal Profile", function () {
 	if (process.platform !== "linux") {
@@ -133,7 +133,7 @@ suite("Terminal Profile", function () {
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			await waitUntilCompleted({
@@ -163,22 +163,22 @@ suite("Terminal Profile", function () {
 			)
 
 			const content = await fs.readFile(path.join(testDir, OVERRIDE_FILE), "utf-8")
-			assert.ok(content.includes("zoo-profile-override-ok"), `Output file should contain marker, got: ${content}`)
+			assert.ok(content.includes("bro-profile-override-ok"), `Output file should contain marker, got: ${content}`)
 
 			assert.ok(vscode.window.terminals.length >= 1, "At least one VS Code terminal should exist")
 			const profileTerminal = vscode.window.terminals.find((terminal) => {
 				const options = terminal.creationOptions as vscode.TerminalOptions
 				return (
-					options.name === "Zoo Code" &&
+					options.name === "Bro Code" &&
 					options.shellPath === "/bin/bash" &&
 					Array.isArray(options.shellArgs) &&
 					options.shellArgs.includes("--noprofile") &&
 					options.shellArgs.includes("--norc")
 				)
 			})
-			assert.ok(profileTerminal, "Expected a Zoo Code terminal created with the configured Bash profile")
+			assert.ok(profileTerminal, "Expected a Bro Code terminal created with the configured Bash profile")
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 
@@ -189,7 +189,7 @@ suite("Terminal Profile", function () {
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			// Clear the override — this also calls TerminalRegistry.closeIdleTerminals()
@@ -224,9 +224,9 @@ suite("Terminal Profile", function () {
 			)
 
 			const content = await fs.readFile(path.join(testDir, DEFAULT_FILE), "utf-8")
-			assert.ok(content.includes("zoo-profile-default-ok"), `Output file should contain marker, got: ${content}`)
+			assert.ok(content.includes("bro-profile-default-ok"), `Output file should contain marker, got: ${content}`)
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 })

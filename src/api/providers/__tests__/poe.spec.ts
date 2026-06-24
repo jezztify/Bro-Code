@@ -71,7 +71,7 @@ vitest.mock("../fetchers/modelCache", () => ({
 	}),
 }))
 
-import { poeDefaultModelId } from "@roo-code/types"
+import { poeDefaultModelId } from "@bro-code/types"
 import { PoeHandler } from "../poe"
 
 describe("PoeHandler", () => {

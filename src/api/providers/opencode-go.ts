@@ -8,7 +8,7 @@ import {
 	opencodeGoDefaultModelInfo,
 	OPENCODE_GO_DEFAULT_TEMPERATURE,
 	isOpencodeGoAnthropicFormatModel,
-} from "@roo-code/types"
+} from "@bro-code/types"
 
 import { ApiHandlerOptions } from "../../shared/api"
 
@@ -41,7 +41,7 @@ import {
  * provider (#172).
  *
  * Model metadata (context window, max tokens, capability flags, and pricing)
- * is sourced from the native registry in `@roo-code/types` and merged with the
+ * is sourced from the native registry in `@bro-code/types` and merged with the
  * live `/models` payload, so each curated model keeps its correct native
  * configuration — including `supportsReasoningEffort`, `preserveReasoning`,
  * `supportsMaxTokens`, and prompt-cache support — instead of falling back to a

@@ -1,7 +1,7 @@
 // npx vitest run __tests__/extension.spec.ts
 
 import type * as vscode from "vscode"
-import type { AuthState } from "@roo-code/types"
+import type { AuthState } from "@bro-code/types"
 
 vi.mock("vscode", () => ({
 	window: {
@@ -61,7 +61,7 @@ const mockCloudServiceInstance = {
 	},
 }
 
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@bro-code/cloud", () => ({
 	CloudService: {
 		createInstance: vi.fn(),
 		hasInstance: vi.fn().mockReturnValue(true),
@@ -69,10 +69,10 @@ vi.mock("@roo-code/cloud", () => ({
 			return mockCloudServiceInstance
 		},
 	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("https://app.roocode.com"),
+	getBroCodeApiUrl: vi.fn().mockReturnValue("https://app.brocode.com"),
 }))
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@bro-code/telemetry", () => ({
 	TelemetryService: {
 		createInstance: vi.fn().mockReturnValue({
 			register: vi.fn(),
@@ -202,7 +202,7 @@ vi.mock("../core/webview/ClineProvider", async () => {
 			{
 				// Static method used by extension.ts
 				getVisibleInstance: vi.fn().mockReturnValue(mockInstance),
-				sideBarId: "zoo-code.SidebarProvider",
+				sideBarId: "bro-code.SidebarProvider",
 			},
 		),
 	}
@@ -272,8 +272,8 @@ describe("extension.ts", () => {
 			vi.resetModules()
 		})
 
-		test("auth state changes still post webview state without Roo model cache side effects", async () => {
-			const { CloudService } = await import("@roo-code/cloud")
+		test("auth state changes still post webview state without Bro model cache side effects", async () => {
+			const { CloudService } = await import("@bro-code/cloud")
 			const { ClineProvider } = await import("../core/webview/ClineProvider")
 
 			vi.mocked(CloudService.createInstance).mockImplementation(async (_context, _logger, handlers) => {
@@ -307,7 +307,7 @@ describe("extension.ts", () => {
 		})
 
 		test("activation continues when CloudService initialization fails", async () => {
-			const { CloudService } = await import("@roo-code/cloud")
+			const { CloudService } = await import("@bro-code/cloud")
 
 			vi.mocked(CloudService.createInstance).mockRejectedValue(new Error("cloud init failed"))
 			vi.mocked(CloudService.hasInstance).mockReturnValue(false)

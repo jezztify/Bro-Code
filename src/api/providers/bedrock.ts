@@ -31,8 +31,8 @@ import {
 	BEDROCK_SERVICE_TIER_MODEL_IDS,
 	BEDROCK_SERVICE_TIER_PRICING,
 	ApiProviderError,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@bro-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
 
 import { ApiStream } from "../transform/stream"
 import { BaseProvider } from "./base-provider"
@@ -263,7 +263,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		this.costModelConfig = this.getModel()
 
 		const clientConfig: BedrockRuntimeClientConfig = {
-			userAgentAppId: `ZooCode#${Package.version}`,
+			userAgentAppId: `BroCode#${Package.version}`,
 			region: this.options.awsRegion,
 			// Add the endpoint configuration when specified and enabled
 			...(this.options.awsBedrockEndpoint &&
@@ -438,7 +438,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			if (isAdaptiveThinkingModel) {
 				// Claude 4.7+ (incl. 4.8 and Fable 5) uses adaptive thinking with effort levels —
 				// budget_tokens causes a 400 error.
-				// display: "summarized" surfaces thinking content in Zoo Code UI.
+				// display: "summarized" surfaces thinking content in Bro Code UI.
 				// effort "xhigh" remains the recommended level for agentic coding tasks
 				// across 4.7, 4.8, and Fable 5 (4.8 changed the API default to "high"
 				// but the models continue to honour "xhigh" for deeper reasoning).
@@ -976,7 +976,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 	private parseArn(arn: string, region?: string) {
 		/*
-		 * VIA Roo analysis: platform-independent Regex. It's designed to parse Amazon Bedrock ARNs and doesn't rely on any platform-specific features
+		 * VIA Bro analysis: platform-independent Regex. It's designed to parse Amazon Bedrock ARNs and doesn't rely on any platform-specific features
 		 * like file path separators, line endings, or case sensitivity behaviors. The forward slashes in the regex are properly escaped and
 		 * represent literal characters in the AWS ARN format, not filesystem paths. This regex will function consistently across Windows,
 		 * macOS, Linux, and any other operating system where JavaScript runs.

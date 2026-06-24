@@ -1,34 +1,34 @@
 <p align="center">
-          <a href="https://marketplace.visualstudio.com/items?itemName=ZooCodeOrganization.zoo-code"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
-          <a href="https://x.com/ZooCodeDev"><img src="https://img.shields.io/badge/ZooCode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
-          <a href="https://youtube.com/@roocodeyt?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a>
+          <a href="https://marketplace.visualstudio.com/items?itemName=BroCodeOrganization.bro-code"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
+          <a href="https://x.com/BroCodeDev"><img src="https://img.shields.io/badge/BroCode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
+          <a href="https://youtube.com/@brocodeyt?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a>
           <a href="https://discord.gg/VxfP4Vx3gX"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
-          <a href="https://www.reddit.com/r/ZooCode/"><img src="https://img.shields.io/badge/Join%20r%2FZooCode-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/ZooCode"></a>
-          <a href="https://github.com/Zoo-Code-Org/Zoo-Code/issues"><img src="https://img.shields.io/badge/GitHub-Issues-181717?style=flat&logo=github&logoColor=white" alt="GitHub Issues"></a>
+          <a href="https://www.reddit.com/r/BroCode/"><img src="https://img.shields.io/badge/Join%20r%2FZooCode-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/BroCode"></a>
+          <a href="https://github.com/Bro-Code-Org/Bro-Code/issues"><img src="https://img.shields.io/badge/GitHub-Issues-181717?style=flat&logo=github&logoColor=white" alt="GitHub Issues"></a>
         </p>
         <p align="center">
-          <em>जल्दी मदद पाएं → <a href="https://discord.gg/VxfP4Vx3gX">Discord जॉइन करें</a> • Async पसंद है? → <a href="https://www.reddit.com/r/ZooCode/">r/ZooCode जॉइन करें</a></em>
+          <em>जल्दी मदद पाएं → <a href="https://discord.gg/VxfP4Vx3gX">Discord जॉइन करें</a> • Async पसंद है? → <a href="https://www.reddit.com/r/BroCode/">r/BroCode जॉइन करें</a></em>
         </p>
 
-        # Zoo Code
+        # Bro Code
 
         > तुम्हारी AI-संचालित डेवलपमेंट टीम, सीधे तुम्हारे एडिटर में
 
-        ## हम हैं Zoo Code
+        ## हम हैं Bro Code
 
-> आपने शायद Roo टीम 🦘🦘🦘 की [हाल की घोषणा](https://x.com/mattrubens/status/2046636598859559114) देखी होगी। TLDR यह है कि टीम [Roomote](https://roomote.dev/) पर focus करते हुए Roo Code का active development धीरे-धीरे बंद कर रही है। यह खबर बहुत से Roo users के लिए मुश्किल थी; यह plugin इस community के लिए बहुत मायने रखता है।
+> आपने शायद Bro टीम 🦘🦘🦘 की [हाल की घोषणा](https://x.com/mattrubens/status/2046636598859559114) देखी होगी। TLDR यह है कि टीम [Bromote](https://bromote.dev/) पर focus करते हुए Bro Code का active development धीरे-धीरे बंद कर रही है। यह खबर बहुत से Bro users के लिए मुश्किल थी; यह plugin इस community के लिए बहुत मायने रखता है।
 >
-> हम पूरे Roo टीम को इस plugin पर लगाए गए उनके काम के लिए धन्यवाद देना चाहते हैं। हम यहाँ हर व्यक्ति का नाम अलग-अलग नहीं लेंगे, लेकिन हम सब इस बात से सहमत हो सकते हैं कि वे exceptional developers हैं और, उतना ही ज़रूरी, incredible लोग भी हैं। Roo टीम को धन्यवाद।
+> हम पूरे Bro टीम को इस plugin पर लगाए गए उनके काम के लिए धन्यवाद देना चाहते हैं। हम यहाँ हर व्यक्ति का नाम अलग-अलग नहीं लेंगे, लेकिन हम सब इस बात से सहमत हो सकते हैं कि वे exceptional developers हैं और, उतना ही ज़रूरी, incredible लोग भी हैं। Bro टीम को धन्यवाद।
 >
-> Roo users हर तरह के हैं। कुछ लोग इसे अपने day-to-day professional काम में इस्तेमाल करते हैं, कुछ लोग इससे बेहद जटिल workflows बनाते हैं। कुछ लोग खुद Roo को बेहतर बनाते हैं, जबकि कुछ वही models बेहतर बनाते हैं जिन्हें Roo इस्तेमाल करता है (super meta)। हमारी बात बस इतनी है कि community बहुत diverse है, और जबकि kangaroo 🦘🦘🦘 एक शानदार और सम्मानित जानवर है, हमें लगा कि अलग-अलग species वाला "Zoo" 🐘🦡🦒🦓🦛🦧🦭🦦 plugin users की इस diversity को बेहतर दिखाता है।
+> Bro users हर तरह के हैं। कुछ लोग इसे अपने day-to-day professional काम में इस्तेमाल करते हैं, कुछ लोग इससे बेहद जटिल workflows बनाते हैं। कुछ लोग खुद Bro को बेहतर बनाते हैं, जबकि कुछ वही models बेहतर बनाते हैं जिन्हें Bro इस्तेमाल करता है (super meta)। हमारी बात बस इतनी है कि community बहुत diverse है, और जबकि kangaroo 🦘🦘🦘 एक शानदार और सम्मानित जानवर है, हमें लगा कि अलग-अलग species वाला "Bro" 🐘🦡🦒🦓🦛🦧🦭🦦 plugin users की इस diversity को बेहतर दिखाता है।
 >
-> इसलिए हम यह घोषणा करना चाहते हैं कि **Zoo Code** इस महत्वपूर्ण project का development जारी रखेगा। Core team ऐसे developers का समूह है जिन्होंने पहले Roo में योगदान दिया है और इस plugin की गहराई से परवाह करते हैं। हम models update करते रहेंगे, bugs fix करते रहेंगे और features release करते रहेंगे। लेकिन सबसे बढ़कर, हम आप community की बात सुनना चाहते हैं, जिसने इस plugin को इतना खास बनाया। इसलिए बेझिझक हमारे [Discord](https://discord.gg/VxfP4Vx3gX), हमारे [Reddit](https://www.reddit.com/r/ZooCode) से जुड़ें, या [PR या issue बनाएं](https://github.com/Zoo-Code-Org/Zoo-Code); लेकिन सबसे ज़्यादा हम आपसे यही कहेंगे कि community के रूप में जुड़े रहें, सक्रिय रहें और शामिल रहें।
+> इसलिए हम यह घोषणा करना चाहते हैं कि **Bro Code** इस महत्वपूर्ण project का development जारी रखेगा। Core team ऐसे developers का समूह है जिन्होंने पहले Bro में योगदान दिया है और इस plugin की गहराई से परवाह करते हैं। हम models update करते रहेंगे, bugs fix करते रहेंगे और features release करते रहेंगे। लेकिन सबसे बढ़कर, हम आप community की बात सुनना चाहते हैं, जिसने इस plugin को इतना खास बनाया। इसलिए बेझिझक हमारे [Discord](https://discord.gg/VxfP4Vx3gX), हमारे [Reddit](https://www.reddit.com/r/BroCode) से जुड़ें, या [PR या issue बनाएं](https://github.com/Bro-Code-Org/Bro-Code); लेकिन सबसे ज़्यादा हम आपसे यही कहेंगे कि community के रूप में जुड़े रहें, सक्रिय रहें और शामिल रहें।
 >
-> _-Zoo Code Team_
+> _-Bro Code Team_
 
-## Roo Code से Zoo Code migration
+## Bro Code से Bro Code migration
 
-Roo Code से Zoo Code में आने के लिए एक quick guide तुम्हें [Roo→Zoo migration guide](https://docs.zoocode.dev/roo-to-zoo-migration) में मिल जाएगी। We plan to help users as much as possible during the transition, और उसी support के लिए हमारा [Reddit](https://www.reddit.com/r/ZooCode) और [Discord](https://discord.gg/VxfP4Vx3gX) है। अगर तुम्हें कोई problem हो या कोई question हो, आकर पूछो।
+Bro Code से Bro Code में आने के लिए एक quick guide तुम्हें [Bro→Bro migration guide](https://docs.brocode.dev/bro-to-bro-migration) में मिल जाएगी। We plan to help users as much as possible during the transition, और उसी support के लिए हमारा [Reddit](https://www.reddit.com/r/BroCode) और [Discord](https://discord.gg/VxfP4Vx3gX) है। अगर तुम्हें कोई problem हो या कोई question हो, आकर पूछो।
 
 ## v3.62.0 में नया क्या है
 
@@ -36,7 +36,7 @@ Roo Code से Zoo Code में आने के लिए एक quick guide
 - **OpenCode-Go सुधार** — native model parameters, Anthropic-format routing, और अधिक विश्वसनीय प्रतिक्रियाओं के लिए context-token fix
 - **Tool-writer mode** — tool definitions को लिखने और बनाए रखने के लिए एक नया विशेष मोड, अब Marketplace में उपलब्ध है
 
-## Zoo Code आपके लिए क्या कर सकता है?
+## Bro Code आपके लिए क्या कर सकता है?
 
 - प्राकृतिक भाषा विवरण से कोड उत्पन्न करें
 - मोड के साथ अनुकूलन: कोड, आर्किटेक्ट, पूछें, डीबग और कस्टम मोड
@@ -56,7 +56,7 @@ Roo Code से Zoo Code में आने के लिए एक quick guide
 - डीबग मोड: समस्याओं का पता लगाएं, लॉग जोड़ें, मूल कारणों को अलग करें
 - कस्टम मोड: अपनी टीम या वर्कफ़्लो के लिए विशेष मोड बनाएं
 
-और जानो: [मोड्स का इस्तेमाल](https://docs.zoocode.dev/basic-usage/using-modes) • [कस्टम मोड्स](https://docs.zoocode.dev/advanced-usage/custom-modes)
+और जानो: [मोड्स का इस्तेमाल](https://docs.brocode.dev/basic-usage/using-modes) • [कस्टम मोड्स](https://docs.brocode.dev/advanced-usage/custom-modes)
 
 ## ट्यूटोरियल और फ़ीचर वीडियो
 
@@ -69,17 +69,17 @@ Roo Code से Zoo Code में आने के लिए एक quick guide
 
 </div>
 <p align="center">
-<a href="https://docs.zoocode.dev/tutorial-videos">अधिक त्वरित ट्यूटोरियल और फ़ीचर वीडियो...</a>
+<a href="https://docs.brocode.dev/tutorial-videos">अधिक त्वरित ट्यूटोरियल और फ़ीचर वीडियो...</a>
 </p>
 
 ## संसाधन
 
-- **[दस्तावेज़ीकरण](https://docs.zoocode.dev):** Zoo Code को स्थापित करने, कॉन्फ़िगर करने और उसमें महारत हासिल करने के लिए आधिकारिक गाइड।
-- **[यूट्यूब चैनल](https://youtube.com/@roocodeyt?feature=shared):** ट्यूटोरियल देखें और सुविधाओं को एक्शन में देखें।
+- **[दस्तावेज़ीकरण](https://docs.brocode.dev):** Bro Code को स्थापित करने, कॉन्फ़िगर करने और उसमें महारत हासिल करने के लिए आधिकारिक गाइड।
+- **[यूट्यूब चैनल](https://youtube.com/@brocodeyt?feature=shared):** ट्यूटोरियल देखें और सुविधाओं को एक्शन में देखें।
 - **[डिस्कॉर्ड सर्वर](https://discord.gg/VxfP4Vx3gX):** रीयल-टाइम सहायता और चर्चा के लिए समुदाय में शामिल हों।
-- **[रेडिट समुदाय](https://www.reddit.com/r/ZooCode):** अपने अनुभव साझा करें और देखें कि दूसरे क्या बना रहे हैं।
-- **[गिटहब मुद्दे](https://github.com/Zoo-Code-Org/Zoo-Code/issues):** बग की रिपोर्ट करें और विकास को ट्रैक करें।
-- **[सुविधा अनुरोध](https://github.com/Zoo-Code-Org/Zoo-Code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** क्या आपके पास कोई विचार है? इसे डेवलपर्स के साथ साझा करें।
+- **[रेडिट समुदाय](https://www.reddit.com/r/BroCode):** अपने अनुभव साझा करें और देखें कि दूसरे क्या बना रहे हैं।
+- **[गिटहब मुद्दे](https://github.com/Bro-Code-Org/Bro-Code/issues):** बग की रिपोर्ट करें और विकास को ट्रैक करें।
+- **[सुविधा अनुरोध](https://github.com/Bro-Code-Org/Bro-Code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** क्या आपके पास कोई विचार है? इसे डेवलपर्स के साथ साझा करें।
 
 ---
 
@@ -88,7 +88,7 @@ Roo Code से Zoo Code में आने के लिए एक quick guide
 1. **क्लोन** करें रेपो:
 
 ```sh
-git clone https://github.com/Zoo-Code-Org/Zoo-Code.git
+git clone https://github.com/Bro-Code-Org/Bro-Code.git
 ```
 
 2. **निर्भरताएँ स्थापित करें**:
@@ -105,7 +105,7 @@ pnpm install
 
 सक्रिय विकास के लिए, वीएसकोड के अंतर्निहित डिबगिंग का उपयोग करें:
 
-वीएसकोड में `F5` दबाएं (या **रन** → **डीबगिंग प्रारंभ करें** पर जाएं)। यह Zoo Code एक्सटेंशन के साथ एक नई वीएसकोड विंडो खोलेगा।
+वीएसकोड में `F5` दबाएं (या **रन** → **डीबगिंग प्रारंभ करें** पर जाएं)। यह Bro Code एक्सटेंशन के साथ एक नई वीएसकोड विंडो खोलेगा।
 
 - वेबव्यू में किए गए परिवर्तन तुरंत दिखाई देंगे।
 - कोर एक्सटेंशन में किए गए परिवर्तन भी स्वचालित रूप से हॉट रीलोड हो जाएंगे।
@@ -139,10 +139,10 @@ pnpm install:vsix [-y] [--editor=<command>]
     ```sh
     pnpm vsix
     ```
-2.  `bin/` डायरेक्टरी में एक `.vsix` फ़ाइल जनरेट होगी (जैसे, `bin/zoo-code-<version>.vsix` )।
+2.  `bin/` डायरेक्टरी में एक `.vsix` फ़ाइल जनरेट होगी (जैसे, `bin/bro-code-<version>.vsix` )।
 3.  इसे वीएसकोड सीएलआई का उपयोग करके मैन्युअल रूप से इंस्टॉल करें:
     ```sh
-    code --install-extension bin/zoo-code-<version>.vsix
+    code --install-extension bin/bro-code-<version>.vsix
     ```
 
 ---
@@ -165,8 +165,8 @@ pnpm install:vsix [-y] [--editor=<command>]
 
 ## लाइसेंस
 
-[Apache 2.0 © 2025 Zoo Code Org](../../LICENSE)
+[Apache 2.0 © 2025 Bro Code Org](../../LICENSE)
 
 ---
 
-**Zoo Code का आनंद लें!** चाहे आप इसे short leash पर रखें या इसे autonomously घूमने दें, हम यह देखने के लिए उत्साहित हैं कि आप क्या बनाते हैं। अगर आपके पास questions या feature ideas हैं, तो एक [issue](https://github.com/Zoo-Code-Org/Zoo-Code/issues) खोलें या एक [discussion](https://github.com/Zoo-Code-Org/Zoo-Code/discussions) शुरू करें। Happy coding!
+**Bro Code का आनंद लें!** चाहे आप इसे short leash पर रखें या इसे autonomously घूमने दें, हम यह देखने के लिए उत्साहित हैं कि आप क्या बनाते हैं। अगर आपके पास questions या feature ideas हैं, तो एक [issue](https://github.com/Bro-Code-Org/Bro-Code/issues) खोलें या एक [discussion](https://github.com/Bro-Code-Org/Bro-Code/discussions) शुरू करें। Happy coding!

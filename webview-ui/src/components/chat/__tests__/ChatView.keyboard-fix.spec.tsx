@@ -40,15 +40,15 @@ vi.mock("@src/components/modals/Announcement", () => ({
 	default: () => null,
 }))
 
-vi.mock("@src/components/welcome/RooCloudCTA", () => ({
+vi.mock("@src/components/welcome/BroCloudCTA", () => ({
 	default: () => null,
 }))
 
-vi.mock("@src/components/welcome/RooTips", () => ({
+vi.mock("@src/components/welcome/BroTips", () => ({
 	default: () => null,
 }))
 
-vi.mock("@src/components/welcome/RooHero", () => ({
+vi.mock("@src/components/welcome/BroHero", () => ({
 	default: () => null,
 }))
 

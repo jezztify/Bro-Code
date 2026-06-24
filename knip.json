@@ -16,7 +16,7 @@
 				"@ai-sdk/google-vertex",
 				"@ai-sdk/mistral",
 				"@ai-sdk/xai",
-				"@roo-code/config-typescript",
+				"@bro-code/config-typescript",
 				"@types/mocha",
 				"@types/node-cache",
 				"@types/vscode",
@@ -33,7 +33,7 @@
 			"entry": ["src/index.tsx"],
 			"project": ["src/**/*.{ts,tsx}", "../src/shared/*.ts"],
 			"ignoreDependencies": [
-				"@roo-code/config-typescript",
+				"@bro-code/config-typescript",
 				"@types/katex",
 				"@types/stacktrace-js",
 				"babel-plugin-react-compiler",

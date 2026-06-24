@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
-import type { ModeConfig, McpServer } from "@roo-code/types"
+import type { ModeConfig, McpServer } from "@bro-code/types"
 import McpServerChecklist from "./McpServerChecklist"
 
 export interface McpServerRestrictionProps {

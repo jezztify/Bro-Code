@@ -1,6 +1,6 @@
 import * as assert from "assert"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { BroCodeEventName, type ClineMessage } from "@bro-code/types"
 
 import { setDefaultSuiteTimeout } from "./test-utils"
 import { waitFor, waitUntilCompleted } from "./utils"
@@ -14,7 +14,7 @@ import {
 	SUBTASK_XPROFILE_SAME_CHILD_RESULT,
 } from "../fixtures/subtasks"
 
-suite("Roo Code Subtasks", function () {
+suite("Bro Code Subtasks", function () {
 	setDefaultSuiteTimeout(this)
 
 	test("child completing on its first response returns to parent", async () => {
@@ -28,7 +28,7 @@ suite("Roo Code Subtasks", function () {
 			}
 		}
 
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			const parentTaskId = await waitUntilCompleted({
@@ -65,7 +65,7 @@ suite("Roo Code Subtasks", function () {
 				"Parent should resume after the child completes on its first response",
 			)
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 			while (api.getCurrentTaskStack().length > 0) {
 				await api.clearCurrentTask()
 			}
@@ -89,7 +89,7 @@ suite("Roo Code Subtasks", function () {
 			}
 		}
 
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			const parentTaskId = await api.startNewTask({
@@ -137,7 +137,7 @@ suite("Roo Code Subtasks", function () {
 				"Parent should complete with the expected result after child returns",
 			)
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 			// Drain the stack so partially-completed tasks don't leak into the next test.
 			// On the happy path the parent is already gone; on failure both tasks may still be active.
 			if (api.getCurrentTaskStack().length > 0) {
@@ -168,7 +168,7 @@ suite("Roo Code Subtasks", function () {
 			}
 		}
 
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			const parentTaskId = await api.startNewTask({
@@ -215,7 +215,7 @@ suite("Roo Code Subtasks", function () {
 			await api.clearCurrentTask()
 			await waitFor(() => api.getCurrentTaskStack().length === 0)
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 
@@ -252,7 +252,7 @@ suite("Roo Code Subtasks", function () {
 				.map((message) => message.text?.trim())
 				.find((text): text is string => !!text)
 
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		try {
 			const parentTaskId = await api.startNewTask({
@@ -327,7 +327,7 @@ suite("Roo Code Subtasks", function () {
 
 			await api.clearCurrentTask()
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 		}
 	})
 
@@ -342,7 +342,7 @@ suite("Roo Code Subtasks", function () {
 			}
 		}
 
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		const aimockUrl = process.env.AIMOCK_URL
 		const parentProfile = {
@@ -430,7 +430,7 @@ suite("Roo Code Subtasks", function () {
 				"Parent should resume after both sequential children complete",
 			)
 		} finally {
-			api.off(RooCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
 			await api.setConfiguration({ modeApiConfigs: priorModeApiConfigs })
 			await api.deleteProfile("subtask-child-profile").catch(() => {})
 			await api.deleteProfile("subtask-parent-profile").catch(() => {})

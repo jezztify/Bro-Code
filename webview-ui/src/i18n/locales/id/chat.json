@@ -1,5 +1,5 @@
 {
-	"greeting": "Selamat datang di Zoo Code!",
+	"greeting": "Selamat datang di Bro Code!",
 	"task": {
 		"title": "Tugas",
 		"expand": "Perluas tugas",
@@ -118,10 +118,10 @@
 	"enqueueMessage": "Tambahkan pesan ke antrean (akan dikirim setelah tugas saat ini selesai)",
 	"scrollToBottom": "Gulir ke bawah chat",
 	"scrollToLatestCheckpoint": "Gulir ke checkpoint sebelumnya",
-	"about": "Zoo Code adalah seluruh tim pengembang AI di editor Anda.",
+	"about": "Bro Code adalah seluruh tim pengembang AI di editor Anda.",
 	"docs": "Lihat <DocsLink>dokumentasi</DocsLink> kami untuk mempelajari lebih lanjut.",
 	"onboarding": "Daftar tugas Anda di ruang kerja ini kosong.",
-	"rooTips": {
+	"broTips": {
 		"customizableModes": {
 			"title": "Mode yang dapat disesuaikan",
 			"description": "Persona khusus yang tetap mengerjakan tugas dan memberikan hasil."
@@ -141,7 +141,7 @@
 		"title": "Mode",
 		"marketplace": "Marketplace Mode",
 		"settings": "Pengaturan Mode",
-		"description": "Persona khusus yang menyesuaikan perilaku Zoo.",
+		"description": "Persona khusus yang menyesuaikan perilaku Bro.",
 		"searchPlaceholder": "Cari mode...",
 		"noResults": "Tidak ada hasil yang ditemukan"
 	},
@@ -177,7 +177,7 @@
 			"500": "Kesalahan server penyedia. Ada yang salah di sisi penyedia, tidak ada yang salah dengan permintaan Anda.",
 			"docs": "Dokumentasi",
 			"goToSettings": "Pengaturan",
-			"unknown": "Kesalahan API yang tidak diketahui. Harap hubungi dukungan Zoo Code.",
+			"unknown": "Kesalahan API yang tidak diketahui. Harap hubungi dukungan Bro Code.",
 			"connection": "Kesalahan koneksi. Pastikan Anda memiliki koneksi internet yang berfungsi.",
 			"claudeCodeNotAuthenticated": "Anda perlu masuk untuk menggunakan Claude Code. Buka Pengaturan dan klik \"Masuk ke Claude Code\" untuk mengautentikasi."
 		}
@@ -217,51 +217,51 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "Zoo ingin memuat keterampilan",
-		"didLoad": "Zoo telah memuat keterampilan"
+		"wantsToLoad": "Bro ingin memuat keterampilan",
+		"didLoad": "Bro telah memuat keterampilan"
 	},
 	"instructions": {
-		"wantsToFetch": "Roo ingin mengambil instruksi detail untuk membantu tugas saat ini"
+		"wantsToFetch": "Bro ingin mengambil instruksi detail untuk membantu tugas saat ini"
 	},
 	"fileOperations": {
-		"wantsToRead": "Zoo ingin membaca file ini",
-		"wantsToReadMultiple": "Zoo ingin membaca beberapa file",
-		"wantsToReadAndXMore": "Zoo ingin membaca file ini dan {{count}} lainnya",
-		"wantsToReadOutsideWorkspace": "Zoo ingin membaca file ini di luar workspace",
-		"didRead": "Zoo membaca file ini",
-		"wantsToEdit": "Zoo ingin mengedit file ini",
-		"wantsToEditOutsideWorkspace": "Zoo ingin mengedit file ini di luar workspace",
-		"wantsToEditProtected": "Zoo ingin mengedit file konfigurasi yang dilindungi",
-		"wantsToApplyBatchChanges": "Zoo ingin menerapkan perubahan ke beberapa file",
-		"wantsToGenerateImage": "Zoo ingin menghasilkan gambar",
-		"wantsToGenerateImageOutsideWorkspace": "Zoo ingin menghasilkan gambar di luar workspace",
-		"wantsToGenerateImageProtected": "Zoo ingin menghasilkan gambar di lokasi yang dilindungi",
-		"didGenerateImage": "Zoo telah menghasilkan gambar",
-		"wantsToCreate": "Zoo ingin membuat file baru",
-		"wantsToSearchReplace": "Roo ingin mencari dan mengganti di file ini",
-		"didSearchReplace": "Roo melakukan pencarian dan penggantian pada file ini",
-		"wantsToInsert": "Zoo ingin menyisipkan konten ke file ini",
-		"wantsToInsertWithLineNumber": "Zoo ingin menyisipkan konten ke file ini di baris {{lineNumber}}",
-		"wantsToInsertAtEnd": "Zoo ingin menambahkan konten ke akhir file ini"
+		"wantsToRead": "Bro ingin membaca file ini",
+		"wantsToReadMultiple": "Bro ingin membaca beberapa file",
+		"wantsToReadAndXMore": "Bro ingin membaca file ini dan {{count}} lainnya",
+		"wantsToReadOutsideWorkspace": "Bro ingin membaca file ini di luar workspace",
+		"didRead": "Bro membaca file ini",
+		"wantsToEdit": "Bro ingin mengedit file ini",
+		"wantsToEditOutsideWorkspace": "Bro ingin mengedit file ini di luar workspace",
+		"wantsToEditProtected": "Bro ingin mengedit file konfigurasi yang dilindungi",
+		"wantsToApplyBatchChanges": "Bro ingin menerapkan perubahan ke beberapa file",
+		"wantsToGenerateImage": "Bro ingin menghasilkan gambar",
+		"wantsToGenerateImageOutsideWorkspace": "Bro ingin menghasilkan gambar di luar workspace",
+		"wantsToGenerateImageProtected": "Bro ingin menghasilkan gambar di lokasi yang dilindungi",
+		"didGenerateImage": "Bro telah menghasilkan gambar",
+		"wantsToCreate": "Bro ingin membuat file baru",
+		"wantsToSearchReplace": "Bro ingin mencari dan mengganti di file ini",
+		"didSearchReplace": "Bro melakukan pencarian dan penggantian pada file ini",
+		"wantsToInsert": "Bro ingin menyisipkan konten ke file ini",
+		"wantsToInsertWithLineNumber": "Bro ingin menyisipkan konten ke file ini di baris {{lineNumber}}",
+		"wantsToInsertAtEnd": "Bro ingin menambahkan konten ke akhir file ini"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Zoo ingin melihat file tingkat atas di direktori ini",
-		"didViewTopLevel": "Zoo melihat file tingkat atas di direktori ini",
-		"wantsToViewRecursive": "Zoo ingin melihat semua file secara rekursif di direktori ini",
-		"didViewRecursive": "Zoo melihat semua file secara rekursif di direktori ini",
-		"wantsToSearch": "Zoo ingin mencari direktori ini untuk <code>{{regex}}</code>",
-		"didSearch": "Zoo mencari direktori ini untuk <code>{{regex}}</code>",
-		"wantsToSearchOutsideWorkspace": "Zoo ingin mencari direktori ini (di luar workspace) untuk <code>{{regex}}</code>",
-		"didSearchOutsideWorkspace": "Zoo mencari direktori ini (di luar workspace) untuk <code>{{regex}}</code>",
-		"wantsToViewTopLevelOutsideWorkspace": "Zoo ingin melihat file tingkat atas di direktori ini (di luar workspace)",
-		"didViewTopLevelOutsideWorkspace": "Zoo melihat file tingkat atas di direktori ini (di luar workspace)",
-		"wantsToViewRecursiveOutsideWorkspace": "Zoo ingin melihat semua file secara rekursif di direktori ini (di luar workspace)",
-		"didViewRecursiveOutsideWorkspace": "Zoo melihat semua file secara rekursif di direktori ini (di luar workspace)",
-		"wantsToViewMultipleDirectories": "Zoo ingin melihat beberapa direktori"
+		"wantsToViewTopLevel": "Bro ingin melihat file tingkat atas di direktori ini",
+		"didViewTopLevel": "Bro melihat file tingkat atas di direktori ini",
+		"wantsToViewRecursive": "Bro ingin melihat semua file secara rekursif di direktori ini",
+		"didViewRecursive": "Bro melihat semua file secara rekursif di direktori ini",
+		"wantsToSearch": "Bro ingin mencari direktori ini untuk <code>{{regex}}</code>",
+		"didSearch": "Bro mencari direktori ini untuk <code>{{regex}}</code>",
+		"wantsToSearchOutsideWorkspace": "Bro ingin mencari direktori ini (di luar workspace) untuk <code>{{regex}}</code>",
+		"didSearchOutsideWorkspace": "Bro mencari direktori ini (di luar workspace) untuk <code>{{regex}}</code>",
+		"wantsToViewTopLevelOutsideWorkspace": "Bro ingin melihat file tingkat atas di direktori ini (di luar workspace)",
+		"didViewTopLevelOutsideWorkspace": "Bro melihat file tingkat atas di direktori ini (di luar workspace)",
+		"wantsToViewRecursiveOutsideWorkspace": "Bro ingin melihat semua file secara rekursif di direktori ini (di luar workspace)",
+		"didViewRecursiveOutsideWorkspace": "Bro melihat semua file secara rekursif di direktori ini (di luar workspace)",
+		"wantsToViewMultipleDirectories": "Bro ingin melihat beberapa direktori"
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Zoo ingin mencari codebase untuk <code>{{query}}</code>",
-		"wantsToSearchWithPath": "Zoo ingin mencari codebase untuk <code>{{query}}</code> di <code>{{path}}</code>",
+		"wantsToSearch": "Bro ingin mencari codebase untuk <code>{{query}}</code>",
+		"wantsToSearchWithPath": "Bro ingin mencari codebase untuk <code>{{query}}</code> di <code>{{path}}</code>",
 		"didSearch_one": "Ditemukan 1 hasil",
 		"didSearch_other": "Ditemukan {{count}} hasil",
 		"resultTooltip": "Skor kemiripan: {{score}} (klik untuk membuka file)"
@@ -287,24 +287,24 @@
 	"response": "Respons",
 	"arguments": "Argumen",
 	"text": {
-		"rooSaid": "Zoo berkata"
+		"broSaid": "Bro berkata"
 	},
 	"feedback": {
 		"youSaid": "Anda bilang"
 	},
 	"mcp": {
-		"wantsToUseTool": "Zoo ingin menggunakan tool di server MCP {{serverName}}",
-		"wantsToAccessResource": "Zoo ingin mengakses resource di server MCP {{serverName}}"
+		"wantsToUseTool": "Bro ingin menggunakan tool di server MCP {{serverName}}",
+		"wantsToAccessResource": "Bro ingin mengakses resource di server MCP {{serverName}}"
 	},
 	"modes": {
-		"wantsToSwitch": "Zoo ingin beralih ke mode {{mode}}",
-		"wantsToSwitchWithReason": "Zoo ingin beralih ke mode {{mode}} karena: {{reason}}",
-		"didSwitch": "Zoo beralih ke mode {{mode}}",
-		"didSwitchWithReason": "Zoo beralih ke mode {{mode}} karena: {{reason}}"
+		"wantsToSwitch": "Bro ingin beralih ke mode {{mode}}",
+		"wantsToSwitchWithReason": "Bro ingin beralih ke mode {{mode}} karena: {{reason}}",
+		"didSwitch": "Bro beralih ke mode {{mode}}",
+		"didSwitchWithReason": "Bro beralih ke mode {{mode}} karena: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Zoo ingin membuat subtugas baru dalam mode {{mode}}",
-		"wantsToFinish": "Zoo ingin menyelesaikan subtugas ini",
+		"wantsToCreate": "Bro ingin membuat subtugas baru dalam mode {{mode}}",
+		"wantsToFinish": "Bro ingin menyelesaikan subtugas ini",
 		"newTaskContent": "Instruksi Subtugas",
 		"completionContent": "Subtugas Selesai",
 		"resultContent": "Hasil Subtugas",
@@ -313,7 +313,7 @@
 		"goToSubtask": "Lihat tugas"
 	},
 	"questions": {
-		"hasQuestion": "Zoo punya pertanyaan"
+		"hasQuestion": "Bro punya pertanyaan"
 	},
 	"taskCompleted": "Tugas Selesai",
 	"error": "Error",
@@ -327,14 +327,14 @@
 	"diffError": {
 		"title": "Edit Tidak Berhasil"
 	},
-	"troubleMessage": "Zoo mengalami masalah...",
+	"troubleMessage": "Bro mengalami masalah...",
 	"errorDetails": {
 		"link": "Details",
 		"title": "Detail Kesalahan",
 		"copyToClipboard": "Salin ke Clipboard",
 		"copied": "Disalin!",
 		"diagnostics": "Dapatkan informasi kesalahan terperinci",
-		"proxyProvider": "Tampaknya kamu menggunakan penyedia berbasis proxy. Pastikan untuk memeriksa log-nya dan memastikan tidak menulis ulang permintaan Zoo."
+		"proxyProvider": "Tampaknya kamu menggunakan penyedia berbasis proxy. Pastikan untuk memeriksa log-nya dan memastikan tidak menulis ulang permintaan Bro."
 	},
 	"powershell": {
 		"issues": "Sepertinya kamu mengalami masalah Windows PowerShell, silakan lihat ini"
@@ -358,8 +358,8 @@
 		"triggerLabelAll": "BRRR"
 	},
 	"announcement": {
-		"title": "Zoo Code {{version}} Dirilis",
-		"support": "Dukung Zoo Code dengan memberi kami bintang di <githubLink>GitHub</githubLink>.",
+		"title": "Bro Code {{version}} Dirilis",
+		"support": "Dukung Bro Code dengan memberi kami bintang di <githubLink>GitHub</githubLink>.",
 		"release": {
 			"heading": "Yang Baru:",
 			"highlight1": "Dukungan GLM-5.2 — model GLM terbaru kini tersedia di pengaturan penyedia kamu.",
@@ -396,18 +396,18 @@
 	"profileViolationWarning": "Profil saat ini tidak kompatibel dengan pengaturan organisasi kamu",
 	"shellIntegration": {
 		"title": "Peringatan Eksekusi Perintah",
-		"description": "Perintah kamu dijalankan tanpa integrasi shell terminal VSCode. Untuk menekan peringatan ini kamu bisa menonaktifkan integrasi shell di bagian <strong>Terminal</strong> dari <settingsLink>pengaturan Zoo Code</settingsLink> atau troubleshoot integrasi terminal VSCode menggunakan link di bawah.",
+		"description": "Perintah kamu dijalankan tanpa integrasi shell terminal VSCode. Untuk menekan peringatan ini kamu bisa menonaktifkan integrasi shell di bagian <strong>Terminal</strong> dari <settingsLink>pengaturan Bro Code</settingsLink> atau troubleshoot integrasi terminal VSCode menggunakan link di bawah.",
 		"troubleshooting": "Klik di sini untuk dokumentasi integrasi shell."
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "Batas Permintaan yang Disetujui Otomatis Tercapai",
-			"description": "Zoo telah mencapai batas {{count}} permintaan API yang disetujui otomatis. Apakah Anda ingin mengatur ulang hitungan dan melanjutkan tugas?",
+			"description": "Bro telah mencapai batas {{count}} permintaan API yang disetujui otomatis. Apakah Anda ingin mengatur ulang hitungan dan melanjutkan tugas?",
 			"button": "Setel Ulang dan Lanjutkan"
 		},
 		"autoApprovedCostLimitReached": {
 			"title": "Batas Biaya yang Disetujui Otomatis Tercapai",
-			"description": "Zoo telah mencapai batas biaya yang disetujui otomatis sebesar ${{count}}. Apakah Anda ingin mengatur ulang biaya dan melanjutkan tugas?",
+			"description": "Bro telah mencapai batas biaya yang disetujui otomatis sebesar ${{count}}. Apakah Anda ingin mengatur ulang biaya dan melanjutkan tugas?",
 			"button": "Setel Ulang dan Lanjutkan"
 		}
 	},
@@ -422,8 +422,8 @@
 	"versionIndicator": {
 		"ariaLabel": "Versi {{version}} - Klik untuk melihat catatan rilis"
 	},
-	"rooCloudCTA": {
-		"title": "Zoo Code Cloud sedang berkembang!",
+	"broCloudCTA": {
+		"title": "Bro Code Cloud sedang berkembang!",
 		"description": "Jalankan agen jarak jauh di cloud, akses tugas Anda dari mana saja, berkolaborasi dengan orang lain, dan banyak lagi.",
 		"joinWaitlist": "Daftar untuk mendapatkan pembaruan terbaru."
 	},
@@ -464,8 +464,8 @@
 		"clickToEdit": "Klik untuk mengedit pesan"
 	},
 	"slashCommand": {
-		"wantsToRun": "Zoo ingin menjalankan perintah slash",
-		"didRun": "Zoo telah menjalankan perintah slash"
+		"wantsToRun": "Bro ingin menjalankan perintah slash",
+		"didRun": "Bro telah menjalankan perintah slash"
 	},
 	"todo": {
 		"partial": "{{completed}} dari {{total}} to-do selesai",
@@ -484,7 +484,7 @@
 		"openMcpSettings": "Buka Pengaturan MCP"
 	},
 	"readCommandOutput": {
-		"title": "Zoo read command output"
+		"title": "Bro read command output"
 	},
 	"retiredProvider": {
 		"title": "Penyedia tidak lagi didukung",

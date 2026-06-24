@@ -2,7 +2,7 @@
 
 import * as vscode from "vscode"
 
-import { GLOBAL_STATE_KEYS, SECRET_STATE_KEYS, GLOBAL_SECRET_KEYS } from "@roo-code/types"
+import { GLOBAL_STATE_KEYS, SECRET_STATE_KEYS, GLOBAL_SECRET_KEYS } from "@bro-code/types"
 
 import { ContextProxy } from "../ContextProxy"
 
@@ -435,27 +435,27 @@ describe("ContextProxy", () => {
 	})
 
 	describe("invalid apiProvider migration", () => {
-		it("should clear Roo provider state during initialization", async () => {
+		it("should clear Bro provider state during initialization", async () => {
 			vi.clearAllMocks()
 			mockGlobalState.get.mockImplementation((key: string) => {
 				if (key === "apiProvider") {
-					return "roo"
+					return "bro"
 				}
 				if (key === "apiModelId") {
-					return "roo/code-supernova"
+					return "bro/code-supernova"
 				}
-				if (key === "rooApiKey") {
+				if (key === "broApiKey") {
 					return "router-key"
 				}
 				return undefined
 			})
 
-			const proxyWithRooProvider = new ContextProxy(mockContext)
-			await proxyWithRooProvider.initialize()
+			const proxyWithBroProvider = new ContextProxy(mockContext)
+			await proxyWithBroProvider.initialize()
 
 			expect(mockGlobalState.update).toHaveBeenCalledWith("apiProvider", undefined)
 			expect(mockGlobalState.update).toHaveBeenCalledWith("apiModelId", undefined)
-			expect(mockGlobalState.update).toHaveBeenCalledWith("rooApiKey", undefined)
+			expect(mockGlobalState.update).toHaveBeenCalledWith("broApiKey", undefined)
 		})
 
 		it("should clear invalid apiProvider from storage during initialization", async () => {

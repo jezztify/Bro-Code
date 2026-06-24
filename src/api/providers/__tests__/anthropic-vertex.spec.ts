@@ -4,7 +4,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import { AnthropicVertex } from "@anthropic-ai/vertex-sdk"
 import { GoogleAuth } from "google-auth-library"
 
-import { VERTEX_1M_CONTEXT_MODEL_IDS } from "@roo-code/types"
+import { VERTEX_1M_CONTEXT_MODEL_IDS } from "@bro-code/types"
 
 import { ApiStreamChunk } from "../../transform/stream"
 

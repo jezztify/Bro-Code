@@ -1,4 +1,4 @@
-// pnpm --filter roo-cline test api/providers/__tests__/openrouter.spec.ts
+// pnpm --filter bro-cline test api/providers/__tests__/openrouter.spec.ts
 
 vitest.mock("vscode", () => ({
 	workspace: {
@@ -30,7 +30,7 @@ vitest.mock("delay", () => ({
 
 const mockCaptureException = vitest.fn()
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@bro-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureException: (...args: unknown[]) => mockCaptureException(...args),
@@ -116,9 +116,9 @@ describe("OpenRouterHandler", () => {
 			baseURL: "https://openrouter.ai/api/v1",
 			apiKey: mockOptions.openRouterApiKey,
 			defaultHeaders: {
-				"HTTP-Referer": "https://github.com/Zoo-Code-Org/Zoo-Code",
-				"X-Title": "Zoo Code",
-				"User-Agent": `ZooCode/${Package.version}`,
+				"HTTP-Referer": "https://github.com/Bro-Code-Org/Bro-Code",
+				"X-Title": "Bro Code",
+				"User-Agent": `BroCode/${Package.version}`,
 			},
 			timeout: MOCK_TIMEOUT_MS,
 		})

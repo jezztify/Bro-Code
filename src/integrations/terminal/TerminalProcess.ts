@@ -109,7 +109,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 
 		// Execute command.
 		// Determine whether the active shell is PowerShell so we can apply the
-		// PS-specific counter/sleep workarounds.  Prefer the Zoo Code profile
+		// PS-specific counter/sleep workarounds.  Prefer the Bro Code profile
 		// override (if set) over the VS Code default profile.  Fix for the wrong
 		// config API: must be getConfiguration("terminal.integrated").get(
 		// "defaultProfile.windows"), not the reversed form that always returns null.
@@ -122,7 +122,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 		if (shellKind.isPowerShell) {
 			// Only add the PowerShell counter workaround if enabled
 			if (Terminal.getPowershellCounter()) {
-				commandToExecute += ` ; "(Roo/PS Workaround: ${this.terminal.cmdCounter++})" > $null`
+				commandToExecute += ` ; "(Bro/PS Workaround: ${this.terminal.cmdCounter++})" > $null`
 			}
 
 			// Only add the sleep command if the command delay is greater than 0

@@ -1,7 +1,7 @@
 // npx vitest run __tests__/history-resume-delegation.spec.ts
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { RooCodeEventName } from "@roo-code/types"
+import { BroCodeEventName } from "@bro-code/types"
 
 /* vscode mock for Task/Provider imports */
 vi.mock("vscode", () => {
@@ -428,12 +428,12 @@ describe("History resume delegation - parent metadata transitions", () => {
 
 		// Verify both events emitted
 		const eventNames = emitSpy.mock.calls.map((c) => c[0])
-		expect(eventNames).toContain(RooCodeEventName.TaskDelegationCompleted)
-		expect(eventNames).toContain(RooCodeEventName.TaskDelegationResumed)
+		expect(eventNames).toContain(BroCodeEventName.TaskDelegationCompleted)
+		expect(eventNames).toContain(BroCodeEventName.TaskDelegationResumed)
 
 		// CRITICAL: verify ordering (TaskDelegationCompleted before TaskDelegationResumed)
-		const completedIdx = emitSpy.mock.calls.findIndex((c) => c[0] === RooCodeEventName.TaskDelegationCompleted)
-		const resumedIdx = emitSpy.mock.calls.findIndex((c) => c[0] === RooCodeEventName.TaskDelegationResumed)
+		const completedIdx = emitSpy.mock.calls.findIndex((c) => c[0] === BroCodeEventName.TaskDelegationCompleted)
+		const resumedIdx = emitSpy.mock.calls.findIndex((c) => c[0] === BroCodeEventName.TaskDelegationResumed)
 		expect(completedIdx).toBeGreaterThanOrEqual(0)
 		expect(resumedIdx).toBeGreaterThan(completedIdx)
 
@@ -511,15 +511,15 @@ describe("History resume delegation - parent metadata transitions", () => {
 		expect(parentInstance.resumeAfterDelegation).toHaveBeenCalledTimes(1)
 
 		expect(emitSpy).toHaveBeenCalledWith(
-			RooCodeEventName.TaskDelegationCompleted,
+			BroCodeEventName.TaskDelegationCompleted,
 			"parent-rpd06",
 			"child-rpd06",
 			"Subtask finished despite overwrite failures",
 		)
-		expect(emitSpy).toHaveBeenCalledWith(RooCodeEventName.TaskDelegationResumed, "parent-rpd06", "child-rpd06")
+		expect(emitSpy).toHaveBeenCalledWith(BroCodeEventName.TaskDelegationResumed, "parent-rpd06", "child-rpd06")
 
-		const completedIdx = emitSpy.mock.calls.findIndex((c) => c[0] === RooCodeEventName.TaskDelegationCompleted)
-		const resumedIdx = emitSpy.mock.calls.findIndex((c) => c[0] === RooCodeEventName.TaskDelegationResumed)
+		const completedIdx = emitSpy.mock.calls.findIndex((c) => c[0] === BroCodeEventName.TaskDelegationCompleted)
+		const resumedIdx = emitSpy.mock.calls.findIndex((c) => c[0] === BroCodeEventName.TaskDelegationResumed)
 		expect(completedIdx).toBeGreaterThanOrEqual(0)
 		expect(resumedIdx).toBeGreaterThan(completedIdx)
 	})
@@ -564,9 +564,9 @@ describe("History resume delegation - parent metadata transitions", () => {
 
 		// CRITICAL: verify legacy pause/unpause events NOT emitted
 		const eventNames = emitSpy.mock.calls.map((c) => c[0])
-		expect(eventNames).not.toContain(RooCodeEventName.TaskPaused)
-		expect(eventNames).not.toContain(RooCodeEventName.TaskUnpaused)
-		expect(eventNames).not.toContain(RooCodeEventName.TaskSpawned)
+		expect(eventNames).not.toContain(BroCodeEventName.TaskPaused)
+		expect(eventNames).not.toContain(BroCodeEventName.TaskUnpaused)
+		expect(eventNames).not.toContain(BroCodeEventName.TaskSpawned)
 	})
 
 	it("reopenParentFromDelegation skips child close when current task differs and still reopens parent (RPD-02)", async () => {
@@ -722,7 +722,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			}),
 		)
 		expect(parentInstance.resumeAfterDelegation).toHaveBeenCalledTimes(1)
-		expect(emitSpy).toHaveBeenCalledWith(RooCodeEventName.TaskDelegationResumed, "parent-rpd04", "child-rpd04")
+		expect(emitSpy).toHaveBeenCalledWith(BroCodeEventName.TaskDelegationResumed, "parent-rpd04", "child-rpd04")
 	})
 
 	it("reopenParentFromDelegation keeps the child open when parent metadata persistence fails", async () => {

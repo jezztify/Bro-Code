@@ -1,6 +1,6 @@
 {
-	"name": "@roo-code/build",
-	"description": "ESBuild utilities for Roo Code.",
+	"name": "@bro-code/build",
+	"description": "ESBuild utilities for Bro Code.",
 	"private": true,
 	"type": "module",
 	"main": "./dist/index.js",
@@ -16,8 +16,8 @@
 		"zod": "^3.25.61"
 	},
 	"devDependencies": {
-		"@roo-code/config-eslint": "workspace:^",
-		"@roo-code/config-typescript": "workspace:^",
+		"@bro-code/config-eslint": "workspace:^",
+		"@bro-code/config-typescript": "workspace:^",
 		"@types/node": "20.19.43",
 		"vitest": "4.1.0"
 	}

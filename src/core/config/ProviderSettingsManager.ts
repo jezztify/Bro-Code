@@ -13,12 +13,12 @@ import {
 	type ProviderName,
 	isProviderName,
 	isRetiredProvider,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@bro-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
 
 import { Mode, modes } from "../../shared/modes"
 import { buildApiHandler } from "../../api"
-import { downgradeLegacyRooConfig } from "./routerRemoval"
+import { downgradeLegacyBroConfig } from "./routerRemoval"
 
 // Type-safe model migrations mapping
 type ModelMigrations = {
@@ -53,7 +53,7 @@ export const providerProfilesSchema = z.object({
 export type ProviderProfiles = z.infer<typeof providerProfilesSchema>
 
 export class ProviderSettingsManager {
-	private static readonly SCOPE_PREFIX = "roo_cline_config_"
+	private static readonly SCOPE_PREFIX = "bro_cline_config_"
 	private readonly defaultConfigId = this.generateId()
 
 	private readonly defaultModeApiConfigs: Record<string, string> = Object.fromEntries(
@@ -149,7 +149,7 @@ export class ProviderSettingsManager {
 				}
 
 				if (!providerProfiles.migrations.routerProviderMigrated) {
-					if (this.migrateLegacyRooProviderProfiles(providerProfiles)) {
+					if (this.migrateLegacyBroProviderProfiles(providerProfiles)) {
 						isDirty = true
 					}
 					providerProfiles.migrations.routerProviderMigrated = true
@@ -321,11 +321,11 @@ export class ProviderSettingsManager {
 		return migrated
 	}
 
-	private migrateLegacyRooProviderProfiles(providerProfiles: ProviderProfiles): boolean {
+	private migrateLegacyBroProviderProfiles(providerProfiles: ProviderProfiles): boolean {
 		let migrated = false
 
 		for (const [name, apiConfig] of Object.entries(providerProfiles.apiConfigs)) {
-			const { config: downgradedConfig, migrated: didMigrate } = downgradeLegacyRooConfig(
+			const { config: downgradedConfig, migrated: didMigrate } = downgradeLegacyBroConfig(
 				apiConfig as Record<string, unknown>,
 			)
 
@@ -386,7 +386,7 @@ export class ProviderSettingsManager {
 				// Preserve the existing ID if this is an update to an existing config.
 				const existingId = providerProfiles.apiConfigs[name]?.id
 				const id = config.id || existingId || this.generateId()
-				const normalizedConfig = downgradeLegacyRooConfig(config as Record<string, unknown>)
+				const normalizedConfig = downgradeLegacyBroConfig(config as Record<string, unknown>)
 					.config as ProviderSettingsWithId
 
 				// For active providers, filter out settings from other providers.
@@ -681,7 +681,7 @@ export class ProviderSettingsManager {
 			return apiConfig
 		}
 
-		const { config } = downgradeLegacyRooConfig(apiConfig as Record<string, unknown>)
+		const { config } = downgradeLegacyBroConfig(apiConfig as Record<string, unknown>)
 
 		const apiProvider = config.apiProvider
 

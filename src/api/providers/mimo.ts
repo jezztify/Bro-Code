@@ -1,6 +1,6 @@
 import OpenAI from "openai"
 
-import { mimoModels, mimoDefaultModelId, MIMO_DEFAULT_TEMPERATURE, type ModelInfo } from "@roo-code/types"
+import { mimoModels, mimoDefaultModelId, MIMO_DEFAULT_TEMPERATURE, type ModelInfo } from "@bro-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 

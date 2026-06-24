@@ -3,7 +3,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { BroCodeEventName, type ClineMessage } from "@bro-code/types"
 
 import { waitFor, sleep } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
@@ -11,7 +11,7 @@ import { setDefaultSuiteTimeout } from "../test-utils"
 const TEST_DIR_NAME = "list-files-tool-fixture"
 const SYMLINK_TEST_DIR_NAME = "list-files-symlink-fixture"
 
-suite("Roo Code list_files Tool", function () {
+suite("Bro Code list_files Tool", function () {
 	setDefaultSuiteTimeout(this)
 
 	let workspaceDir: string
@@ -182,7 +182,7 @@ This directory contains various files and subdirectories for testing the list_fi
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -190,7 +190,7 @@ This directory contains various files and subdirectories for testing the list_fi
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -219,8 +219,8 @@ This directory contains various files and subdirectories for testing the list_fi
 			assert.ok(completionMessage, "AI should have summarized the non-recursive directory contents")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -233,7 +233,7 @@ This directory contains various files and subdirectories for testing the list_fi
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -241,7 +241,7 @@ This directory contains various files and subdirectories for testing the list_fi
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -269,8 +269,8 @@ This directory contains various files and subdirectories for testing the list_fi
 			assert.ok(completionMessage, "AI should have summarized the recursive directory contents")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -283,7 +283,7 @@ This directory contains various files and subdirectories for testing the list_fi
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -291,7 +291,7 @@ This directory contains various files and subdirectories for testing the list_fi
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -348,8 +348,8 @@ This directory contains various files and subdirectories for testing the list_fi
 			await fs.rm(testDir, { recursive: true, force: true })
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 
@@ -362,7 +362,7 @@ This directory contains various files and subdirectories for testing the list_fi
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
 			messages.push(message)
 		}
-		api.on(RooCodeEventName.Message, messageHandler)
+		api.on(BroCodeEventName.Message, messageHandler)
 
 		// Listen for task completion
 		const taskCompletedHandler = (id: string) => {
@@ -370,7 +370,7 @@ This directory contains various files and subdirectories for testing the list_fi
 				taskCompleted = true
 			}
 		}
-		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+		api.on(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 
 		let taskId: string
 		try {
@@ -398,8 +398,8 @@ This directory contains various files and subdirectories for testing the list_fi
 			assert.ok(completionMessage, "AI should have mentioned workspace contents")
 		} finally {
 			// Clean up
-			api.off(RooCodeEventName.Message, messageHandler)
-			api.off(RooCodeEventName.TaskCompleted, taskCompletedHandler)
+			api.off(BroCodeEventName.Message, messageHandler)
+			api.off(BroCodeEventName.TaskCompleted, taskCompletedHandler)
 		}
 	})
 })

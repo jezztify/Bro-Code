@@ -21,7 +21,7 @@ describe("resolveRealPath", () => {
 
 	beforeEach(async () => {
 		// realpath the temp root so comparisons aren't tripped up by /var -> /private/var (macOS).
-		tmpRoot = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "zoo-wpr-")))
+		tmpRoot = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "bro-wpr-")))
 		workspace = path.join(tmpRoot, "workspace")
 		outside = path.join(tmpRoot, "outside")
 		await fs.mkdir(workspace, { recursive: true })

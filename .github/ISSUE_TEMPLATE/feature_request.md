@@ -1,11 +1,10 @@
 ---
 name: Feature request
-about: What do you want to add to zoo?
-title: ''
+about: What do you want to add to bro?
+title: ""
 labels: enhancement
-assignees: ''
+assignees: ""
 type: Feature
-
 ---
 
 **Is your feature request related to a problem? Please describe.**

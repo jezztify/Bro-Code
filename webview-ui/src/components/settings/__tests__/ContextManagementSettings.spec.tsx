@@ -91,7 +91,7 @@ describe("ContextManagementSettings", () => {
 		listApiConfigMeta: [],
 		maxOpenTabsContext: 20,
 		maxWorkspaceFiles: 200,
-		showRooIgnoredFiles: false,
+		showBroIgnoredFiles: false,
 		profileThresholds: {},
 		includeDiagnosticMessages: true,
 		maxDiagnosticMessages: 50,
@@ -199,7 +199,7 @@ describe("ContextManagementSettings", () => {
 		expect(screen.getByTestId("workspace-files-limit-slider")).toBeInTheDocument()
 
 		// Check for checkboxes
-		expect(screen.getByTestId("show-rooignored-files-checkbox")).toBeInTheDocument()
+		expect(screen.getByTestId("show-broignored-files-checkbox")).toBeInTheDocument()
 		expect(screen.getByTestId("auto-condense-context-checkbox")).toBeInTheDocument()
 	})
 
@@ -419,7 +419,7 @@ describe("ContextManagementSettings", () => {
 	it("handles undefined optional props gracefully", () => {
 		const propsWithUndefined = {
 			...defaultProps,
-			showRooIgnoredFiles: undefined,
+			showBroIgnoredFiles: undefined,
 		}
 
 		expect(() => {
@@ -451,12 +451,12 @@ describe("ContextManagementSettings", () => {
 			// Check that labels are present
 			expect(screen.getByText("settings:contextManagement.openTabs.label")).toBeInTheDocument()
 			expect(screen.getByText("settings:contextManagement.workspaceFiles.label")).toBeInTheDocument()
-			expect(screen.getByText("settings:contextManagement.rooignore.label")).toBeInTheDocument()
+			expect(screen.getByText("settings:contextManagement.broignore.label")).toBeInTheDocument()
 
 			// Check that descriptions are present
 			expect(screen.getByText("settings:contextManagement.openTabs.description")).toBeInTheDocument()
 			expect(screen.getByText("settings:contextManagement.workspaceFiles.description")).toBeInTheDocument()
-			expect(screen.getByText("settings:contextManagement.rooignore.description")).toBeInTheDocument()
+			expect(screen.getByText("settings:contextManagement.broignore.description")).toBeInTheDocument()
 		})
 
 		it("has proper test ids for all interactive elements", () => {
@@ -464,7 +464,7 @@ describe("ContextManagementSettings", () => {
 
 			expect(screen.getByTestId("open-tabs-limit-slider")).toBeInTheDocument()
 			expect(screen.getByTestId("workspace-files-limit-slider")).toBeInTheDocument()
-			expect(screen.getByTestId("show-rooignored-files-checkbox")).toBeInTheDocument()
+			expect(screen.getByTestId("show-broignored-files-checkbox")).toBeInTheDocument()
 		})
 	})
 
@@ -477,7 +477,7 @@ describe("ContextManagementSettings", () => {
 			expect(screen.getByText("settings:contextManagement.description")).toBeInTheDocument()
 			expect(screen.getByText("settings:contextManagement.openTabs.label")).toBeInTheDocument()
 			expect(screen.getByText("settings:contextManagement.workspaceFiles.label")).toBeInTheDocument()
-			expect(screen.getByText("settings:contextManagement.rooignore.label")).toBeInTheDocument()
+			expect(screen.getByText("settings:contextManagement.broignore.label")).toBeInTheDocument()
 		})
 	})
 

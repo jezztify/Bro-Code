@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/core test src/custom-tools/__tests__/custom-tool-registry.integration.spec.ts
+// pnpm --filter @bro-code/core test src/custom-tools/__tests__/custom-tool-registry.integration.spec.ts
 
 import path from "path"
 import { fileURLToPath } from "url"

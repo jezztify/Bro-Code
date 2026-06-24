@@ -71,8 +71,8 @@ jobs:
           package_name=$(node -p "require('./src/package.json').name")
           publisher=$(node -p "require('./src/package.json').publisher")
 
-          test "$package_name" = "zoo-code"
-          test "$publisher" = "ZooCodeOrganization"
+          test "$package_name" = "bro-code"
+          test "$publisher" = "BroCodeOrganization"
 
       - name: Validate publish ref
         run: |
@@ -94,8 +94,8 @@ jobs:
 
       - name: Build workspace packages
         run: |
-          pnpm --filter @roo-code/build build
-          pnpm --filter @roo-code/vscode-webview build
+          pnpm --filter @bro-code/build build
+          pnpm --filter @bro-code/vscode-webview build
 
       - name: Package extension
         env:
@@ -104,44 +104,44 @@ jobs:
           package_version=$(node -p "require('./src/package.json').version")
           pnpm --filter ./src vsix
 
-          vsix_path="bin/zoo-code-${package_version}.vsix"
+          vsix_path="bin/bro-code-${package_version}.vsix"
           test -f "$vsix_path"
 
-          unzip -l "$vsix_path" > /tmp/zoo-code-vsix-contents.txt
-          grep -q "extension/package.json" /tmp/zoo-code-vsix-contents.txt
-          grep -q "extension/package.nls.json" /tmp/zoo-code-vsix-contents.txt
-          grep -q "extension/dist/extension.js" /tmp/zoo-code-vsix-contents.txt
-          grep -q "extension/webview-ui/audio/celebration.wav" /tmp/zoo-code-vsix-contents.txt
-          grep -q "extension/webview-ui/build/assets/index.js" /tmp/zoo-code-vsix-contents.txt
-          grep -q "extension/assets/codicons/codicon.ttf" /tmp/zoo-code-vsix-contents.txt
-          grep -q "extension/assets/vscode-material-icons/icons/3d.svg" /tmp/zoo-code-vsix-contents.txt
+          unzip -l "$vsix_path" > /tmp/bro-code-vsix-contents.txt
+          grep -q "extension/package.json" /tmp/bro-code-vsix-contents.txt
+          grep -q "extension/package.nls.json" /tmp/bro-code-vsix-contents.txt
+          grep -q "extension/dist/extension.js" /tmp/bro-code-vsix-contents.txt
+          grep -q "extension/webview-ui/audio/celebration.wav" /tmp/bro-code-vsix-contents.txt
+          grep -q "extension/webview-ui/build/assets/index.js" /tmp/bro-code-vsix-contents.txt
+          grep -q "extension/assets/codicons/codicon.ttf" /tmp/bro-code-vsix-contents.txt
+          grep -q "extension/assets/vscode-material-icons/icons/3d.svg" /tmp/bro-code-vsix-contents.txt
 
       - name: Validate packaged manifest identity
         run: |
           package_version=$(node -p "require('./src/package.json').version")
-          vsix_path="bin/zoo-code-${package_version}.vsix"
+          vsix_path="bin/bro-code-${package_version}.vsix"
 
           artifact_name=$(unzip -p "$vsix_path" extension/package.json | jq -r '.name')
           artifact_publisher=$(unzip -p "$vsix_path" extension/package.json | jq -r '.publisher')
 
-          test "$artifact_name" = "zoo-code"
-          test "$artifact_publisher" = "ZooCodeOrganization"
+          test "$artifact_name" = "bro-code"
+          test "$artifact_publisher" = "BroCodeOrganization"
 
       - name: Publish to VS Code Marketplace
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           package_version=$(node -p "require('./src/package.json').version")
-          npx @vscode/vsce publish --packagePath "bin/zoo-code-${package_version}.vsix"
-          echo "Published ZooCodeOrganization.zoo-code ${package_version} to VS Code Marketplace"
+          npx @vscode/vsce publish --packagePath "bin/bro-code-${package_version}.vsix"
+          echo "Published BroCodeOrganization.bro-code ${package_version} to VS Code Marketplace"
 
       - name: Publish to Open VSX Registry
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
         run: |
           package_version=$(node -p "require('./src/package.json').version")
-          pnpm exec ovsx publish "bin/zoo-code-${package_version}.vsix" --skip-duplicate
-          echo "Published ZooCodeOrganization.zoo-code ${package_version} to Open VSX Registry"
+          pnpm exec ovsx publish "bin/bro-code-${package_version}.vsix" --skip-duplicate
+          echo "Published BroCodeOrganization.bro-code ${package_version} to Open VSX Registry"
 
       - name: Create GitHub release
         env:
@@ -153,7 +153,7 @@ jobs:
           else
             tag_name="v${package_version}"
           fi
-          vsix_path="bin/zoo-code-${package_version}.vsix"
+          vsix_path="bin/bro-code-${package_version}.vsix"
 
           changelog_content=$(awk -v version="$package_version" '
             $0 ~ "^## \\[" version "\\]" { found = 1 }
@@ -164,14 +164,14 @@ jobs:
           if [ -z "$changelog_content" ]; then
             changelog_content="Release ${tag_name}"
           fi
-          printf "%s\n" "$changelog_content" > /tmp/zoo-code-release-notes.md
+          printf "%s\n" "$changelog_content" > /tmp/bro-code-release-notes.md
 
           if gh release view "$tag_name" >/dev/null 2>&1; then
             gh release upload "$tag_name" "$vsix_path" --clobber
           else
             gh release create "$tag_name" \
-              --title "Zoo Code ${tag_name}" \
-              --notes-file /tmp/zoo-code-release-notes.md \
+              --title "Bro Code ${tag_name}" \
+              --notes-file /tmp/bro-code-release-notes.md \
               --target "$GITHUB_SHA" \
               "$vsix_path"
           fi

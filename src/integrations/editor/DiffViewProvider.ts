@@ -5,7 +5,7 @@ import * as diff from "diff"
 import stripBom from "strip-bom"
 import delay from "delay"
 
-import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
+import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS } from "@bro-code/types"
 
 import { createDirectoriesForFile } from "../../utils/fs"
 import { arePathsEqual, getReadablePath } from "../../utils/path"
@@ -16,7 +16,7 @@ import { Task } from "../../core/task/Task"
 import { DecorationController } from "./DecorationController"
 
 export const DIFF_VIEW_URI_SCHEME = "cline-diff"
-export const DIFF_VIEW_LABEL_CHANGES = "Original ↔ Zoo's Changes"
+export const DIFF_VIEW_LABEL_CHANGES = "Original ↔ Bro's Changes"
 
 // TODO: https://github.com/cline/cline/pull/3354
 export class DiffViewProvider {
@@ -352,9 +352,9 @@ export class DiffViewProvider {
 		await this.keepOrCloseEditedFile(
 			absolutePath,
 			this.userTouchedDiffEditor,
-			saveState?.autoCloseZooOpenedFiles ?? true,
-			saveState?.autoCloseZooOpenedFilesAfterUserEdited ?? false,
-			saveState?.autoCloseZooOpenedNewFiles ?? false,
+			saveState?.autoCloseBroOpenedFiles ?? true,
+			saveState?.autoCloseBroOpenedFilesAfterUserEdited ?? false,
+			saveState?.autoCloseBroOpenedNewFiles ?? false,
 		)
 
 		// Restore any preview tabs the diff evicted, reconstructing the user's
@@ -364,15 +364,15 @@ export class DiffViewProvider {
 		// Getting diagnostics before and after the file edit is a better approach than
 		// automatically tracking problems in real-time. This method ensures we only
 		// report new problems that are a direct result of this specific edit.
-		// Since these are new problems resulting from Roo's edit, we know they're
-		// directly related to the work he's doing. This eliminates the risk of Roo
+		// Since these are new problems resulting from Bro's edit, we know they're
+		// directly related to the work he's doing. This eliminates the risk of Bro
 		// going off-task or getting distracted by unrelated issues, which was a problem
 		// with the previous auto-debug approach. Some users' machines may be slow to
 		// update diagnostics, so this approach provides a good balance between automation
-		// and avoiding potential issues where Roo might get stuck in loops due to
+		// and avoiding potential issues where Bro might get stuck in loops due to
 		// outdated problem information. If no new problems show up by the time the user
 		// accepts the changes, they can always debug later using the '@problems' mention.
-		// This way, Roo only becomes aware of new problems resulting from his edits
+		// This way, Bro only becomes aware of new problems resulting from his edits
 		// and can address them accordingly. If problems don't change immediately after
 		// applying a fix, won't be notified, which is generally fine since the
 		// initial fix is usually correct and it may just take time for linters to catch up.
@@ -438,7 +438,7 @@ export class DiffViewProvider {
 
 			return { newProblemsMessage, userEdits, finalContent: normalizedEditedContent }
 		} else {
-			// No changes to Roo's edits.
+			// No changes to Bro's edits.
 			// Store the results as class properties for formatFileWriteResponse to use
 			this.newProblemsMessage = newProblemsMessage
 			this.userEdits = undefined
@@ -563,9 +563,9 @@ export class DiffViewProvider {
 			await this.keepOrCloseEditedFile(
 				absolutePath,
 				false,
-				revertState?.autoCloseZooOpenedFiles ?? true,
-				revertState?.autoCloseZooOpenedFilesAfterUserEdited ?? false,
-				revertState?.autoCloseZooOpenedNewFiles ?? false,
+				revertState?.autoCloseBroOpenedFiles ?? true,
+				revertState?.autoCloseBroOpenedFilesAfterUserEdited ?? false,
+				revertState?.autoCloseBroOpenedNewFiles ?? false,
 			)
 		}
 
@@ -640,13 +640,13 @@ export class DiffViewProvider {
 	// Decision table (evaluated in order; first match wins):
 	//   1. File was already open before the edit -> always keep (closing it would
 	//      be destructive; user-opened tabs are never auto-closed).
-	//   2. editType==="create" AND autoCloseZooOpenedNewFiles -> close the new file's tab.
+	//   2. editType==="create" AND autoCloseBroOpenedNewFiles -> close the new file's tab.
 	//   3. userTouchedDocument OR keepIfTouchedDiff -> the "keep if touched" guard
-	//      applies; it is overridden (close) only when BOTH autoCloseZooOpenedFiles
-	//      and autoCloseZooOpenedFilesAfterUserEdited are enabled. The override is a
+	//      applies; it is overridden (close) only when BOTH autoCloseBroOpenedFiles
+	//      and autoCloseBroOpenedFilesAfterUserEdited are enabled. The override is a
 	//      refinement of the base auto-close, so it has no effect when the base
 	//      setting is off.
-	//   4. autoCloseZooOpenedFiles=false -> keep the transiently-opened tab.
+	//   4. autoCloseBroOpenedFiles=false -> keep the transiently-opened tab.
 	//   5. Default -> close the transiently-opened tab (current behavior preserved).
 	//
 	// keepIfTouchedDiff is passed as true from saveChanges() when the user clicked
@@ -654,9 +654,9 @@ export class DiffViewProvider {
 	private async keepOrCloseEditedFile(
 		absolutePath: string,
 		keepIfTouchedDiff = false,
-		autoCloseZooOpenedFiles = true,
-		autoCloseZooOpenedFilesAfterUserEdited = false,
-		autoCloseZooOpenedNewFiles = false,
+		autoCloseBroOpenedFiles = true,
+		autoCloseBroOpenedFilesAfterUserEdited = false,
+		autoCloseBroOpenedNewFiles = false,
 	): Promise<void> {
 		// Files the user already had open are never auto-closed.
 		if (this.documentWasOpen) {
@@ -664,8 +664,8 @@ export class DiffViewProvider {
 			return
 		}
 
-		// New files on the accept path: close when autoCloseZooOpenedNewFiles is enabled.
-		if (this.editType === "create" && autoCloseZooOpenedNewFiles) {
+		// New files on the accept path: close when autoCloseBroOpenedNewFiles is enabled.
+		if (this.editType === "create" && autoCloseBroOpenedNewFiles) {
 			await this.closeFileTab(absolutePath)
 			return
 		}
@@ -674,7 +674,7 @@ export class DiffViewProvider {
 		if (userInteracted) {
 			// Override the "keep if touched" guard only when the base auto-close is
 			// also enabled; the override is a refinement, not an independent toggle.
-			if (autoCloseZooOpenedFiles && autoCloseZooOpenedFilesAfterUserEdited) {
+			if (autoCloseBroOpenedFiles && autoCloseBroOpenedFilesAfterUserEdited) {
 				await this.closeFileTab(absolutePath)
 			} else {
 				await this.showEditedFileWithoutDisruptingFocus(absolutePath)
@@ -682,8 +682,8 @@ export class DiffViewProvider {
 			return
 		}
 
-		// Transient tab opened by Zoo: close by default, keep only when opted out.
-		if (autoCloseZooOpenedFiles) {
+		// Transient tab opened by Bro: close by default, keep only when opted out.
+		if (autoCloseBroOpenedFiles) {
 			await this.closeFileTab(absolutePath)
 		} else {
 			await this.showEditedFileWithoutDisruptingFocus(absolutePath)

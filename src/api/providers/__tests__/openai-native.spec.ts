@@ -2,7 +2,7 @@
 
 const mockCaptureException = vitest.fn()
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@bro-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureException: (...args: unknown[]) => mockCaptureException(...args),
@@ -13,7 +13,7 @@ vitest.mock("@roo-code/telemetry", () => ({
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import { ApiProviderError } from "@roo-code/types"
+import { ApiProviderError } from "@bro-code/types"
 
 import { OpenAiNativeHandler } from "../openai-native"
 import { ApiHandlerOptions } from "../../../shared/api"
@@ -103,7 +103,7 @@ describe("OpenAiNativeHandler", () => {
 			)
 		})
 
-		it("should identify itself as Zoo Code in request headers", () => {
+		it("should identify itself as Bro Code in request headers", () => {
 			;(OpenAI as unknown as ReturnType<typeof vitest.fn>).mockClear()
 			new OpenAiNativeHandler({
 				apiModelId: "gpt-4.1",
@@ -113,8 +113,8 @@ describe("OpenAiNativeHandler", () => {
 			expect(OpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					defaultHeaders: expect.objectContaining({
-						originator: "zoo-code",
-						"User-Agent": expect.stringContaining(`zoo-code/${Package.version}`),
+						originator: "bro-code",
+						"User-Agent": expect.stringContaining(`bro-code/${Package.version}`),
 					}),
 				}),
 			)

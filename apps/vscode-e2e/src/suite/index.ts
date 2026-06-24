@@ -3,12 +3,12 @@ import Mocha from "mocha"
 import { glob } from "glob"
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type RooCodeAPI } from "@roo-code/types"
+import { BroCodeEventName, type BroCodeAPI } from "@bro-code/types"
 
 import { waitFor } from "./utils"
 
 export async function run() {
-	const extension = vscode.extensions.getExtension<RooCodeAPI>("ZooCodeOrganization.zoo-code")
+	const extension = vscode.extensions.getExtension<BroCodeAPI>("BroCodeOrganization.bro-code")
 
 	if (!extension) {
 		throw new Error("Extension not found")
@@ -28,19 +28,19 @@ export async function run() {
 		...(aimockUrl && { openRouterBaseUrl: `${aimockUrl}/v1` }),
 	})
 
-	await vscode.commands.executeCommand("zoo-code.SidebarProvider.focus")
+	await vscode.commands.executeCommand("bro-code.SidebarProvider.focus")
 	await waitFor(() => api.isReady())
 
 	// Automatically approve completion_result asks so tests don't stall waiting
 	// for a button that the webview routes to "start new task" rather than "yes".
-	api.on(RooCodeEventName.Message, ({ message }) => {
+	api.on(BroCodeEventName.Message, ({ message }) => {
 		if (message.type === "ask" && message.ask === "completion_result") {
 			api.approveCurrentAsk()
 		}
 	})
 
 	if (!aimockUrl) {
-		api.on(RooCodeEventName.Message, ({ message }) => {
+		api.on(BroCodeEventName.Message, ({ message }) => {
 			if (message.type === "say" && !message.partial) {
 				console.log(`[say:${message.say}]`, message.text?.slice(0, 300))
 			}

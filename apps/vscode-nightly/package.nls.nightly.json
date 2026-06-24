@@ -1,7 +1,7 @@
 {
-	"extension.displayName": "Zoo Code Nightly",
-	"views.contextMenu.label": "Zoo Code Nightly",
-	"views.terminalMenu.label": "Zoo Code Nightly",
-	"views.activitybar.title": "Zoo Code Nightly",
-	"configuration.title": "Zoo Code Nightly"
+	"extension.displayName": "Bro Code Nightly",
+	"views.contextMenu.label": "Bro Code Nightly",
+	"views.terminalMenu.label": "Bro Code Nightly",
+	"views.activitybar.title": "Bro Code Nightly",
+	"configuration.title": "Bro Code Nightly"
 }

@@ -11,9 +11,9 @@
 </sub>
 </div>
 
-# Contribuir a Zoo Code
+# Contribuir a Bro Code
 
-Zoo Code és un projecte impulsat per la comunitat i valorem profundament cada contribució. Per agilitzar la col·laboració, operem sobre una base de [primer la incidència](#enfocament-de-primera-incidència), la qual cosa significa que totes les [sol·licituds d'extracció (PR)](#enviament-duna-sollicitud-dextracció) primer han d'estar enllaçades a una incidència de GitHub. Si us plau, reviseu aquesta guia amb atenció.
+Bro Code és un projecte impulsat per la comunitat i valorem profundament cada contribució. Per agilitzar la col·laboració, operem sobre una base de [primer la incidència](#enfocament-de-primera-incidència), la qual cosa significa que totes les [sol·licituds d'extracció (PR)](#enviament-duna-sollicitud-dextracció) primer han d'estar enllaçades a una incidència de GitHub. Si us plau, reviseu aquesta guia amb atenció.
 
 ## Taula de continguts
 
@@ -54,10 +54,10 @@ El nostre full de ruta guia la direcció del projecte. Alineeu les vostres contr
 
 Mencioneu l'alineació amb aquestes àrees a les vostres sol·licituds d'extracció.
 
-### 3. Uneix-te a la comunitat de Zoo Code
+### 3. Uneix-te a la comunitat de Bro Code
 
 - **Discord:** Uneix-te al nostre [Discord](https://discord.gg/VxfP4Vx3gX).
-- **Reddit:** Uneix-te al nostre [Reddit](https://www.reddit.com/r/ZooCode/).
+- **Reddit:** Uneix-te al nostre [Reddit](https://www.reddit.com/r/BroCode/).
 
 ## Trobar i planificar la vostra contribució
 
@@ -71,7 +71,7 @@ Mencioneu l'alineació amb aquestes àrees a les vostres sol·licituds d'extracc
 
 Totes les contribucions comencen amb una incidència de GitHub utilitzant les nostres plantilles bàsiques.
 
-- **Comproveu les incidències existents**: cerqueu a [Incidències de GitHub](https://github.com/Zoo-Code-Org/Zoo-Code/issues).
+- **Comproveu les incidències existents**: cerqueu a [Incidències de GitHub](https://github.com/Bro-Code-Org/Bro-Code/issues).
 - **Creeu una incidència** utilitzant:
     - **Millores:** plantilla "Sol·licitud de millora" (llenguatge senzill centrat en el benefici per a l'usuari).
     - **Errors:** plantilla "Informe d'error" (reproducció mínima + esperat vs real + versió).
@@ -80,17 +80,17 @@ Totes les contribucions comencen amb una incidència de GitHub utilitzant les no
 
 ### Decidir en què treballar
 
-- Consulta la [pàgina de GitHub Issues](https://github.com/Zoo-Code-Org/Zoo-Code/issues) per veure les issues.
-- Per a documents, visiteu [Documents de Zoo Code](https://github.com/Zoo-Code-Org/Zoo-Code-Docs).
+- Consulta la [pàgina de GitHub Issues](https://github.com/Bro-Code-Org/Bro-Code/issues) per veure les issues.
+- Per a documents, visiteu [Documents de Bro Code](https://github.com/Bro-Code-Org/Bro-Code-Docs).
 
 ### Informar d'errors
 
 - Comproveu primer si hi ha informes existents.
-- Creeu un error nou utilitzant la [plantilla "Informe d'error"](https://github.com/Zoo-Code-Org/Zoo-Code/issues/new/choose) amb:
+- Creeu un error nou utilitzant la [plantilla "Informe d'error"](https://github.com/Bro-Code-Org/Bro-Code/issues/new/choose) amb:
     - Passos de reproducció clars i numerats
     - Resultat esperat vs real
-    - Versió de Zoo Code (obligatori); proveïdor/model d'API si és rellevant
-- **Problemes de seguretat**: informeu de manera privada a través d'[avisos de seguretat](https://github.com/Zoo-Code-Org/Zoo-Code/security/advisories/new).
+    - Versió de Bro Code (obligatori); proveïdor/model d'API si és rellevant
+- **Problemes de seguretat**: informeu de manera privada a través d'[avisos de seguretat](https://github.com/Bro-Code-Org/Bro-Code/security/advisories/new).
 
 ## Procés de desenvolupament i submissió
 
@@ -99,7 +99,7 @@ Totes les contribucions comencen amb una incidència de GitHub utilitzant les no
 1. **Bifurcació i clonació:**
 
 ```
-git clone https://github.com/YOUR_USERNAME/Zoo-Code.git
+git clone https://github.com/YOUR_USERNAME/Bro-Code.git
 ```
 
 2. **Instal·leu les dependències:**
@@ -166,4 +166,4 @@ Si us plau, no envieu canvis generats per IA que no enteneu o que no podeu mante
 
 ## Legal
 
-En contribuir, accepteu que les vostres contribucions es llicenciaran sota la llicència Apache 2.0, d'acord amb la llicència de Zoo Code.
+En contribuir, accepteu que les vostres contribucions es llicenciaran sota la llicència Apache 2.0, d'acord amb la llicència de Bro Code.

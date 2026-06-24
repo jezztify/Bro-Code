@@ -2,7 +2,7 @@ import { BetaThinkingConfigParam } from "@anthropic-ai/sdk/resources/beta"
 import OpenAI from "openai"
 import type { GenerateContentConfig } from "@google/genai"
 
-import type { ModelInfo, ProviderSettings, ReasoningEffortExtended } from "@roo-code/types"
+import type { ModelInfo, ProviderSettings, ReasoningEffortExtended } from "@bro-code/types"
 
 import { shouldUseReasoningBudget, shouldUseReasoningEffort } from "../../shared/api"
 
@@ -12,7 +12,7 @@ export type OpenRouterReasoningParams = {
 	exclude?: boolean
 }
 
-export type RooReasoningParams = {
+export type BroReasoningParams = {
 	enabled?: boolean
 	effort?: ReasoningEffortExtended
 }
@@ -56,11 +56,11 @@ export const getOpenRouterReasoning = ({
 				: undefined
 			: undefined
 
-export const getRooReasoning = ({
+export const getBroReasoning = ({
 	model,
 	reasoningEffort,
 	settings,
-}: GetModelReasoningOptions): RooReasoningParams | undefined => {
+}: GetModelReasoningOptions): BroReasoningParams | undefined => {
 	// Check if model supports reasoning effort
 	if (!model.supportsReasoningEffort) {
 		return undefined
@@ -81,7 +81,7 @@ export const getRooReasoning = ({
 		return { enabled: false }
 	}
 
-	// For Roo models that support reasoning effort, absence of a selection should be
+	// For Bro models that support reasoning effort, absence of a selection should be
 	// treated as an explicit "off" signal so that the backend does not auto-enable
 	// reasoning. This aligns with the default behavior in tests.
 	if (!reasoningEffort) {
@@ -94,7 +94,7 @@ export const getRooReasoning = ({
 		return undefined
 	}
 
-	// For Roo, "minimal" is treated as "none" for effort-based reasoning – we omit
+	// For Bro, "minimal" is treated as "none" for effort-based reasoning – we omit
 	// the reasoning field entirely instead of sending an explicit effort.
 	if (reasoningEffort === "minimal") {
 		return undefined

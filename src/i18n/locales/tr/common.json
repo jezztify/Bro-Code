@@ -1,6 +1,6 @@
 {
 	"extension": {
-		"name": "Zoo Code",
+		"name": "Bro Code",
 		"description": "Düzenleyicinizde tam bir AI geliştirici ekibi."
 	},
 	"number_format": {
@@ -111,9 +111,9 @@
 			"thinking_complete_safety": "(Düşünme tamamlandı, ancak çıktı güvenlik ayarları nedeniyle engellendi.)",
 			"thinking_complete_recitation": "(Düşünme tamamlandı, ancak çıktı okuma kontrolü nedeniyle engellendi.)"
 		},
-		"roo": {
-			"authenticationRequired": "Roo sağlayıcısı bulut kimlik doğrulaması gerektirir. Lütfen Roo Code Cloud'a giriş yapın.",
-			"routerRemoved": "Roo Code Router kaldırıldı. Lütfen farklı bir sağlayıcı seçip yapılandırın."
+		"bro": {
+			"authenticationRequired": "Bro sağlayıcısı bulut kimlik doğrulaması gerektirir. Lütfen Bro Code Cloud'a giriş yapın.",
+			"routerRemoved": "Bro Code Router kaldırıldı. Lütfen farklı bir sağlayıcı seçip yapılandırın."
 		},
 		"api": {
 			"invalidKeyInvalidChars": "API anahtarı geçersiz karakterler içeriyor.",
@@ -142,16 +142,16 @@
 			"unexpectedStreamError": "Unexpected error processing response stream",
 			"completionError": "OpenAI Codex completion error: {{message}}"
 		},
-		"rooHistoryImport": "Roo Code geçmişi içe aktarılamadı: {{error}}"
+		"broHistoryImport": "Roo Code geçmişi içe aktarılamadı: {{error}}"
 	},
 	"warnings": {
 		"no_terminal_content": "Seçili terminal içeriği yok",
 		"missing_task_files": "Bu görevin dosyaları eksik. Görev listesinden kaldırmak istiyor musunuz?",
-		"auto_import_failed": "ZooCode ayarları otomatik olarak içe aktarılamadı: {{error}}",
-		"rooHistoryImport": {
+		"auto_import_failed": "BroCode ayarları otomatik olarak içe aktarılamadı: {{error}}",
+		"broHistoryImport": {
 			"nothingFound": "{{domain}} kaynağından içe aktarılacak Roo Code görev geçmişi bulunamadı.",
-			"alreadyImported_one": "{{count}} Roo Code görev geçmişinin tamamı zaten Zoo Code'a aktarılmış.",
-			"alreadyImported_other": "{{count}} Roo Code görev geçmişinin tamamı zaten Zoo Code'a aktarılmış."
+			"alreadyImported_one": "{{count}} Roo Code görev geçmişinin tamamı zaten Bro Code'a aktarılmış.",
+			"alreadyImported_other": "{{count}} Roo Code görev geçmişinin tamamı zaten Bro Code'a aktarılmış."
 		}
 	},
 	"info": {
@@ -161,7 +161,7 @@
 		"custom_storage_path_set": "Özel depolama yolu ayarlandı: {{path}}",
 		"default_storage_path": "Varsayılan depolama yoluna geri dönüldü",
 		"settings_imported": "Ayarlar başarıyla içe aktarıldı.",
-		"auto_import_success": "ZooCode ayarları {{filename}} dosyasından otomatik olarak içe aktarıldı",
+		"auto_import_success": "BroCode ayarları {{filename}} dosyasından otomatik olarak içe aktarıldı",
 		"share_link_copied": "Paylaşım bağlantısı panoya kopyalandı",
 		"image_copied_to_clipboard": "Resim veri URI'si panoya kopyalandı",
 		"image_saved": "Resim {{path}} konumuna kaydedildi",
@@ -169,12 +169,12 @@
 		"public_share_link_copied": "Herkese açık paylaşım bağlantısı panoya kopyalandı!",
 		"mode_exported": "'{{mode}}' modu başarıyla dışa aktarıldı",
 		"mode_imported": "Mod başarıyla içe aktarıldı",
-		"roo": {
-			"signInUnavailable": "Roo Code Cloud girişi şu anda kullanılamıyor. Devam etmek için farklı bir sağlayıcı yapılandırın."
+		"bro": {
+			"signInUnavailable": "Bro Code Cloud girişi şu anda kullanılamıyor. Devam etmek için farklı bir sağlayıcı yapılandırın."
 		},
-		"rooHistoryImport": {
-			"success_one": "{{count}} Roo Code görev geçmişi Zoo Code'a aktarıldı.",
-			"success_other": "{{count}} Roo Code görev geçmişi Zoo Code'a aktarıldı."
+		"broHistoryImport": {
+			"success_one": "{{count}} Roo Code görev geçmişi Bro Code'a aktarıldı.",
+			"success_other": "{{count}} Roo Code görev geçmişi Bro Code'a aktarıldı."
 		}
 	},
 	"answers": {
@@ -201,12 +201,12 @@
 	},
 	"storage": {
 		"prompt_custom_path": "Konuşma geçmişi için özel depolama yolunu girin, varsayılan konumu kullanmak için boş bırakın",
-		"path_placeholder": "D:\\ZooCodeStorage",
-		"enter_absolute_path": "Lütfen mutlak bir yol girin (örn. D:\\ZooCodeStorage veya /home/user/storage)",
+		"path_placeholder": "D:\\BroCodeStorage",
+		"enter_absolute_path": "Lütfen mutlak bir yol girin (örn. D:\\BroCodeStorage veya /home/user/storage)",
 		"enter_valid_path": "Lütfen geçerli bir yol girin"
 	},
 	"input": {
-		"task_prompt": "Zoo ne yapsın?",
+		"task_prompt": "Bro ne yapsın?",
 		"task_placeholder": "Görevini buraya yaz"
 	},
 	"settings": {
@@ -214,8 +214,8 @@
 	},
 	"customModes": {
 		"errors": {
-			"yamlParseError": ".roomodes dosyasının {{line}}. satırında geçersiz YAML. Kontrol et:\n• Doğru girinti (tab değil boşluk kullan)\n• Eşleşen tırnak işaretleri ve parantezler\n• Geçerli YAML sözdizimi",
-			"schemaValidationError": ".roomodes'ta geçersiz özel mod formatı:\n{{issues}}",
+			"yamlParseError": ".bromodes dosyasının {{line}}. satırında geçersiz YAML. Kontrol et:\n• Doğru girinti (tab değil boşluk kullan)\n• Eşleşen tırnak işaretleri ve parantezler\n• Geçerli YAML sözdizimi",
+			"schemaValidationError": ".bromodes'ta geçersiz özel mod formatı:\n{{issues}}",
 			"invalidFormat": "Geçersiz özel mod formatı. Ayarlarının doğru YAML formatını takip ettiğinden emin ol.",
 			"updateFailed": "Özel mod güncellemesi başarısız: {{error}}",
 			"deleteFailed": "Özel mod silme başarısız: {{error}}",
@@ -236,8 +236,8 @@
 	},
 	"mdm": {
 		"errors": {
-			"cloud_auth_required": "Kuruluşunuz Zoo Code Cloud kimlik doğrulaması gerektiriyor. Devam etmek için giriş yapın.",
-			"organization_mismatch": "Kuruluşunuzun Zoo Code Cloud hesabıyla kimlik doğrulaması yapmalısınız.",
+			"cloud_auth_required": "Kuruluşunuz Bro Code Cloud kimlik doğrulaması gerektiriyor. Devam etmek için giriş yapın.",
+			"organization_mismatch": "Kuruluşunuzun Bro Code Cloud hesabıyla kimlik doğrulaması yapmalısınız.",
 			"manual_url_empty": "Lütfen geçerli bir callback URL'si girin",
 			"manual_url_no_query": "Geçersiz callback URL'si: sorgu parametreleri eksik",
 			"manual_url_missing_params": "Geçersiz callback URL'si: gerekli parametreler eksik (code ve state)",
@@ -264,22 +264,22 @@
 	},
 	"docsLink": {
 		"label": "Docs",
-		"url": "https://docs.zoocode.dev"
+		"url": "https://docs.brocode.dev"
 	},
-	"zooAuth": {
+	"broAuth": {
 		"errors": {
-			"invalid_token_received": "Zoo Code: Geçersiz kimlik doğrulama token'ı alındı.",
-			"token_verification_failed": "Zoo Code: Token doğrulaması başarısız oldu.",
-			"invalid_token": "Zoo Code: Geçersiz token.",
-			"could_not_verify_token": "Zoo Code: Token doğrulanamadı.",
-			"session_expired": "Zoo Code oturumunun süresi doldu. Zoo Gateway'i kullanmaya devam etmek için lütfen tekrar giriş yapın.",
-			"out_of_credits": "Zoo Gateway: yetersiz kredi. Devam etmek için kredi ekleyin.",
-			"account_unavailable": "Zoo Gateway: hesabınız şu anda kullanılamıyor. Lütfen destek ile iletişime geçin.",
-			"budget_exceeded": "Zoo Gateway: kullanım bütçesine ulaşıldı. Sıfırlanmasını bekleyin veya kredi ekleyin."
+			"invalid_token_received": "Bro Code: Geçersiz kimlik doğrulama token'ı alındı.",
+			"token_verification_failed": "Bro Code: Token doğrulaması başarısız oldu.",
+			"invalid_token": "Bro Code: Geçersiz token.",
+			"could_not_verify_token": "Bro Code: Token doğrulanamadı.",
+			"session_expired": "Bro Code oturumunun süresi doldu. Bro Gateway'i kullanmaya devam etmek için lütfen tekrar giriş yapın.",
+			"out_of_credits": "Bro Gateway: yetersiz kredi. Devam etmek için kredi ekleyin.",
+			"account_unavailable": "Bro Gateway: hesabınız şu anda kullanılamıyor. Lütfen destek ile iletişime geçin.",
+			"budget_exceeded": "Bro Gateway: kullanım bütçesine ulaşıldı. Sıfırlanmasını bekleyin veya kredi ekleyin."
 		},
 		"info": {
-			"connected": "Zoo Code: Başarıyla bağlandı! Artık Zoo Code'u AI sağlayıcısı olarak kullanabilirsin.",
-			"disconnected": "Zoo Code: Başarıyla bağlantı kesildi."
+			"connected": "Bro Code: Başarıyla bağlandı! Artık Bro Code'u AI sağlayıcısı olarak kullanabilirsin.",
+			"disconnected": "Bro Code: Başarıyla bağlantı kesildi."
 		},
 		"buttons": {
 			"sign_in": "Giriş Yap",
@@ -288,9 +288,9 @@
 		}
 	},
 	"codeActions": {
-		"explain": "Zoo Code ile açıkla",
-		"fix": "Zoo Code ile düzelt",
-		"improve": "Zoo Code ile iyileştir",
-		"addToContext": "Zoo Code'a ekle"
+		"explain": "Bro Code ile açıkla",
+		"fix": "Bro Code ile düzelt",
+		"improve": "Bro Code ile iyileştir",
+		"addToContext": "Bro Code'a ekle"
 	}
 }

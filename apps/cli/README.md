@@ -1,19 +1,19 @@
-# @roo-code/cli
+# @bro-code/cli
 
-Command Line Interface for Roo Code - Run the Roo Code agent from the terminal without VSCode.
+Command Line Interface for Bro Code - Run the Bro Code agent from the terminal without VSCode.
 
 ## Overview
 
-This CLI uses the `@roo-code/vscode-shim` package to provide a VSCode API compatibility layer, allowing the main Roo Code extension to run in a Node.js environment.
+This CLI uses the `@bro-code/vscode-shim` package to provide a VSCode API compatibility layer, allowing the main Bro Code extension to run in a Node.js environment.
 
 ## Installation
 
 ### Quick Install (Recommended)
 
-Install the Roo Code CLI with a single command:
+Install the Bro Code CLI with a single command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/BroCodeInc/Bro-Code/main/apps/cli/install.sh | sh
 ```
 
 **Requirements:**
@@ -24,13 +24,13 @@ curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/i
 **Custom installation directory:**
 
 ```bash
-ROO_INSTALL_DIR=/opt/roo-code ROO_BIN_DIR=/usr/local/bin curl -fsSL ... | sh
+BRO_INSTALL_DIR=/opt/bro-code BRO_BIN_DIR=/usr/local/bin curl -fsSL ... | sh
 ```
 
 **Install a specific version:**
 
 ```bash
-ROO_VERSION=0.1.0 curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/install.sh | sh
+BRO_VERSION=0.1.0 curl -fsSL https://raw.githubusercontent.com/BroCodeInc/Bro-Code/main/apps/cli/install.sh | sh
 ```
 
 ### Updating
@@ -38,19 +38,19 @@ ROO_VERSION=0.1.0 curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Co
 Re-run the install script to update to the latest version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/BroCodeInc/Bro-Code/main/apps/cli/install.sh | sh
 ```
 
 Or run:
 
 ```bash
-roo upgrade
+bro upgrade
 ```
 
 ### Uninstalling
 
 ```bash
-rm -rf ~/.roo/cli ~/.local/bin/roo
+rm -rf ~/.bro/cli ~/.local/bin/bro
 ```
 
 ### Development Installation
@@ -65,7 +65,7 @@ pnpm install
 pnpm --filter ./src bundle
 
 # Build the CLI.
-pnpm --filter @roo-code/cli build
+pnpm --filter @bro-code/cli build
 ```
 
 ## Usage
@@ -77,13 +77,13 @@ By default, the CLI auto-approves actions and runs in interactive TUI mode:
 ```bash
 export OPENROUTER_API_KEY=sk-or-v1-...
 
-roo "What is this project?" -w ~/Documents/my-project
+bro "What is this project?" -w ~/Documents/my-project
 ```
 
 You can also run without a prompt and enter it interactively in TUI mode:
 
 ```bash
-roo -w ~/Documents/my-project
+bro -w ~/Documents/my-project
 ```
 
 In interactive mode:
@@ -98,7 +98,7 @@ In interactive mode:
 If you want manual approval prompts, enable approval-required mode:
 
 ```bash
-roo "Refactor the utils.ts file" --require-approval -w ~/Documents/my-project
+bro "Refactor the utils.ts file" --require-approval -w ~/Documents/my-project
 ```
 
 In approval-required mode:
@@ -112,10 +112,10 @@ Use `--print` for non-interactive execution and machine-readable output:
 
 ```bash
 # Prompt is required
-roo --print "Summarize this repository"
+bro --print "Summarize this repository"
 
 # Create a new task with a specific session ID (UUID)
-roo --print --create-with-session-id 018f7fc8-7c96-7f7c-98aa-2ec4ff7f6d87 "Summarize this repository"
+bro --print --create-with-session-id 018f7fc8-7c96-7f7c-98aa-2ec4ff7f6d87 "Summarize this repository"
 ```
 
 ### Stdin Stream Mode (`--stdin-prompt-stream`)
@@ -124,27 +124,27 @@ For programmatic control (one process, multiple prompts), use `--stdin-prompt-st
 Send NDJSON commands via stdin:
 
 ```bash
-printf '{"command":"start","requestId":"1","prompt":"1+1=?"}\n' | roo --print --stdin-prompt-stream --output-format stream-json
+printf '{"command":"start","requestId":"1","prompt":"1+1=?"}\n' | bro --print --stdin-prompt-stream --output-format stream-json
 
 # Optional: provide taskId per start command
-printf '{"command":"start","requestId":"1","taskId":"018f7fc8-7c96-7f7c-98aa-2ec4ff7f6d87","prompt":"1+1=?"}\n' | roo --print --stdin-prompt-stream --output-format stream-json
+printf '{"command":"start","requestId":"1","taskId":"018f7fc8-7c96-7f7c-98aa-2ec4ff7f6d87","prompt":"1+1=?"}\n' | bro --print --stdin-prompt-stream --output-format stream-json
 ```
 
-### Legacy Roo Auth Token Cleanup
+### Legacy Bro Auth Token Cleanup
 
 Normal CLI usage is login-free. Use `--provider` with your own API key, or set the provider environment variable directly.
 
-Roo Code Router has been removed from the CLI. The remaining `auth` commands only help inspect or delete any legacy Roo auth token still stored from older releases:
+Bro Code Router has been removed from the CLI. The remaining `auth` commands only help inspect or delete any legacy Bro auth token still stored from older releases:
 
 ```bash
-# Check whether a legacy Roo auth token is still stored
-roo auth status
+# Check whether a legacy Bro auth token is still stored
+bro auth status
 
-# Remove an old stored Roo auth token
-roo auth logout
+# Remove an old stored Bro auth token
+bro auth logout
 ```
 
-If you never used Roo Code Router, you can ignore this section entirely.
+If you never used Bro Code Router, you can ignore this section entirely.
 
 ## Options
 
@@ -174,8 +174,8 @@ If you never used Roo Code Router, you can ignore this section entirely.
 
 | Command           | Description                          |
 | ----------------- | ------------------------------------ |
-| `roo auth logout` | Clear a stored legacy Roo auth token |
-| `roo auth status` | Show legacy Roo token status         |
+| `bro auth logout` | Clear a stored legacy Bro auth token |
+| `bro auth status` | Show legacy Bro token status         |
 
 ## Environment Variables
 
@@ -219,7 +219,7 @@ The CLI will look for API keys in environment variables if not provided via `--a
 
 2. **ExtensionHost** (`extension-host.ts`):
 
-    - Creates a VSCode API mock using `@roo-code/vscode-shim`
+    - Creates a VSCode API mock using `@bro-code/vscode-shim`
     - Intercepts `require('vscode')` to return the mock
     - Loads and activates the extension bundle
     - Manages bidirectional message flow
@@ -244,10 +244,10 @@ pnpm check-types
 pnpm lint
 ```
 
-By default the dev script still points `ROO_CODE_PROVIDER_URL` at `http://localhost:8080/proxy` for local extension-host development. The CLI provider selection itself should use a non-Router provider such as OpenRouter. To point the backend URL at production instead, override the environment variable:
+By default the dev script still points `BRO_CODE_PROVIDER_URL` at `http://localhost:8080/proxy` for local extension-host development. The CLI provider selection itself should use a non-Router provider such as OpenRouter. To point the backend URL at production instead, override the environment variable:
 
 ```bash
-ROO_CODE_PROVIDER_URL=https://api.roocode.com/proxy pnpm dev --provider openrouter --api-key $OPENROUTER_API_KEY --print "Hello"
+BRO_CODE_PROVIDER_URL=https://api.brocode.com/proxy pnpm dev --provider openrouter --api-key $OPENROUTER_API_KEY --print "Hello"
 ```
 
 ## Releasing

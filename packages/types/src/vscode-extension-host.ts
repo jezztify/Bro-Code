@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import type { GlobalSettings, RooCodeSettings } from "./global-settings.js"
+import type { GlobalSettings, BroCodeSettings } from "./global-settings.js"
 import type { ProviderSettings, ProviderSettingsEntry } from "./provider-settings.js"
 import type { HistoryItem } from "./history.js"
 import type { ModeConfig, PromptComponent } from "./mode.js"
@@ -38,7 +38,7 @@ export interface ExtensionMessage {
 		| "commitSearchResults"
 		| "listApiConfig"
 		| "routerModels"
-		| "zooGatewayCredentialsReady"
+		| "broGatewayCredentialsReady"
 		| "openAiModels"
 		| "ollamaModels"
 		| "lmStudioModels"
@@ -102,7 +102,7 @@ export interface ExtensionMessage {
 		| "folderSelected"
 		| "skills"
 		| "fileContent"
-		| "rooHistoryImportProgress"
+		| "broHistoryImportProgress"
 	text?: string
 	/** For fileContent: { path, content, error? } */
 	fileContent?: { path: string; content: string | null; error?: string }
@@ -182,7 +182,7 @@ export interface ExtensionMessage {
 	tools?: SerializedCustomToolDefinition[] // For customToolsResult
 	skills?: SkillMetadata[] // For skills response
 	modes?: { slug: string; name: string }[] // For modes response
-	rooHistoryImportProgress?: {
+	broHistoryImportProgress?: {
 		status: "starting" | "copying" | "finished" | "failed"
 		copiedFileCount: number
 		totalFileCount: number
@@ -295,9 +295,9 @@ export type ExtensionState = Pick<
 	| "terminalProfile"
 	| "execaShellPath"
 	| "diagnosticsEnabled"
-	| "autoCloseZooOpenedFiles"
-	| "autoCloseZooOpenedFilesAfterUserEdited"
-	| "autoCloseZooOpenedNewFiles"
+	| "autoCloseBroOpenedFiles"
+	| "autoCloseBroOpenedFilesAfterUserEdited"
+	| "autoCloseBroOpenedNewFiles"
 	| "language"
 	| "modeApiConfigs"
 	| "customModePrompts"
@@ -342,7 +342,7 @@ export type ExtensionState = Pick<
 	checkpointTimeout: number // Timeout for checkpoint initialization in seconds (default: 15)
 	maxOpenTabsContext: number // Maximum number of VSCode open tabs to include in context (0-500)
 	maxWorkspaceFiles: number // Maximum number of files to include in current working directory details (0-500)
-	showRooIgnoredFiles: boolean // Whether to show .rooignore'd files in listings
+	showBroIgnoredFiles: boolean // Whether to show .broignore'd files in listings
 	enableSubfolderRules: boolean // Whether to load rules from subdirectories
 	maxReadFileLine?: number // Maximum line limit for read_file tool (-1 for default)
 	maxImageFileSize: number // Maximum size of image files to process in MB
@@ -390,11 +390,11 @@ export type ExtensionState = Pick<
 	mdmCompliant?: boolean
 	taskSyncEnabled: boolean
 	openAiCodexIsAuthenticated?: boolean
-	zooCodeIsAuthenticated?: boolean
-	zooCodeUserName?: string
-	zooCodeUserEmail?: string
-	zooCodeUserImage?: string
-	zooCodeBaseUrl?: string
+	broCodeIsAuthenticated?: boolean
+	broCodeUserName?: string
+	broCodeUserEmail?: string
+	broCodeUserImage?: string
+	broCodeBaseUrl?: string
 	deviceName?: string
 	debug?: boolean
 
@@ -472,7 +472,7 @@ export interface WebviewMessage {
 		| "requestLmStudioModels"
 		| "testLmStudioConnection"
 		| "requestCodeIndexLmStudioModels"
-		| "requestRooModels"
+		| "requestBroModels"
 		| "requestVsCodeLmModels"
 		| "openImage"
 		| "saveImage"
@@ -534,13 +534,13 @@ export interface WebviewMessage {
 		| "hasOpenedModeSelector"
 		| "lockApiConfigAcrossModes"
 		| "clearCloudAuthSkipModel"
-		| "rooCloudSignIn"
+		| "broCloudSignIn"
 		| "cloudLandingPageSignIn"
-		| "rooCloudSignOut"
-		| "rooCloudManualUrl"
+		| "broCloudSignOut"
+		| "broCloudManualUrl"
 		| "openAiCodexSignIn"
 		| "openAiCodexSignOut"
-		| "zooCodeSignOut"
+		| "broCodeSignOut"
 		| "switchOrganization"
 		| "condenseTaskContextRequest"
 		| "requestIndexingStatus"
@@ -609,7 +609,7 @@ export interface WebviewMessage {
 		| "removeInstalledMarketplaceItem"
 		| "marketplaceInstallResult"
 		| "shareTaskSuccess"
-		| "importRooHistory"
+		| "importBroHistory"
 		// Skills messages
 		| "requestSkills"
 		| "createSkill"
@@ -683,7 +683,7 @@ export interface WebviewMessage {
 	upsellId?: string // For dismissUpsell
 	list?: string[] // For dismissedUpsells response
 	organizationId?: string | null // For organization switching
-	useProviderSignup?: boolean // For rooCloudSignIn to use provider signup flow
+	useProviderSignup?: boolean // For broCloudSignIn to use provider signup flow
 	codeIndexSettings?: {
 		// Global state settings
 		codebaseIndexEnabled: boolean
@@ -721,9 +721,9 @@ export interface WebviewMessage {
 		codebaseIndexVercelAiGatewayApiKey?: string
 		codebaseIndexOpenRouterApiKey?: string
 	}
-	updatedSettings?: RooCodeSettings
+	updatedSettings?: BroCodeSettings
 	/** Task configuration applied via `createTask()`. */
-	taskConfiguration?: RooCodeSettings
+	taskConfiguration?: BroCodeSettings
 	// Worktree properties
 	worktreePath?: string
 	worktreeBranch?: string

@@ -4,7 +4,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 
 import { ConfigLoader } from "../ConfigLoader"
-import type { MarketplaceItemType } from "@roo-code/types"
+import type { MarketplaceItemType } from "@bro-code/types"
 
 vi.mock("fs/promises", () => ({
 	readFile: vi.fn(),
@@ -208,5 +208,4 @@ describe("ConfigLoader", () => {
 			expect(notFound).toBeNull()
 		})
 	})
-
 })

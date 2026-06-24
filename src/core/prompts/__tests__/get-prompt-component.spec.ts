@@ -1,4 +1,4 @@
-import type { CustomModePrompts } from "@roo-code/types"
+import type { CustomModePrompts } from "@bro-code/types"
 
 import { getPromptComponent } from "../system"
 

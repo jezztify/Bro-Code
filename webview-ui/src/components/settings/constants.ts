@@ -18,7 +18,7 @@ import {
 	minimaxModels,
 	basetenModels,
 	mimoModels,
-} from "@roo-code/types"
+} from "@bro-code/types"
 
 export const MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, ModelInfo>>> = {
 	anthropic: anthropicModels,
@@ -64,7 +64,7 @@ export const PROVIDERS = [
 	{ value: "fireworks", label: "Fireworks AI", proxy: false },
 	{ value: "vercel-ai-gateway", label: "Vercel AI Gateway", proxy: false },
 	{ value: "opencode-go", label: "Opencode Go", proxy: false },
-	{ value: "zoo-gateway", label: "Zoo Gateway", proxy: false },
+	{ value: "bro-gateway", label: "Bro Gateway", proxy: false },
 	{ value: "minimax", label: "MiniMax", proxy: false },
 	{ value: "mimo", label: "Xiaomi MiMo", proxy: false },
 	{ value: "baseten", label: "Baseten", proxy: false },

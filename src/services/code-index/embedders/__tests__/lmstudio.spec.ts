@@ -4,7 +4,7 @@ import { CodeIndexLmStudioEmbedder } from "../lmstudio"
 
 global.fetch = vitest.fn() as MockedFunction<typeof fetch>
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@bro-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureEvent: vitest.fn(),

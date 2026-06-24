@@ -24,7 +24,7 @@ vi.mock("../semble-downloader", () => ({
 }))
 
 // Mock TelemetryService
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@bro-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureEvent: vi.fn(),
@@ -37,8 +37,8 @@ vi.mock("vscode", () => ({
 	ExtensionContext: vi.fn(),
 }))
 
-import { TelemetryService } from "@roo-code/telemetry"
-import { TelemetryEventName } from "@roo-code/types"
+import { TelemetryService } from "@bro-code/telemetry"
+import { TelemetryEventName } from "@bro-code/types"
 import { isSembleSupportedPlatform, downloadSemble } from "../semble-downloader"
 
 describe("SembleProvider", () => {

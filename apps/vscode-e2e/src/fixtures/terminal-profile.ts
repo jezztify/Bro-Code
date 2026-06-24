@@ -22,7 +22,7 @@ export function addTerminalProfileResultFixtures(mock: InstanceType<typeof LLMoc
 			toolCalls: [
 				{
 					name: "attempt_completion",
-					params: { result: "Ran the command using the Zoo E2E Bash profile override." },
+					params: { result: "Ran the command using the Bro E2E Bash profile override." },
 					id: "call_terminal_profile_override_002",
 				},
 			],

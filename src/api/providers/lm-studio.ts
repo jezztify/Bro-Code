@@ -2,7 +2,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 import axios from "axios"
 
-import { type ModelInfo, openAiModelInfoSaneDefaults, LMSTUDIO_DEFAULT_TEMPERATURE } from "@roo-code/types"
+import { type ModelInfo, openAiModelInfoSaneDefaults, LMSTUDIO_DEFAULT_TEMPERATURE } from "@bro-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
@@ -179,7 +179,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 		} catch (error) {
 			const reason = error instanceof Error ? error.message : String(error)
 			throw new Error(
-				`LM Studio request failed: ${reason}\nPlease check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts.`,
+				`LM Studio request failed: ${reason}\nPlease check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Bro Code's prompts.`,
 			)
 		}
 	}
@@ -224,7 +224,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 		} catch (error) {
 			const reason = error instanceof Error ? error.message : String(error)
 			throw new Error(
-				`LM Studio request failed: ${reason}\nPlease check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts.`,
+				`LM Studio request failed: ${reason}\nPlease check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Bro Code's prompts.`,
 			)
 		}
 	}

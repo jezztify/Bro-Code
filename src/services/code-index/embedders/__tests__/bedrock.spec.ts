@@ -25,7 +25,7 @@ vitest.mock("@aws-sdk/credential-providers", () => ({
 }))
 
 // Mock TelemetryService
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@bro-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureEvent: vitest.fn(),
@@ -105,10 +105,10 @@ describe("BedrockEmbedder", () => {
 			expect(profileEmbedder).toBeDefined()
 		})
 
-		it("should identify itself as Zoo Code in the AWS client app id", () => {
+		it("should identify itself as Bro Code in the AWS client app id", () => {
 			expect(BedrockRuntimeClient).toHaveBeenCalledWith(
 				expect.objectContaining({
-					userAgentAppId: expect.stringMatching(/^ZooCode#/),
+					userAgentAppId: expect.stringMatching(/^BroCode#/),
 				}),
 			)
 		})

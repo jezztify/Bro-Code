@@ -4,9 +4,9 @@ import { Trans } from "react-i18next"
 import { ArrowRightLeft, Download, Upload, TriangleAlert, Bug, Lightbulb, Shield, MessagesSquare } from "lucide-react"
 import { VSCodeButton, VSCodeCheckbox, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 
-import type { ExtensionMessage, TelemetrySetting } from "@roo-code/types"
+import type { ExtensionMessage, TelemetrySetting } from "@bro-code/types"
 
-import { Package } from "@roo/package"
+import { Package } from "@bro/package"
 
 import { vscode } from "@/utils/vscode"
 import { EXTERNAL_LINKS } from "@/constants/externalLinks"
@@ -17,7 +17,7 @@ import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 
-type RooHistoryImportProgress = NonNullable<ExtensionMessage["rooHistoryImportProgress"]>
+type BroHistoryImportProgress = NonNullable<ExtensionMessage["broHistoryImportProgress"]>
 
 type AboutProps = HTMLAttributes<HTMLDivElement> & {
 	telemetrySetting: TelemetrySetting
@@ -28,22 +28,22 @@ type AboutProps = HTMLAttributes<HTMLDivElement> & {
 
 export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, className, ...props }: AboutProps) => {
 	const { t } = useAppTranslation()
-	const [rooHistoryImportProgress, setRooHistoryImportProgress] = useState<RooHistoryImportProgress | null>(null)
+	const [broHistoryImportProgress, setBroHistoryImportProgress] = useState<BroHistoryImportProgress | null>(null)
 
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent<ExtensionMessage>) => {
 			const message = event.data
-			if (message.type !== "rooHistoryImportProgress" || !message.rooHistoryImportProgress) {
+			if (message.type !== "broHistoryImportProgress" || !message.broHistoryImportProgress) {
 				return
 			}
 
-			const progress = message.rooHistoryImportProgress
+			const progress = message.broHistoryImportProgress
 			if (progress.status === "finished" && progress.totalFileCount === 0) {
-				setRooHistoryImportProgress(null)
+				setBroHistoryImportProgress(null)
 				return
 			}
 
-			setRooHistoryImportProgress(progress)
+			setBroHistoryImportProgress(progress)
 		}
 
 		window.addEventListener("message", handleMessage)
@@ -51,46 +51,46 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 	}, [])
 
 	const isImporting =
-		rooHistoryImportProgress?.status === "starting" || rooHistoryImportProgress?.status === "copying"
-	const isImportFailed = rooHistoryImportProgress?.status === "failed"
+		broHistoryImportProgress?.status === "starting" || broHistoryImportProgress?.status === "copying"
+	const isImportFailed = broHistoryImportProgress?.status === "failed"
 	const isImportSuccessful =
-		rooHistoryImportProgress?.status === "finished" && rooHistoryImportProgress.totalFileCount > 0
-	const shouldShowImportProgress = !!rooHistoryImportProgress && (isImporting || isImportFailed || isImportSuccessful)
+		broHistoryImportProgress?.status === "finished" && broHistoryImportProgress.totalFileCount > 0
+	const shouldShowImportProgress = !!broHistoryImportProgress && (isImporting || isImportFailed || isImportSuccessful)
 	const importProgressPercent =
-		rooHistoryImportProgress && rooHistoryImportProgress.totalFileCount > 0
-			? Math.round((rooHistoryImportProgress.copiedFileCount / rooHistoryImportProgress.totalFileCount) * 100)
+		broHistoryImportProgress && broHistoryImportProgress.totalFileCount > 0
+			? Math.round((broHistoryImportProgress.copiedFileCount / broHistoryImportProgress.totalFileCount) * 100)
 			: 0
-	const importProgressSummary = !rooHistoryImportProgress
+	const importProgressSummary = !broHistoryImportProgress
 		? ""
 		: isImportFailed
-			? rooHistoryImportProgress.totalFileCount > 0
-				? t("settings:about.rooHistoryImport.summaryFailedWithFiles", {
-						copied: rooHistoryImportProgress.copiedFileCount,
-						total: rooHistoryImportProgress.totalFileCount,
+			? broHistoryImportProgress.totalFileCount > 0
+				? t("settings:about.broHistoryImport.summaryFailedWithFiles", {
+						copied: broHistoryImportProgress.copiedFileCount,
+						total: broHistoryImportProgress.totalFileCount,
 					})
-				: t("settings:about.rooHistoryImport.summaryFailedNoFiles")
-			: t("settings:about.rooHistoryImport.summaryCopied", {
-					copied: rooHistoryImportProgress.copiedFileCount,
-					total: rooHistoryImportProgress.totalFileCount,
+				: t("settings:about.broHistoryImport.summaryFailedNoFiles")
+			: t("settings:about.broHistoryImport.summaryCopied", {
+					copied: broHistoryImportProgress.copiedFileCount,
+					total: broHistoryImportProgress.totalFileCount,
 				})
 	const importProgressDetail = isImportFailed
-		? t("settings:about.rooHistoryImport.detailFailed")
-		: rooHistoryImportProgress && rooHistoryImportProgress.importedTaskCount > 0
-			? t("settings:about.rooHistoryImport.detailTasksImported", {
-					count: rooHistoryImportProgress.importedTaskCount,
-					total: rooHistoryImportProgress.totalTaskCount,
+		? t("settings:about.broHistoryImport.detailFailed")
+		: broHistoryImportProgress && broHistoryImportProgress.importedTaskCount > 0
+			? t("settings:about.broHistoryImport.detailTasksImported", {
+					count: broHistoryImportProgress.importedTaskCount,
+					total: broHistoryImportProgress.totalTaskCount,
 				})
-			: t("settings:about.rooHistoryImport.detailPreparing")
+			: t("settings:about.broHistoryImport.detailPreparing")
 
-	const handleImportRooHistory = () => {
-		setRooHistoryImportProgress({
+	const handleImportBroHistory = () => {
+		setBroHistoryImportProgress({
 			status: "starting",
 			copiedFileCount: 0,
 			totalFileCount: 0,
 			importedTaskCount: 0,
 			totalTaskCount: 0,
 		})
-		vscode.postMessage({ type: "importRooHistory" })
+		vscode.postMessage({ type: "importBroHistory" })
 	}
 
 	return (
@@ -119,7 +119,7 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 						<Trans
 							i18nKey="settings:footer.telemetry.description"
 							components={{
-								privacyLink: <VSCodeLink href="https://www.zoocode.dev/privacy" />,
+								privacyLink: <VSCodeLink href="https://www.brocode.dev/privacy" />,
 							}}
 						/>
 					</p>
@@ -218,9 +218,9 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 
 			<Section className="space-y-0">
 				<SearchableSetting
-					settingId="about-import-roo-history"
+					settingId="about-import-bro-history"
 					section="about"
-					label={t("settings:about.rooHistoryImport.settingLabel")}>
+					label={t("settings:about.broHistoryImport.settingLabel")}>
 					<div className="space-y-3 rounded-lg border border-vscode-focusBorder/40 bg-vscode-editorWidget-background/40 p-3">
 						<div className="flex items-start gap-3">
 							<div className="rounded-md border border-vscode-focusBorder/30 bg-vscode-button-background/15 p-2 text-vscode-button-background">
@@ -228,10 +228,10 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 							</div>
 							<div className="min-w-0">
 								<div className="text-sm font-medium text-vscode-foreground">
-									{t("settings:about.rooHistoryImport.cardTitle")}
+									{t("settings:about.broHistoryImport.cardTitle")}
 								</div>
 								<div className="text-sm leading-5 text-vscode-descriptionForeground">
-									{t("settings:about.rooHistoryImport.cardDescription")}
+									{t("settings:about.broHistoryImport.cardDescription")}
 								</div>
 							</div>
 						</div>
@@ -248,10 +248,10 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 										)}
 										<span className="font-medium">
 											{isImporting
-												? t("settings:about.rooHistoryImport.statusImporting")
+												? t("settings:about.broHistoryImport.statusImporting")
 												: isImportFailed
-													? t("settings:about.rooHistoryImport.statusFailed")
-													: t("settings:about.rooHistoryImport.statusComplete")}
+													? t("settings:about.broHistoryImport.statusFailed")
+													: t("settings:about.broHistoryImport.statusComplete")}
 										</span>
 									</div>
 									<div className="text-sm font-medium text-vscode-descriptionForeground">
@@ -261,7 +261,7 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 								<div
 									className="h-2 overflow-hidden rounded-full bg-[var(--vscode-editorWidget-border)]"
 									role="progressbar"
-									aria-label={t("settings:about.rooHistoryImport.progressAriaLabel")}
+									aria-label={t("settings:about.broHistoryImport.progressAriaLabel")}
 									aria-valuemin={0}
 									aria-valuemax={100}
 									aria-valuenow={importProgressPercent}>
@@ -286,11 +286,11 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 						<VSCodeButton
 							appearance="primary"
 							disabled={isImporting}
-							onClick={handleImportRooHistory}
+							onClick={handleImportBroHistory}
 							style={{ width: "100%" }}>
 							{isImporting
-								? t("settings:about.rooHistoryImport.buttonImporting")
-								: t("settings:about.rooHistoryImport.buttonIdle")}
+								? t("settings:about.broHistoryImport.buttonImporting")
+								: t("settings:about.broHistoryImport.buttonIdle")}
 						</VSCodeButton>
 					</div>
 				</SearchableSetting>

@@ -58,11 +58,11 @@ describe("ListFilesTool", () => {
 			didToolFailInCurrentTurn: false,
 			sayAndCreateMissingParamError: vi.fn().mockResolvedValue("Missing parameter error"),
 			cwd: TEST_WORKSPACE,
-			rooIgnoreController: undefined,
-			rooProtectedController: undefined,
+			broIgnoreController: undefined,
+			broProtectedController: undefined,
 			providerRef: {
 				deref: vi.fn().mockReturnValue({
-					getState: vi.fn().mockResolvedValue({ showRooIgnoredFiles: false }),
+					getState: vi.fn().mockResolvedValue({ showBroIgnoredFiles: false }),
 				}),
 			},
 			ask: vi.fn().mockResolvedValue(undefined),
@@ -196,9 +196,9 @@ describe("ListFilesTool", () => {
 		)
 	})
 
-	it("should pass showRooIgnoredFiles from provider state", async () => {
+	it("should pass showBroIgnoredFiles from provider state", async () => {
 		vi.mocked(mockTask.providerRef.deref).mockReturnValue({
-			getState: vi.fn().mockResolvedValue({ showRooIgnoredFiles: true }),
+			getState: vi.fn().mockResolvedValue({ showBroIgnoredFiles: true }),
 		} as any)
 		const params = { path: "src", recursive: false }
 
@@ -282,11 +282,11 @@ describe("ListFilesTool", () => {
 		expect(listFiles).toHaveBeenCalledWith(path.resolve(mockTask.cwd, "relative/path"), false, 200)
 	})
 
-	it("should pass rooIgnoreController and rooProtectedController to formatFilesList", async () => {
+	it("should pass broIgnoreController and broProtectedController to formatFilesList", async () => {
 		const mockIgnoreController = { someMethod: vi.fn() }
 		const mockProtectedController = { someMethod: vi.fn() }
-		mockTask.rooIgnoreController = mockIgnoreController as any
-		mockTask.rooProtectedController = mockProtectedController as any
+		mockTask.broIgnoreController = mockIgnoreController as any
+		mockTask.broProtectedController = mockProtectedController as any
 		const params = { path: "src", recursive: false }
 
 		await tool.execute(params, mockTask, mockCallbacks)

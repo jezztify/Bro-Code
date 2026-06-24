@@ -21,15 +21,15 @@ importers:
 
   .:
     devDependencies:
+      '@bro-code/config-typescript':
+        specifier: workspace:^
+        version: link:packages/config-typescript
       '@changesets/cli':
         specifier: 2.29.7
         version: 2.29.7(@types/node@20.19.43)
       '@dotenvx/dotenvx':
         specifier: 1.66.0
         version: 1.66.0
-      '@roo-code/config-typescript':
-        specifier: workspace:^
-        version: link:packages/config-typescript
       '@types/node':
         specifier: 20.19.43
         version: 20.19.43
@@ -78,18 +78,18 @@ importers:
 
   apps/cli:
     dependencies:
+      '@bro-code/core':
+        specifier: workspace:^
+        version: link:../../packages/core
+      '@bro-code/types':
+        specifier: workspace:^
+        version: link:../../packages/types
+      '@bro-code/vscode-shim':
+        specifier: workspace:^
+        version: link:../../packages/vscode-shim
       '@inkjs/ui':
         specifier: ^2.0.0
         version: 2.0.0(ink@6.6.0(@types/react@18.3.23)(react@19.2.3))
-      '@roo-code/core':
-        specifier: workspace:^
-        version: link:../../packages/core
-      '@roo-code/types':
-        specifier: workspace:^
-        version: link:../../packages/types
-      '@roo-code/vscode-shim':
-        specifier: workspace:^
-        version: link:../../packages/vscode-shim
       '@trpc/client':
         specifier: ^11.8.1
         version: 11.8.1(@trpc/server@11.8.1(typescript@5.8.3))(typescript@5.8.3)
@@ -124,10 +124,10 @@ importers:
         specifier: ^5.0.0
         version: 5.0.9(@types/react@18.3.23)(react@19.2.3)
     devDependencies:
-      '@roo-code/config-eslint':
+      '@bro-code/config-eslint':
         specifier: workspace:^
         version: link:../../packages/config-eslint
-      '@roo-code/config-typescript':
+      '@bro-code/config-typescript':
         specifier: workspace:^
         version: link:../../packages/config-typescript
       '@types/node':
@@ -157,18 +157,18 @@ importers:
 
   apps/vscode-e2e:
     devDependencies:
+      '@bro-code/config-eslint':
+        specifier: workspace:^
+        version: link:../../packages/config-eslint
+      '@bro-code/config-typescript':
+        specifier: workspace:^
+        version: link:../../packages/config-typescript
+      '@bro-code/types':
+        specifier: workspace:^
+        version: link:../../packages/types
       '@copilotkit/aimock':
         specifier: 1.15.1
         version: 1.15.1(vitest@4.1.0)
-      '@roo-code/config-eslint':
-        specifier: workspace:^
-        version: link:../../packages/config-eslint
-      '@roo-code/config-typescript':
-        specifier: workspace:^
-        version: link:../../packages/config-typescript
-      '@roo-code/types':
-        specifier: workspace:^
-        version: link:../../packages/types
       '@types/mocha':
         specifier: 10.0.10
         version: 10.0.10
@@ -193,7 +193,7 @@ importers:
 
   apps/vscode-nightly:
     devDependencies:
-      '@roo-code/build':
+      '@bro-code/build':
         specifier: workspace:^
         version: link:../../packages/build
 
@@ -203,10 +203,10 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
-      '@roo-code/config-eslint':
+      '@bro-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@bro-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
       '@types/node':
@@ -218,7 +218,7 @@ importers:
 
   packages/cloud:
     dependencies:
-      '@roo-code/types':
+      '@bro-code/types':
         specifier: workspace:^
         version: link:../types
       ioredis:
@@ -234,10 +234,10 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
-      '@roo-code/config-eslint':
+      '@bro-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@bro-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
       '@types/node':
@@ -293,7 +293,7 @@ importers:
 
   packages/core:
     dependencies:
-      '@roo-code/types':
+      '@bro-code/types':
         specifier: workspace:^
         version: link:../types
       esbuild:
@@ -312,10 +312,10 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
-      '@roo-code/config-eslint':
+      '@bro-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@bro-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
       '@types/node':
@@ -330,17 +330,17 @@ importers:
 
   packages/ipc:
     dependencies:
-      '@roo-code/types':
+      '@bro-code/types':
         specifier: workspace:^
         version: link:../types
       node-ipc:
         specifier: ^12.0.0
         version: 12.0.0
     devDependencies:
-      '@roo-code/config-eslint':
+      '@bro-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@bro-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
       '@types/node':
@@ -352,7 +352,7 @@ importers:
 
   packages/telemetry:
     dependencies:
-      '@roo-code/types':
+      '@bro-code/types':
         specifier: workspace:^
         version: link:../types
       posthog-node:
@@ -362,10 +362,10 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
-      '@roo-code/config-eslint':
+      '@bro-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@bro-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
       '@types/node':
@@ -390,10 +390,10 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
-      '@roo-code/config-eslint':
+      '@bro-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@bro-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
       '@types/node':
@@ -417,10 +417,10 @@ importers:
 
   packages/vscode-shim:
     devDependencies:
-      '@roo-code/config-eslint':
+      '@bro-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@bro-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
       '@types/node':
@@ -468,6 +468,21 @@ importers:
       '@aws-sdk/credential-providers':
         specifier: ^3.922.0
         version: 3.922.0
+      '@bro-code/cloud':
+        specifier: workspace:^
+        version: link:../packages/cloud
+      '@bro-code/core':
+        specifier: workspace:^
+        version: link:../packages/core
+      '@bro-code/ipc':
+        specifier: workspace:^
+        version: link:../packages/ipc
+      '@bro-code/telemetry':
+        specifier: workspace:^
+        version: link:../packages/telemetry
+      '@bro-code/types':
+        specifier: workspace:^
+        version: link:../packages/types
       '@google/genai':
         specifier: ^1.29.1
         version: 1.29.1(@modelcontextprotocol/sdk@1.26.0(zod@3.25.76))
@@ -483,21 +498,6 @@ importers:
       '@qdrant/js-client-rest':
         specifier: ^1.14.0
         version: 1.14.0(typescript@5.8.3)
-      '@roo-code/cloud':
-        specifier: workspace:^
-        version: link:../packages/cloud
-      '@roo-code/core':
-        specifier: workspace:^
-        version: link:../packages/core
-      '@roo-code/ipc':
-        specifier: workspace:^
-        version: link:../packages/ipc
-      '@roo-code/telemetry':
-        specifier: workspace:^
-        version: link:../packages/telemetry
-      '@roo-code/types':
-        specifier: workspace:^
-        version: link:../packages/types
       '@vscode/codicons':
         specifier: ^0.0.36
         version: 0.0.36
@@ -664,13 +664,13 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: 2.0.28
         version: 2.0.28(zod@3.25.76)
-      '@roo-code/build':
+      '@bro-code/build':
         specifier: workspace:^
         version: link:../packages/build
-      '@roo-code/config-eslint':
+      '@bro-code/config-eslint':
         specifier: workspace:^
         version: link:../packages/config-eslint
-      '@roo-code/config-typescript':
+      '@bro-code/config-typescript':
         specifier: workspace:^
         version: link:../packages/config-typescript
       '@types/clone-deep':
@@ -739,6 +739,9 @@ importers:
 
   webview-ui:
     dependencies:
+      '@bro-code/types':
+        specifier: workspace:^
+        version: link:../packages/types
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.6
         version: 1.1.13(@types/react-dom@18.3.7(@types/react@18.3.23))(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -784,9 +787,6 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.1.8
         version: 1.2.6(@types/react-dom@18.3.7(@types/react@18.3.23))(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@roo-code/types':
-        specifier: workspace:^
-        version: link:../packages/types
       '@tailwindcss/vite':
         specifier: ^4.0.0
         version: 4.1.6(vite@8.0.16(@types/node@20.19.43)(esbuild@0.28.1)(jiti@2.4.2)(tsx@4.19.4)(yaml@2.9.0))
@@ -938,10 +938,10 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
-      '@roo-code/config-eslint':
+      '@bro-code/config-eslint':
         specifier: workspace:^
         version: link:../packages/config-eslint
-      '@roo-code/config-typescript':
+      '@bro-code/config-typescript':
         specifier: workspace:^
         version: link:../packages/config-typescript
       '@testing-library/jest-dom':

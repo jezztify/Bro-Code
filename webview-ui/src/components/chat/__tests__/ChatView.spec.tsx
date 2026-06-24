@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/__tests__/ChatView.spec.tsx
+// pnpm --filter @bro-code/vscode-webview test src/components/chat/__tests__/ChatView.spec.tsx
 
 import React from "react"
 import { render, waitFor, act, fireEvent } from "@/utils/test-utils"
@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 import { ExtensionStateContextProvider } from "@src/context/ExtensionStateContext"
 import { vscode } from "@src/utils/vscode"
-import type { SuggestionItem } from "@roo-code/types"
+import type { SuggestionItem } from "@bro-code/types"
 
 import ChatView, { ChatViewProps } from "../ChatView"
 
@@ -173,17 +173,17 @@ vi.mock("../QueuedMessages", () => ({
 	},
 }))
 
-// Mock RooTips component
-vi.mock("@src/components/welcome/RooTips", () => ({
-	default: function MockRooTips() {
-		return <div data-testid="roo-tips">Tips content</div>
+// Mock BroTips component
+vi.mock("@src/components/welcome/BroTips", () => ({
+	default: function MockBroTips() {
+		return <div data-testid="bro-tips">Tips content</div>
 	},
 }))
 
-// Mock RooHero component
-vi.mock("@src/components/welcome/RooHero", () => ({
-	default: function MockRooHero() {
-		return <div data-testid="roo-hero">Hero content</div>
+// Mock BroHero component
+vi.mock("@src/components/welcome/BroHero", () => ({
+	default: function MockBroHero() {
+		return <div data-testid="bro-hero">Hero content</div>
 	},
 }))
 
@@ -752,7 +752,7 @@ describe("ChatView - Version Indicator Tests", () => {
 describe("ChatView - Welcome Screen Display Tests", () => {
 	beforeEach(() => vi.clearAllMocks())
 
-	it("shows RooTips on the welcome screen regardless of task history or cloud auth", async () => {
+	it("shows BroTips on the welcome screen regardless of task history or cloud auth", async () => {
 		const { getByTestId, queryByTestId } = renderChatView()
 
 		mockPostMessage({
@@ -770,7 +770,7 @@ describe("ChatView - Welcome Screen Display Tests", () => {
 		})
 
 		await waitFor(() => {
-			expect(getByTestId("roo-tips")).toBeInTheDocument()
+			expect(getByTestId("bro-tips")).toBeInTheDocument()
 		})
 		expect(queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
 	})
@@ -798,8 +798,8 @@ describe("ChatView - Welcome Screen Display Tests", () => {
 
 		await waitFor(() => {
 			expect(queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
-			expect(queryByTestId("roo-tips")).not.toBeInTheDocument()
-			expect(queryByTestId("roo-hero")).not.toBeInTheDocument()
+			expect(queryByTestId("bro-tips")).not.toBeInTheDocument()
+			expect(queryByTestId("bro-hero")).not.toBeInTheDocument()
 		})
 	})
 })

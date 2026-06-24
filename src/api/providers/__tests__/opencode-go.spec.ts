@@ -12,7 +12,7 @@ vitest.mock("vscode", () => ({
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import { opencodeGoDefaultModelId, opencodeGoModels, isOpencodeGoAnthropicFormatModel } from "@roo-code/types"
+import { opencodeGoDefaultModelId, opencodeGoModels, isOpencodeGoAnthropicFormatModel } from "@bro-code/types"
 
 import { OpencodeGoHandler } from "../opencode-go"
 import { getModels } from "../fetchers/modelCache"

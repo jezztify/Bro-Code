@@ -27,7 +27,7 @@ describe("Terminal VS Code terminal profile (#277)", () => {
 	const mockTerminal = () =>
 		({
 			exitStatus: undefined,
-			name: "Roo Code",
+			name: "Bro Code",
 			processId: Promise.resolve(123),
 			creationOptions: {},
 			state: { isInteractedWith: true },
@@ -643,7 +643,7 @@ describe("Terminal VS Code terminal profile (#277)", () => {
 			expect(options.shellArgs).toBeUndefined()
 		})
 
-		it("merges safe profile env while preserving Zoo Code shell-integration vars", () => {
+		it("merges safe profile env while preserving Bro Code shell-integration vars", () => {
 			stubProfiles({
 				[Terminal.getPlatformProfileKey(process.platform)]: {
 					"Custom Bash": {
@@ -660,7 +660,7 @@ describe("Terminal VS Code terminal profile (#277)", () => {
 			expect(options.env).toMatchObject({
 				LANG: "en_US.UTF-8",
 				PAGER: process.platform === "win32" ? "" : "cat",
-				ROO_ACTIVE: "true",
+				BRO_ACTIVE: "true",
 				VTE_VERSION: "0",
 			})
 			expect(options.env?.ZDOTDIR).toBeUndefined()
@@ -673,7 +673,7 @@ describe("Terminal VS Code terminal profile (#277)", () => {
 		beforeEach(() => {
 			zshInitTmpDirSpy = vi
 				.spyOn(ShellIntegrationManager, "zshInitTmpDir")
-				.mockReturnValue("/tmp/roo-zdotdir-test")
+				.mockReturnValue("/tmp/bro-zdotdir-test")
 			Terminal.setTerminalZdotdir(true)
 		})
 
@@ -688,7 +688,7 @@ describe("Terminal VS Code terminal profile (#277)", () => {
 			stubProfiles({})
 			const env = Terminal.getEnv()
 			expect(zshInitTmpDirSpy).toHaveBeenCalledTimes(1)
-			expect(env.ZDOTDIR).toBe("/tmp/roo-zdotdir-test")
+			expect(env.ZDOTDIR).toBe("/tmp/bro-zdotdir-test")
 		})
 
 		it("skips ZDOTDIR when zdotdir is enabled but a profile is configured", () => {

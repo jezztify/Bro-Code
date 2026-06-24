@@ -6,7 +6,7 @@ import type { ClineProvider } from "../../core/webview/ClineProvider"
 import { Terminal } from "../../integrations/terminal/Terminal"
 import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
 
-vi.mock("@roo-code/ipc", () => ({
+vi.mock("@bro-code/ipc", () => ({
 	IpcServer: class {},
 }))
 

@@ -1,4 +1,4 @@
-name: Code QA Roo Code
+name: Code QA Bro Code
 
 on:
     workflow_dispatch:
@@ -71,11 +71,11 @@ jobs:
                       ${{ runner.os }}-turbo-${{ hashFiles('**/pnpm-lock.yaml') }}-
                       ${{ runner.os }}-turbo-
             - name: Run non-core coverage
-              run: pnpm turbo run test:coverage --filter="!@roo-code/core" --log-order grouped --output-logs new-only
+              run: pnpm turbo run test:coverage --filter="!@bro-code/core" --log-order grouped --output-logs new-only
             - name: Run core unit coverage
-              run: pnpm turbo run test:coverage:unit --filter="@roo-code/core" --log-order grouped --output-logs new-only
+              run: pnpm turbo run test:coverage:unit --filter="@bro-code/core" --log-order grouped --output-logs new-only
             - name: Run core integration coverage
-              run: pnpm turbo run test:coverage:integration --filter="@roo-code/core" --log-order grouped --output-logs new-only
+              run: pnpm turbo run test:coverage:integration --filter="@bro-code/core" --log-order grouped --output-logs new-only
             - name: Save Turbo cache
               if: steps.turbo-cache.outputs.cache-hit != 'true'
               uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4

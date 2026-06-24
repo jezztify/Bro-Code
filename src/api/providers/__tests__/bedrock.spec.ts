@@ -1,7 +1,7 @@
 // Mock TelemetryService before other imports
 const mockCaptureException = vi.fn()
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@bro-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureException: (...args: unknown[]) => mockCaptureException(...args),
@@ -43,7 +43,7 @@ import {
 	BEDROCK_SERVICE_TIER_MODEL_IDS,
 	bedrockModels,
 	ApiProviderError,
-} from "@roo-code/types"
+} from "@bro-code/types"
 
 import type { Anthropic } from "@anthropic-ai/sdk"
 
@@ -75,10 +75,10 @@ describe("AwsBedrockHandler", () => {
 			expect(modelInfo.info.contextWindow).toBeDefined()
 		})
 
-		it("should identify itself as Zoo Code in the AWS client app id", () => {
+		it("should identify itself as Bro Code in the AWS client app id", () => {
 			expect(mockBedrockRuntimeClient).toHaveBeenCalledWith(
 				expect.objectContaining({
-					userAgentAppId: expect.stringMatching(/^ZooCode#/),
+					userAgentAppId: expect.stringMatching(/^BroCode#/),
 				}),
 			)
 		})

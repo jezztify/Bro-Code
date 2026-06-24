@@ -41,8 +41,8 @@ afterAll(() => {
 
 const initWorkspaceRepo = async ({
 	workspaceDir,
-	userName = "Roo Code",
-	userEmail = "support@roocode.com",
+	userName = "Bro Code",
+	userEmail = "support@brocode.com",
 	testFileName = "test.txt",
 	textFileContent = "Hello, world!",
 }: {
@@ -414,8 +414,8 @@ describe.each([[RepoPerTaskCheckpointService, "RepoPerTaskCheckpointService"]])(
 				await fs.mkdir(workspaceDir, { recursive: true })
 				const mainGit = simpleGit(workspaceDir)
 				await mainGit.init()
-				await mainGit.addConfig("user.name", "Roo Code")
-				await mainGit.addConfig("user.email", "support@roocode.com")
+				await mainGit.addConfig("user.name", "Bro Code")
+				await mainGit.addConfig("user.email", "support@brocode.com")
 				await mainGit.addConfig("commit.gpgSign", "false")
 
 				// Create a nested repo inside the workspace.
@@ -423,8 +423,8 @@ describe.each([[RepoPerTaskCheckpointService, "RepoPerTaskCheckpointService"]])(
 				await fs.mkdir(nestedRepoPath, { recursive: true })
 				const nestedGit = simpleGit(nestedRepoPath)
 				await nestedGit.init()
-				await nestedGit.addConfig("user.name", "Roo Code")
-				await nestedGit.addConfig("user.email", "support@roocode.com")
+				await nestedGit.addConfig("user.name", "Bro Code")
+				await nestedGit.addConfig("user.email", "support@brocode.com")
 				await nestedGit.addConfig("commit.gpgSign", "false")
 
 				// Add a file to the nested repo.
@@ -486,8 +486,8 @@ describe.each([[RepoPerTaskCheckpointService, "RepoPerTaskCheckpointService"]])(
 				await fs.mkdir(workspaceDir, { recursive: true })
 				const mainGit = simpleGit(workspaceDir)
 				await mainGit.init()
-				await mainGit.addConfig("user.name", "Roo Code")
-				await mainGit.addConfig("user.email", "support@roocode.com")
+				await mainGit.addConfig("user.name", "Bro Code")
+				await mainGit.addConfig("user.email", "support@brocode.com")
 				await mainGit.addConfig("commit.gpgSign", "false")
 
 				// Create a test file in the main workspace.
@@ -946,7 +946,7 @@ describe.each([[RepoPerTaskCheckpointService, "RepoPerTaskCheckpointService"]])(
 			it("isolates checkpoint operations from GIT_DIR environment variable", async () => {
 				// This test verifies the fix for the issue where GIT_DIR environment variable
 				// causes checkpoint commits to go to the wrong repository.
-				// In the real-world Dev Container scenario, GIT_DIR is set BEFORE Roo starts,
+				// In the real-world Dev Container scenario, GIT_DIR is set BEFORE Bro starts,
 				// so we need to set it BEFORE creating the checkpoint service.
 
 				// Create a separate git directory to simulate GIT_DIR pointing elsewhere
@@ -1045,8 +1045,8 @@ describe("worktree path comparison", () => {
 			await fs.mkdir(workspaceDir, { recursive: true })
 			const mainGit = simpleGit(workspaceDir)
 			await mainGit.init()
-			await mainGit.addConfig("user.name", "Roo Code")
-			await mainGit.addConfig("user.email", "support@roocode.com")
+			await mainGit.addConfig("user.name", "Bro Code")
+			await mainGit.addConfig("user.email", "support@brocode.com")
 			await mainGit.addConfig("commit.gpgSign", "false")
 
 			await fs.writeFile(path.join(workspaceDir, "main.txt"), "main content")
@@ -1081,8 +1081,8 @@ describe("worktree path comparison", () => {
 			await fs.mkdir(workspaceDir, { recursive: true })
 			const mainGit = simpleGit(workspaceDir)
 			await mainGit.init()
-			await mainGit.addConfig("user.name", "Roo Code")
-			await mainGit.addConfig("user.email", "support@roocode.com")
+			await mainGit.addConfig("user.name", "Bro Code")
+			await mainGit.addConfig("user.email", "support@brocode.com")
 			await mainGit.addConfig("commit.gpgSign", "false")
 
 			await fs.writeFile(path.join(workspaceDir, "main.txt"), "main content")

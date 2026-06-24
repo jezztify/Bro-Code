@@ -2,8 +2,8 @@
 
 import * as vscode from "vscode"
 
-import { TelemetryEventName } from "@roo-code/types"
-import type { ClineMessage, TelemetryEvent } from "@roo-code/types"
+import { TelemetryEventName } from "@bro-code/types"
+import type { ClineMessage, TelemetryEvent } from "@bro-code/types"
 
 import { TaskNotFoundError } from "../errors.js"
 import { CloudService } from "../CloudService.js"

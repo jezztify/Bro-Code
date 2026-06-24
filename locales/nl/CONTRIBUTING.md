@@ -11,9 +11,9 @@
 </sub>
 </div>
 
-# Bijdragen aan Zoo Code
+# Bijdragen aan Bro Code
 
-Zoo Code is een door de gemeenschap gedreven project en we waarderen elke bijdrage ten zeerste. Om de samenwerking te stroomlijnen, werken we op basis van een [Issue-First-aanpak](#issue-first-aanpak), wat betekent dat alle [Pull Requests (PR's)](#een-pull-request-indienen) eerst gekoppeld moeten zijn aan een GitHub Issue. Lees deze handleiding zorgvuldig door.
+Bro Code is een door de gemeenschap gedreven project en we waarderen elke bijdrage ten zeerste. Om de samenwerking te stroomlijnen, werken we op basis van een [Issue-First-aanpak](#issue-first-aanpak), wat betekent dat alle [Pull Requests (PR's)](#een-pull-request-indienen) eerst gekoppeld moeten zijn aan een GitHub Issue. Lees deze handleiding zorgvuldig door.
 
 ## Inhoudsopgave
 
@@ -54,10 +54,10 @@ Onze roadmap stuurt de richting van het project. Lijn je bijdragen uit met deze 
 
 Vermeld de afstemming met deze gebieden in je PR's.
 
-### 3. Word lid van de Zoo Code-community
+### 3. Word lid van de Bro Code-community
 
 - **Discord:** Word lid van onze [Discord](https://discord.gg/VxfP4Vx3gX).
-- **Reddit:** Word lid van onze [Reddit](https://www.reddit.com/r/ZooCode/).
+- **Reddit:** Word lid van onze [Reddit](https://www.reddit.com/r/BroCode/).
 
 ## Je bijdrage vinden en plannen
 
@@ -71,7 +71,7 @@ Vermeld de afstemming met deze gebieden in je PR's.
 
 Alle bijdragen beginnen met een GitHub Issue met behulp van onze slanke sjablonen.
 
-- **Controleer bestaande issues**: Zoek in [GitHub Issues](https://github.com/Zoo-Code-Org/Zoo-Code/issues).
+- **Controleer bestaande issues**: Zoek in [GitHub Issues](https://github.com/Bro-Code-Org/Bro-Code/issues).
 - **Maak een issue** aan met:
     - **Verbeteringen:** sjabloon "Verbeteringsverzoek" (eenvoudige taal gericht op gebruikersvoordeel).
     - **Bugs:** sjabloon "Bugrapport" (minimale repro + verwacht vs. feitelijk + versie).
@@ -80,17 +80,17 @@ Alle bijdragen beginnen met een GitHub Issue met behulp van onze slanke sjablone
 
 ### Beslissen waaraan je wilt werken
 
-- Bekijk de [GitHub Issues-pagina](https://github.com/Zoo-Code-Org/Zoo-Code/issues) voor issues.
-- Ga voor documentatie naar [Zoo Code Docs](https://github.com/Zoo-Code-Org/Zoo-Code-Docs).
+- Bekijk de [GitHub Issues-pagina](https://github.com/Bro-Code-Org/Bro-Code/issues) voor issues.
+- Ga voor documentatie naar [Bro Code Docs](https://github.com/Bro-Code-Org/Bro-Code-Docs).
 
 ### Bugs rapporteren
 
 - Controleer eerst bestaande rapporten.
-- Maak een nieuwe bug aan met het ["Bugrapport"-sjabloon](https://github.com/Zoo-Code-Org/Zoo-Code/issues/new/choose) met:
+- Maak een nieuwe bug aan met het ["Bugrapport"-sjabloon](https://github.com/Bro-Code-Org/Bro-Code/issues/new/choose) met:
     - Duidelijke, genummerde reproductiestappen
     - Verwacht vs. feitelijk resultaat
-    - Zoo Code-versie (vereist); API-provider/model indien relevant
-- **Beveiligingsproblemen**: Rapporteer privé via [beveiligingsadviezen](https://github.com/Zoo-Code-Org/Zoo-Code/security/advisories/new).
+    - Bro Code-versie (vereist); API-provider/model indien relevant
+- **Beveiligingsproblemen**: Rapporteer privé via [beveiligingsadviezen](https://github.com/Bro-Code-Org/Bro-Code/security/advisories/new).
 
 ## Ontwikkelings- en indieningsproces
 
@@ -99,7 +99,7 @@ Alle bijdragen beginnen met een GitHub Issue met behulp van onze slanke sjablone
 1. **Fork & Klonen:**
 
 ```
-git clone https://github.com/YOUR_USERNAME/Zoo-Code.git
+git clone https://github.com/YOUR_USERNAME/Bro-Code.git
 ```
 
 2. **Afhankelijkheden installeren:**
@@ -166,4 +166,4 @@ Dien geen AI-gegenereerde wijzigingen in die je niet begrijpt of die je niet kun
 
 ## Juridisch
 
-Door bij te dragen, ga je ermee akkoord dat je bijdragen onder de Apache 2.0-licentie worden gelicentieerd, in overeenstemming met de licentieverlening van Zoo Code.
+Door bij te dragen, ga je ermee akkoord dat je bijdragen onder de Apache 2.0-licentie worden gelicentieerd, in overeenstemming met de licentieverlening van Bro Code.

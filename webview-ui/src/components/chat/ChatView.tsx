@@ -10,23 +10,23 @@ import { appendImages } from "@src/utils/imageUtils"
 import { getCostBreakdownIfNeeded } from "@src/utils/costFormatting"
 import { batchConsecutive } from "@src/utils/batchConsecutive"
 
-import type { ClineAsk, ClineSayTool, ClineMessage, ExtensionMessage, AudioType, SuggestionItem } from "@roo-code/types"
-import { getSuggestionMode, isRetiredProvider } from "@roo-code/types"
+import type { ClineAsk, ClineSayTool, ClineMessage, ExtensionMessage, AudioType, SuggestionItem } from "@bro-code/types"
+import { getSuggestionMode, isRetiredProvider } from "@bro-code/types"
 
-import { findLast } from "@roo/array"
-import { combineApiRequests } from "@roo/combineApiRequests"
-import { combineCommandSequences } from "@roo/combineCommandSequences"
-import { getApiMetrics } from "@roo/getApiMetrics"
-import { getAllModes } from "@roo/modes"
-import { ProfileValidator } from "@roo/ProfileValidator"
-import { getLatestTodo } from "@roo/todo"
+import { findLast } from "@bro/array"
+import { combineApiRequests } from "@bro/combineApiRequests"
+import { combineCommandSequences } from "@bro/combineCommandSequences"
+import { getApiMetrics } from "@bro/getApiMetrics"
+import { getAllModes } from "@bro/modes"
+import { ProfileValidator } from "@bro/ProfileValidator"
+import { getLatestTodo } from "@bro/todo"
 
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
-import RooHero from "@src/components/welcome/RooHero"
-import RooTips from "@src/components/welcome/RooTips"
+import BroHero from "@src/components/welcome/BroHero"
+import BroTips from "@src/components/welcome/BroTips"
 import { StandardTooltip, Button } from "@src/components/ui"
 
 import TelemetryBanner from "../common/TelemetryBanner"
@@ -1658,8 +1658,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							className="absolute top-2 right-3 z-10"
 						/>
 						<div className="flex flex-col gap-4 w-full">
-							<RooHero />
-							<RooTips />
+							<BroHero />
+							<BroTips />
 							{/* Everyone should see their task history if any */}
 							{taskHistory.length > 0 && <HistoryPreview />}
 						</div>
@@ -1834,7 +1834,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				</div>
 			)}
 
-			<div id="roo-portal" />
+			<div id="bro-portal" />
 		</div>
 	)
 }

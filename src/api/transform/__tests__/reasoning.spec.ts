@@ -1,20 +1,20 @@
 // npx vitest run src/api/transform/__tests__/reasoning.spec.ts
 
-import type { ModelInfo, ProviderSettings, ReasoningEffortWithMinimal } from "@roo-code/types"
+import type { ModelInfo, ProviderSettings, ReasoningEffortWithMinimal } from "@bro-code/types"
 
 import {
 	getOpenRouterReasoning,
 	getAnthropicReasoning,
 	getAnthropicProviderReasoning,
 	getOpenAiReasoning,
-	getRooReasoning,
+	getBroReasoning,
 	getGeminiReasoning,
 	GetModelReasoningOptions,
 	OpenRouterReasoningParams,
 	AnthropicReasoningParams,
 	AnthropicProviderReasoningParams,
 	OpenAiReasoningParams,
-	RooReasoningParams,
+	BroReasoningParams,
 	GeminiReasoningParams,
 	GeminiThinkingLevel,
 } from "../reasoning"
@@ -1208,10 +1208,10 @@ describe("reasoning.ts", () => {
 		})
 	})
 
-	describe("getRooReasoning", () => {
+	describe("getBroReasoning", () => {
 		it("should return undefined when model does not support reasoning effort", () => {
 			const options = { ...baseOptions }
-			const result = getRooReasoning(options)
+			const result = getBroReasoning(options)
 			expect(result).toBeUndefined()
 		})
 
@@ -1231,7 +1231,7 @@ describe("reasoning.ts", () => {
 				settings: settingsWithDisabled,
 			}
 
-			const result = getRooReasoning(options)
+			const result = getBroReasoning(options)
 			expect(result).toEqual({ enabled: false })
 		})
 
@@ -1252,7 +1252,7 @@ describe("reasoning.ts", () => {
 				reasoningEffort: "high" as const,
 			}
 
-			const result = getRooReasoning(options)
+			const result = getBroReasoning(options)
 			expect(result).toEqual({ enabled: true, effort: "high" })
 		})
 
@@ -1269,7 +1269,7 @@ describe("reasoning.ts", () => {
 				reasoningEffort: undefined,
 			}
 
-			const result = getRooReasoning(options)
+			const result = getBroReasoning(options)
 			expect(result).toEqual({ enabled: false })
 		})
 
@@ -1290,7 +1290,7 @@ describe("reasoning.ts", () => {
 				reasoningEffort: "minimal" as ReasoningEffortWithMinimal,
 			}
 
-			const result = getRooReasoning(options)
+			const result = getBroReasoning(options)
 			expect(result).toBeUndefined()
 		})
 
@@ -1314,7 +1314,7 @@ describe("reasoning.ts", () => {
 					reasoningEffort: effort,
 				}
 
-				const result = getRooReasoning(options)
+				const result = getBroReasoning(options)
 				expect(result).toEqual({ enabled: true, effort })
 			})
 		})
@@ -1332,7 +1332,7 @@ describe("reasoning.ts", () => {
 				reasoningEffort: undefined,
 			}
 
-			const result = getRooReasoning(options)
+			const result = getBroReasoning(options)
 			expect(result).toEqual({ enabled: false })
 		})
 	})

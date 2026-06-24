@@ -3,7 +3,7 @@ import {
 	ViewStateTransition,
 	type StateChangeHandler,
 } from "../MarketplaceViewStateManager"
-import { MarketplaceItem } from "@roo-code/types"
+import { MarketplaceItem } from "@bro-code/types"
 
 // Mock vscode module
 vi.mock("@/utils/vscode", () => ({

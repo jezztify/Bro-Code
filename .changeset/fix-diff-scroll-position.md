@@ -1,5 +1,5 @@
 ---
-"zoo-code": patch
+"bro-code": patch
 ---
 
 Fix diff view scroll position and tab handling when applying edits. The diff now opens scrolled to the first changed line (including end-of-file removals, which are clamped to a valid line in the modified document) instead of forcing the viewport to the top. After accepting or rejecting a diff, files that were already open are restored to their pre-edit scroll position, and files that were not open before the edit have their transiently opened tab closed -- unless the user activated that tab during the diff, in which case it is kept open. Focus is no longer pulled back to the edited file when the user has navigated elsewhere. A file that was open in a preview tab is restored in a preview tab with the original scroll position, even if the target file replaced the preview tab and was automatically closed after the diff was accepted or rejected. A file that was pinned before the edit is re-pinned after the diff closes, so applying a diff no longer drops the tab's pinned state.

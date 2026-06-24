@@ -92,7 +92,7 @@ export class QdrantVectorStore implements IVectorStore {
 				prefix: urlObj.pathname === "/" ? undefined : urlObj.pathname.replace(/\/+$/, ""),
 				apiKey,
 				headers: {
-					"User-Agent": "Zoo-Code",
+					"User-Agent": "Bro-Code",
 				},
 			})
 		} catch (urlError) {
@@ -102,7 +102,7 @@ export class QdrantVectorStore implements IVectorStore {
 				url: parsedUrl,
 				apiKey,
 				headers: {
-					"User-Agent": "Zoo-Code",
+					"User-Agent": "Bro-Code",
 				},
 			})
 		}

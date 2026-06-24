@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest"
 import { CloudAPI } from "../CloudAPI.js"
 import { AuthenticationError, CloudAPIError } from "../errors.js"
-import type { AuthService } from "@roo-code/types"
+import type { AuthService } from "@bro-code/types"
 
 // Mock the config module
 vi.mock("../config.js", () => ({
-	getRooCodeApiUrl: () => "https://api.test.com",
+	getBroCodeApiUrl: () => "https://api.test.com",
 }))
 
 // Mock the utils module

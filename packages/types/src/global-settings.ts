@@ -177,7 +177,7 @@ export const globalSettingsSchema = z.object({
 
 	maxOpenTabsContext: z.number().optional(),
 	maxWorkspaceFiles: z.number().optional(),
-	showRooIgnoredFiles: z.boolean().optional(),
+	showBroIgnoredFiles: z.boolean().optional(),
 	enableSubfolderRules: z.boolean().optional(),
 	maxImageFileSize: z.number().optional(),
 	maxTotalImageSize: z.number().optional(),
@@ -195,9 +195,9 @@ export const globalSettingsSchema = z.object({
 	execaShellPath: z.string().optional(),
 
 	diagnosticsEnabled: z.boolean().optional(),
-	autoCloseZooOpenedFiles: z.boolean().optional(),
-	autoCloseZooOpenedFilesAfterUserEdited: z.boolean().optional(),
-	autoCloseZooOpenedNewFiles: z.boolean().optional(),
+	autoCloseBroOpenedFiles: z.boolean().optional(),
+	autoCloseBroOpenedFilesAfterUserEdited: z.boolean().optional(),
+	autoCloseBroOpenedNewFiles: z.boolean().optional(),
 
 	rateLimitSeconds: z.number().optional(),
 	experiments: experimentsSchema.optional(),
@@ -222,7 +222,7 @@ export const globalSettingsSchema = z.object({
 	historyPreviewCollapsed: z.boolean().optional(),
 	reasoningBlockCollapsed: z.boolean().optional(),
 	/**
-	 * Font size (in pixels) for the Zoo Code chat/webview UI.
+	 * Font size (in pixels) for the Bro Code chat/webview UI.
 	 * When unset (or `null`), the webview inherits VS Code's `--vscode-font-size`.
 	 */
 	chatFontSize: z.number().int().min(8).max(32).nullish(),
@@ -243,7 +243,7 @@ export const globalSettingsSchema = z.object({
 
 	/**
 	 * Path to worktree to auto-open after switching workspaces.
-	 * Used by the worktree feature to open the Roo Code sidebar in a new window.
+	 * Used by the worktree feature to open the Bro Code sidebar in a new window.
 	 */
 	worktreeAutoOpenPath: z.string().optional(),
 	/**
@@ -264,12 +264,12 @@ export type GlobalSettings = z.infer<typeof globalSettingsSchema>
 export const GLOBAL_SETTINGS_KEYS = globalSettingsSchema.keyof().options
 
 /**
- * RooCodeSettings
+ * BroCodeSettings
  */
 
-export const rooCodeSettingsSchema = providerSettingsSchema.merge(globalSettingsSchema)
+export const broCodeSettingsSchema = providerSettingsSchema.merge(globalSettingsSchema)
 
-export type RooCodeSettings = GlobalSettings & ProviderSettings
+export type BroCodeSettings = GlobalSettings & ProviderSettings
 
 /**
  * SecretState
@@ -329,10 +329,10 @@ export const isSecretStateKey = (key: string): key is Keys<SecretState> =>
  * GlobalState
  */
 
-export type GlobalState = Omit<RooCodeSettings, Keys<SecretState>>
+export type GlobalState = Omit<BroCodeSettings, Keys<SecretState>>
 
 export const GLOBAL_STATE_KEYS = [...GLOBAL_SETTINGS_KEYS, ...PROVIDER_SETTINGS_KEYS].filter(
-	(key: Keys<RooCodeSettings>) => !isSecretStateKey(key),
+	(key: Keys<BroCodeSettings>) => !isSecretStateKey(key),
 ) as Keys<GlobalState>[]
 
 export const isGlobalStateKey = (key: string): key is Keys<GlobalState> =>

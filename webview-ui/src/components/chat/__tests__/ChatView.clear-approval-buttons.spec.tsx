@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/__tests__/ChatView.clear-approval-buttons.spec.tsx
+// pnpm --filter @bro-code/vscode-webview test src/components/chat/__tests__/ChatView.clear-approval-buttons.spec.tsx
 
 import React from "react"
 import { render, waitFor, act } from "@/utils/test-utils"
@@ -64,12 +64,12 @@ vi.mock("../../common/VersionIndicator", () => ({
 	default: vi.fn(() => null),
 }))
 
-vi.mock("@src/components/welcome/RooTips", () => ({
-	default: () => <div data-testid="roo-tips">Tips content</div>,
+vi.mock("@src/components/welcome/BroTips", () => ({
+	default: () => <div data-testid="bro-tips">Tips content</div>,
 }))
 
-vi.mock("@src/components/welcome/RooHero", () => ({
-	default: () => <div data-testid="roo-hero">Hero content</div>,
+vi.mock("@src/components/welcome/BroHero", () => ({
+	default: () => <div data-testid="bro-hero">Hero content</div>,
 }))
 
 vi.mock("../common/TelemetryBanner", () => ({

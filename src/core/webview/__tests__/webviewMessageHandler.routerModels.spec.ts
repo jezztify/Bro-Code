@@ -82,14 +82,14 @@ describe("webviewMessageHandler - requestRouterModels provider filter", () => {
 		})
 	})
 
-	it("returns explicit removal error for requestRooModels", async () => {
-		await webviewMessageHandler(mockProvider as any, { type: "requestRooModels" } as any)
+	it("returns explicit removal error for requestBroModels", async () => {
+		await webviewMessageHandler(mockProvider as any, { type: "requestBroModels" } as any)
 
 		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "singleRouterModelFetchResponse",
 			success: false,
-			error: "Roo Code Router has been removed. Please select and configure a different provider.",
-			values: { provider: "roo" },
+			error: "Bro Code Router has been removed. Please select and configure a different provider.",
+			values: { provider: "bro" },
 		})
 	})
 
