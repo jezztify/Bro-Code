@@ -227,7 +227,10 @@ describe("webviewMessageHandler - requestLmStudioModels", () => {
 			values: { baseUrl: "http://127.0.0.1:4321" },
 		})
 
-		expect(mockGetLMStudioModels).toHaveBeenCalledWith("http://127.0.0.1:4321", undefined)
+		expect(mockGetLMStudioModels).toHaveBeenCalledWith("http://127.0.0.1:4321", undefined, {
+			lmStudioBypassProxy: undefined,
+			lmStudioProxyUrl: undefined,
+		})
 		expect(mockGetModels).not.toHaveBeenCalled()
 	})
 
@@ -239,7 +242,10 @@ describe("webviewMessageHandler - requestLmStudioModels", () => {
 			values: { baseUrl: "" },
 		})
 
-		expect(mockGetLMStudioModels).toHaveBeenCalledWith("", undefined)
+		expect(mockGetLMStudioModels).toHaveBeenCalledWith("", undefined, {
+			lmStudioBypassProxy: undefined,
+			lmStudioProxyUrl: undefined,
+		})
 		expect(mockGetModels).not.toHaveBeenCalled()
 	})
 
@@ -272,7 +278,10 @@ describe("webviewMessageHandler - requestLmStudioModels", () => {
 			values: { baseUrl: "http://127.0.0.1:4321", useRestApi: true },
 		})
 
-		expect(mockGetLMStudioModels).toHaveBeenCalledWith("http://127.0.0.1:4321", true)
+		expect(mockGetLMStudioModels).toHaveBeenCalledWith("http://127.0.0.1:4321", true, {
+			lmStudioBypassProxy: undefined,
+			lmStudioProxyUrl: undefined,
+		})
 	})
 })
 

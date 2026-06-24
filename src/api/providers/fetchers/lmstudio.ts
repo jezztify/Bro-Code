@@ -1,9 +1,27 @@
-import axios from "axios"
 import { LLM, LLMInfo, LLMInstanceInfo, LMStudioClient } from "@lmstudio/sdk"
 
 import { type ModelInfo, lMStudioDefaultModelInfo } from "@roo-code/types"
 
 import { flushModels, getModels } from "./modelCache"
+import { lmStudioFetch, type LmStudioProxyOptions } from "../utils/lmstudio-proxy"
+
+/**
+ * axios put `.code` directly on connection errors; undici's fetch wraps the underlying socket
+ * error in `.cause` instead, so callers need to check both to detect a refused connection.
+ */
+const isConnRefused = (error: any): boolean => error?.code === "ECONNREFUSED" || error?.cause?.code === "ECONNREFUSED"
+
+/**
+ * Unlike axios, `fetch` doesn't throw on a non-2xx response - it resolves normally with
+ * `response.ok === false`. The native/v1/v0 endpoint fallback chains below rely on a throw to
+ * move on to the next endpoint, so this restores that behavior.
+ */
+const assertOk = (response: Response): Response => {
+	if (!response.ok) {
+		throw new Error(`HTTP ${response.status} ${response.statusText}`)
+	}
+	return response
+}
 
 const modelsWithLoadedDetails = new Set<string>()
 
@@ -13,6 +31,7 @@ export const forceFullModelDetailsLoad = async (
 	baseUrl: string,
 	modelId: string,
 	useRestApi = false,
+	proxyOptions: LmStudioProxyOptions = {},
 ): Promise<void> => {
 	if (useRestApi) {
 		// REST-only mode never opens the LM Studio SDK's WebSocket connection, so there's no
@@ -24,8 +43,8 @@ export const forceFullModelDetailsLoad = async (
 
 	try {
 		// Test the connection to LM Studio first
-		// Crrors will be caught further down.
-		await axios.get(`${baseUrl}/v1/models`)
+		// Errors will be caught further down.
+		await lmStudioFetch(`${baseUrl}/v1/models`, proxyOptions)
 		const lmsUrl = baseUrl.replace(/^http:\/\//, "ws://").replace(/^https:\/\//, "wss://")
 
 		const client = new LMStudioClient({ baseUrl: lmsUrl })
@@ -36,7 +55,7 @@ export const forceFullModelDetailsLoad = async (
 		// Mark this model as having full details loaded.
 		modelsWithLoadedDetails.add(modelId)
 	} catch (error) {
-		if (error.code === "ECONNREFUSED") {
+		if (isConnRefused(error)) {
 			console.warn(`Error connecting to LMStudio at ${baseUrl}`)
 		} else {
 			console.error(
@@ -159,10 +178,13 @@ export const parseLMStudioV1ModelsResponse = (body: any): Record<string, ModelIn
  * since it carries context-length/capability data, falls back to the older native v0 API,
  * and finally falls back to the OpenAI-compatible endpoint.
  */
-async function getLMStudioModelsViaRestApi(baseUrl: string): Promise<Record<string, ModelInfo>> {
+async function getLMStudioModelsViaRestApi(
+	baseUrl: string,
+	proxyOptions: LmStudioProxyOptions = {},
+): Promise<Record<string, ModelInfo>> {
 	try {
-		const v1Response = await axios.get(`${baseUrl}/api/v1/models`)
-		const v1Models = parseLMStudioV1ModelsResponse(v1Response.data)
+		const v1Response = assertOk(await lmStudioFetch(`${baseUrl}/api/v1/models`, proxyOptions))
+		const v1Models = parseLMStudioV1ModelsResponse(await v1Response.json())
 
 		if (Object.keys(v1Models).length > 0) {
 			return v1Models
@@ -172,8 +194,8 @@ async function getLMStudioModelsViaRestApi(baseUrl: string): Promise<Record<stri
 	}
 
 	try {
-		const nativeResponse = await axios.get(`${baseUrl}/api/v0/models`)
-		const nativeModels = parseLMStudioNativeModelsResponse(nativeResponse.data)
+		const nativeResponse = assertOk(await lmStudioFetch(`${baseUrl}/api/v0/models`, proxyOptions))
+		const nativeModels = parseLMStudioNativeModelsResponse(await nativeResponse.json())
 
 		if (Object.keys(nativeModels).length > 0) {
 			return nativeModels
@@ -183,10 +205,10 @@ async function getLMStudioModelsViaRestApi(baseUrl: string): Promise<Record<stri
 	}
 
 	try {
-		const openAiModelsResponse = await axios.get(`${baseUrl}/v1/models`)
-		return parseOpenAIModelsResponse(openAiModelsResponse)
+		const openAiModelsResponse = assertOk(await lmStudioFetch(`${baseUrl}/v1/models`, proxyOptions))
+		return parseOpenAIModelsResponse(await openAiModelsResponse.json())
 	} catch (error) {
-		if (error.code === "ECONNREFUSED") {
+		if (isConnRefused(error)) {
 			console.warn(`Error connecting to LMStudio at ${baseUrl}`)
 		} else {
 			console.error(
@@ -200,6 +222,7 @@ async function getLMStudioModelsViaRestApi(baseUrl: string): Promise<Record<stri
 export async function getLMStudioModels(
 	baseUrl = "http://localhost:1234",
 	useRestApi = false,
+	proxyOptions: LmStudioProxyOptions = {},
 ): Promise<Record<string, ModelInfo>> {
 	// clear the set of models that have full details loaded
 	modelsWithLoadedDetails.clear()
@@ -210,7 +233,7 @@ export async function getLMStudioModels(
 		if (!URL.canParse(baseUrl)) {
 			return {}
 		}
-		return getLMStudioModelsViaRestApi(baseUrl)
+		return getLMStudioModelsViaRestApi(baseUrl, proxyOptions)
 	}
 
 	const models: Record<string, ModelInfo> = {}
@@ -224,7 +247,7 @@ export async function getLMStudioModels(
 
 		// Fetch the OpenAI-compatible /v1/models response first — this works for both local and remote LM Studio.
 		// We store it to use as a fallback if the WebSocket SDK calls fail below.
-		const openAiModelsResponse = await axios.get(`${baseUrl}/v1/models`)
+		const openAiModelsResponse = await (await lmStudioFetch(`${baseUrl}/v1/models`, proxyOptions)).json()
 
 		const client = new LMStudioClient({ baseUrl: lmsUrl })
 
@@ -294,7 +317,7 @@ export async function getLMStudioModels(
 			Object.assign(models, fallbackModels)
 		}
 	} catch (error) {
-		if (error.code === "ECONNREFUSED") {
+		if (isConnRefused(error)) {
 			console.warn(`Error connecting to LMStudio at ${baseUrl}`)
 		} else {
 			console.error(
@@ -341,6 +364,7 @@ export const parseLMStudioV1EmbeddingModelsResponse = (body: any): string[] => {
 export async function getLMStudioEmbeddingModels(
 	baseUrl = "http://localhost:1234",
 	useRestApi = false,
+	proxyOptions: LmStudioProxyOptions = {},
 ): Promise<string[]> {
 	baseUrl = baseUrl === "" ? "http://localhost:1234" : baseUrl
 
@@ -350,10 +374,10 @@ export async function getLMStudioEmbeddingModels(
 
 	if (useRestApi) {
 		try {
-			const openAiModelsResponse = await axios.get(`${baseUrl}/v1/models`)
-			return Object.keys(parseOpenAIModelsResponse(openAiModelsResponse.data))
+			const openAiModelsResponse = await lmStudioFetch(`${baseUrl}/v1/models`, proxyOptions)
+			return Object.keys(parseOpenAIModelsResponse(await openAiModelsResponse.json()))
 		} catch (error) {
-			if (error.code === "ECONNREFUSED") {
+			if (isConnRefused(error)) {
 				console.warn(`Error connecting to LMStudio at ${baseUrl}`)
 			} else {
 				console.debug("LMStudio /v1/models endpoint unavailable")
@@ -363,8 +387,8 @@ export async function getLMStudioEmbeddingModels(
 	}
 
 	try {
-		const v1Response = await axios.get(`${baseUrl}/api/v1/models`)
-		const v1Models = parseLMStudioV1EmbeddingModelsResponse(v1Response.data)
+		const v1Response = assertOk(await lmStudioFetch(`${baseUrl}/api/v1/models`, proxyOptions))
+		const v1Models = parseLMStudioV1EmbeddingModelsResponse(await v1Response.json())
 
 		if (v1Models.length > 0) {
 			return v1Models
@@ -374,8 +398,8 @@ export async function getLMStudioEmbeddingModels(
 	}
 
 	try {
-		const nativeResponse = await axios.get(`${baseUrl}/api/v0/models`)
-		const nativeModels = parseLMStudioNativeEmbeddingModelsResponse(nativeResponse.data)
+		const nativeResponse = assertOk(await lmStudioFetch(`${baseUrl}/api/v0/models`, proxyOptions))
+		const nativeModels = parseLMStudioNativeEmbeddingModelsResponse(await nativeResponse.json())
 
 		if (nativeModels.length > 0) {
 			return nativeModels
@@ -385,10 +409,10 @@ export async function getLMStudioEmbeddingModels(
 	}
 
 	try {
-		const openAiModelsResponse = await axios.get(`${baseUrl}/v1/models`)
-		return Object.keys(parseOpenAIModelsResponse(openAiModelsResponse.data))
+		const openAiModelsResponse = await lmStudioFetch(`${baseUrl}/v1/models`, proxyOptions)
+		return Object.keys(parseOpenAIModelsResponse(await openAiModelsResponse.json()))
 	} catch (error) {
-		if (error.code === "ECONNREFUSED") {
+		if (isConnRefused(error)) {
 			console.warn(`Error connecting to LMStudio at ${baseUrl}`)
 		} else {
 			console.debug("LMStudio /v1/models endpoint unavailable")

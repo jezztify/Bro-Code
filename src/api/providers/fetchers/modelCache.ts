@@ -93,7 +93,10 @@ async function fetchModelsFromProvider(options: GetModelsOptions): Promise<Model
 			models = await getOllamaModels(options.baseUrl, options.apiKey)
 			break
 		case "lmstudio":
-			models = await getLMStudioModels(options.baseUrl, options.useRestApi)
+			models = await getLMStudioModels(options.baseUrl, options.useRestApi, {
+				lmStudioBypassProxy: options.lmStudioBypassProxy,
+				lmStudioProxyUrl: options.lmStudioProxyUrl,
+			})
 			break
 		case "vercel-ai-gateway":
 			models = await getVercelAiGatewayModels()

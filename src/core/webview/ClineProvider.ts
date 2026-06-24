@@ -461,6 +461,10 @@ export class ClineProvider
 						cline.apiConfiguration.lmStudioBaseUrl ?? "http://localhost:1234",
 						cline.apiConfiguration.lmStudioModelId!,
 						cline.apiConfiguration.lmStudioUseRestApi,
+						{
+							lmStudioBypassProxy: cline.apiConfiguration.lmStudioBypassProxy,
+							lmStudioProxyUrl: cline.apiConfiguration.lmStudioProxyUrl,
+						},
 					)
 				}
 			} catch (error) {
@@ -1593,11 +1597,6 @@ export class ClineProvider
 		providerSettings: ProviderSettings,
 		activate: boolean = true,
 	): Promise<string | undefined> {
-		// TEMP DEBUG: remove after diagnosing condensing API config bug
-		console.error(
-			`[TEMP DEBUG] ClineProvider.upsertProviderProfile -> name="${name}" activate=${activate}\n${new Error().stack}`,
-		)
-
 		try {
 			// TODO: Do we need to be calling `activateProfile`? It's not
 			// clear to me what the source of truth should be; in some cases
@@ -1703,11 +1702,6 @@ export class ClineProvider
 		args: { name: string } | { id: string },
 		options?: { persistModeConfig?: boolean; persistTaskHistory?: boolean },
 	) {
-		// TEMP DEBUG: remove after diagnosing condensing API config bug
-		console.error(
-			`[TEMP DEBUG] ClineProvider.activateProviderProfile -> args=${JSON.stringify(args)}\n${new Error().stack}`,
-		)
-
 		const { name, id, ...providerSettings } = await this.providerSettingsManager.activateProfile(args)
 
 		const persistModeConfig = options?.persistModeConfig ?? true

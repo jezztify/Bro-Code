@@ -1223,12 +1223,17 @@ export const webviewMessageHandler = async (
 						: lmStudioApiConfig.lmStudioUseRestApi
 				let lmStudioModels: ModelRecord
 				if (hasPreviewBaseUrl) {
-					lmStudioModels = await getLMStudioModels(requestedBaseUrl, useRestApi)
+					lmStudioModels = await getLMStudioModels(requestedBaseUrl, useRestApi, {
+						lmStudioBypassProxy: lmStudioApiConfig.lmStudioBypassProxy,
+						lmStudioProxyUrl: lmStudioApiConfig.lmStudioProxyUrl,
+					})
 				} else {
 					const lmStudioOptions = {
 						provider: "lmstudio" as const,
 						baseUrl: lmStudioApiConfig.lmStudioBaseUrl,
 						useRestApi,
+						lmStudioBypassProxy: lmStudioApiConfig.lmStudioBypassProxy,
+						lmStudioProxyUrl: lmStudioApiConfig.lmStudioProxyUrl,
 					}
 					// Flush cache and refresh to ensure fresh models.
 					await flushModels(lmStudioOptions, true)
