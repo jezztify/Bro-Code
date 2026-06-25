@@ -22,15 +22,14 @@
 > for LM Studio API Provider.
 > This project is only for educational purposes so I can learn how to Vibe Code properly. Use at your own risk.
 
-## What's New in v1.0.4
+## What's New in v1.0.5
 
-- Bro Code editor tabs now survive `Developer: Reload Window` — they're restored automatically with the task they had open instead of disappearing or reopening blank
-- New Task now opens a fresh editor tab when clicked from within an existing Bro Code tab, instead of resetting that tab's conversation in place — the original tab and its task stay open alongside the new one
-- Fix opening Bro Code in a new tab spawning a duplicate panel — now reveals the existing tab instead
-- Fix new editor group detection when other webview panels (not just text editors) are visible
-- Fix internal skill-check tag leaking into user-facing output on some providers (e.g. Copilot via the VS Code LM API)
-- Harden the skill applicability check so it always runs fully inside `<thinking>` tags, never leaking section tags into responses
-- Refreshed icon and logo assets
+- Fix LM Studio models that don't reliably emit real tool calls writing raw tool-call JSON (e.g. `{ "result": "..." }`, `{ "question": "...", "follow_up": [...] }`) as plain text instead — Bro Code now detects and executes it as the intended tool call rather than displaying the JSON verbatim
+- When a native tool call has missing or wrong parameters (e.g. an `attempt_completion` call with no `result`, or a `read_file` call using `file_path` instead of `path`), the error sent back to the model now names the specific missing and/or unrecognized parameter(s) instead of a generic "missing nativeArgs" message, so weaker models can self-correct instead of retrying with the same invalid arguments
+- Fix LM Studio models writing a real tool name as a literal XML tag (e.g. `<attempt_completion/>`) instead of issuing a real tool call - Bro Code now detects this and routes it through the normal tool pipeline (including the parameter-error feedback above) instead of letting it leak as inert chat text that looks like the task silently finished
+- The LM Studio bare-JSON/XML-tag tool-call fallback now only matches against the tools actually offered for the current request/mode, instead of every tool that exists anywhere in Bro Code - this avoids mistaking a model's illustrative example of tool syntax (e.g. while explaining how a tool works in a restricted or explain-only mode) for a real call attempt
+- Fix a regression where a recognized tool name detected via the bare-JSON/XML-tag fallback (e.g. `<attempt_completion/>` with no `result`) silently produced no assistant content at all when its arguments couldn't be validated, which was indistinguishable from the model not responding and triggered the more severe "model did not provide any assistant messages" retry path instead of the specific missing-parameter error
+- Rework the LM Studio tool-call fallback into an ordered multi-pass detector, adding support for two more syntaxes weaker models fall back to: a self-closing tag with parameters as XML attributes (e.g. `<attempt_completion result="..."/>`) and the legacy Cline/Roo Code multi-child-tag format (e.g. `<read_file><path>...</path><mode>slice</mode></read_file>`)
 
 <details>
   <summary>🌐 Available languages</summary>
@@ -54,7 +53,7 @@
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
 - ...
-  </details>
+    </details>
 
 ---
 
@@ -67,6 +66,25 @@
 - Answer Questions about your codebase
 - Automate repetitive tasks
 - Utilize MCP Servers
+
+## LM Studio Provider Setup
+
+Bro Code's primary focus is the LM Studio provider, for running local models instead of a cloud API. Setup:
+
+1. **Install and run [LM Studio](https://lmstudio.ai/)**, download a model, and start its local server (LM Studio → Developer tab → Start Server). By default it serves an OpenAI-compatible API at `http://localhost:1234`.
+2. **In Bro Code**, open Settings → Providers, and set **API Provider** to `LM Studio`.
+3. **Base URL**: leave as the default `http://localhost:1234` unless LM Studio is running on a different host/port.
+4. **Model ID**: select your loaded model from the dropdown (refresh if it doesn't appear), or type the model ID manually.
+5. Click **Test Connection** to confirm Bro Code can reach the LM Studio server before starting a task.
+
+Optional settings:
+
+- **Use REST API** — toggle if you want model listing/requests routed through LM Studio's REST API instead of the default endpoint.
+- **Bypass system proxy** / **Proxy URL** — enable if VS Code's configured `http.proxy` is rejecting local/LAN requests to LM Studio.
+- **Enable Speculative Decoding** + **Draft Model ID** — speeds up generation using a smaller draft model; the draft model must be from the same model family as your main model.
+- **Detect tool calls written as plain JSON text** (Advanced settings) — enabled by default. Many local models don't reliably emit real native tool calls and instead write the tool's arguments as plain text in JSON or XML-ish forms; Bro Code detects this and runs it as the intended tool call anyway. Disable this only if it misfires on a model that legitimately needs to answer with bare JSON/XML-shaped text.
+
+> **Model choice matters.** Smaller or non-tool-tuned local models may not reliably use the native tool-calling protocol at all, even with the detection fallback above — if a model in LM Studio frequently fails to complete tasks or never calls tools correctly, try a model with stronger native function-calling support.
 
 ## Modes
 
