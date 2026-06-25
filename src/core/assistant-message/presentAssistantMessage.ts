@@ -290,6 +290,12 @@ export async function presentAssistantMessage(cline: Task) {
 				// Strip any streamed <thinking> tags from text output.
 				content = content.replace(/<thinking>\s?/g, "")
 				content = content.replace(/\s?<\/thinking>/g, "")
+
+				// Some models (e.g. providers that wrap/proxy the underlying
+				// model, such as Copilot via the VS Code LM API) leak the
+				// internal-only skill check tag instead of omitting it as
+				// instructed. Strip it defensively from user-facing output.
+				content = content.replace(/\s?<skill_check_completed>(?:true|false)?<\/skill_check_completed>\s?/g, "")
 			}
 
 			await cline.say("text", content, undefined, block.partial)

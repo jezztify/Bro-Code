@@ -28,20 +28,43 @@ export function getVisibleProviderOrLog(outputChannel: vscode.OutputChannel): Cl
 	return visibleProvider
 }
 
-// Store panel references in both modes
+// Store panel references in both modes. Unlike the sidebar (one view at a
+// time), multiple editor-tab panels can be open simultaneously - each backed
+// by its own ClineProvider instance - so tabs are tracked as a provider/panel
+// map rather than a single reference.
 let sidebarPanel: vscode.WebviewView | undefined = undefined
-let tabPanel: vscode.WebviewPanel | undefined = undefined
+const tabProviders = new Map<ClineProvider, vscode.WebviewPanel>()
+
+/**
+ * The tab panel the user is currently interacting with, falling back to the
+ * most recently opened tab if no tab reports itself as the visible instance.
+ */
+function getActiveTabPanel(): vscode.WebviewPanel | undefined {
+	const visibleProvider = ClineProvider.getVisibleInstance()
+	const activePanel = visibleProvider && tabProviders.get(visibleProvider)
+
+	if (activePanel) {
+		return activePanel
+	}
+
+	const panels = Array.from(tabProviders.values())
+	return panels[panels.length - 1]
+}
 
 /**
  * Get the currently active panel
  * @returns WebviewPanel或WebviewView
  */
 export function getPanel(): vscode.WebviewPanel | vscode.WebviewView | undefined {
-	return tabPanel || sidebarPanel
+	return getActiveTabPanel() || sidebarPanel
 }
 
 /**
- * Set panel references
+ * Set panel references. Tab panels are paired with their owning provider in
+ * `tabProviders` by `openClineInNewTab`, so the "tab" case here only handles
+ * clearing all tracked tabs (used by tests to reset module state between
+ * runs); `resolveWebviewView`'s own setPanel("tab", ...) call for a panel
+ * already tracked there is otherwise a no-op.
  */
 export function setPanel(
 	newPanel: vscode.WebviewPanel | vscode.WebviewView | undefined,
@@ -49,10 +72,8 @@ export function setPanel(
 ): void {
 	if (type === "sidebar") {
 		sidebarPanel = newPanel as vscode.WebviewView
-		tabPanel = undefined
-	} else {
-		tabPanel = newPanel as vscode.WebviewPanel
-		sidebarPanel = undefined
+	} else if (!newPanel) {
+		tabProviders.clear()
 	}
 }
 
@@ -63,13 +84,14 @@ export type RegisterCommandOptions = {
 }
 
 export const registerCommands = (options: RegisterCommandOptions) => {
-	const { context } = options
+	const { context, outputChannel } = options
 
 	for (const [id, callback] of Object.entries(getCommandsMap(options))) {
 		const command = getCommand(id as CommandId)
 		context.subscriptions.push(vscode.commands.registerCommand(command, callback))
 	}
 
+	context.subscriptions.push(registerTabPanelSerializer({ context, outputChannel }))
 	context.subscriptions.push(registerRipgrepDiagnosticCommand())
 }
 
@@ -99,6 +121,14 @@ const getCommandsMap = ({
 		}
 
 		TelemetryService.instance.captureTitleButtonClicked("plus")
+
+		// In the sidebar, "New Task" resets the current task in place. In an
+		// editor tab, that would discard the tab's conversation, so open a
+		// fresh tab alongside it instead.
+		if (visibleProvider.isEditorTab) {
+			await openClineInNewTab({ context, outputChannel }, { forceNew: true })
+			return
+		}
 
 		await visibleProvider.removeClineFromStack()
 		await visibleProvider.refreshWorkspace()
@@ -175,7 +205,7 @@ const getCommandsMap = ({
 	},
 	focusInput: async () => {
 		try {
-			await focusPanel(tabPanel, sidebarPanel)
+			await focusPanel(getActiveTabPanel(), sidebarPanel)
 
 			// Send focus input message only for sidebar panels
 			if (sidebarPanel && getPanel() === sidebarPanel) {
@@ -187,7 +217,7 @@ const getCommandsMap = ({
 	},
 	focusPanel: async () => {
 		try {
-			await focusPanel(tabPanel, sidebarPanel)
+			await focusPanel(getActiveTabPanel(), sidebarPanel)
 		} catch (error) {
 			outputChannel.appendLine(`Error focusing panel: ${error}`)
 		}
@@ -221,11 +251,15 @@ const getCommandsMap = ({
 	},
 })
 
-export const openClineInNewTab = async ({ context, outputChannel }: Omit<RegisterCommandOptions, "provider">) => {
-	// (This example uses webviewProvider activation event which is necessary to
-	// deserialize cached webview, but since we use retainContextWhenHidden, we
-	// don't need to use that event).
-	// https://github.com/microsoft/vscode-extension-samples/blob/main/webview-sample/src/extension.ts
+/**
+ * Wire up a `ClineProvider` against an already-created tab `WebviewPanel` -
+ * shared by `openClineInNewTab` (panel created fresh) and the
+ * `WebviewPanelSerializer` (panel restored by VS Code after a window reload).
+ */
+async function attachTabPanel(
+	panel: vscode.WebviewPanel,
+	{ context, outputChannel }: Omit<RegisterCommandOptions, "provider">,
+) {
 	const contextProxy = await ContextProxy.getInstance(context)
 	const codeIndexManager = CodeIndexManager.getInstance(context)
 
@@ -239,11 +273,72 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 	}
 
 	const tabProvider = new ClineProvider(context, outputChannel, "editor", contextProxy, mdmService)
+
+	// Save as tab type panel.
+	tabProviders.set(tabProvider, panel)
+
+	// TODO: Use better svg icon with light and dark variants (see
+	// https://stackoverflow.com/questions/58365687/vscode-extension-iconpath).
+	panel.iconPath = {
+		light: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_light.png"),
+		dark: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_dark.png"),
+	}
+
+	await tabProvider.resolveWebviewView(panel)
+
+	// Add listener for visibility changes to notify webview
+	panel.onDidChangeViewState(
+		(e) => {
+			const viewPanel = e.webviewPanel
+			if (viewPanel.visible) {
+				viewPanel.webview.postMessage({ type: "action", action: "didBecomeVisible" }) // Use the same message type as in SettingsView.tsx
+			}
+		},
+		null, // First null is for `thisArgs`
+		context.subscriptions, // Register listener for disposal
+	)
+
+	// Handle panel closing events.
+	panel.onDidDispose(
+		() => {
+			tabProviders.delete(tabProvider)
+		},
+		null,
+		context.subscriptions, // Also register dispose listener
+	)
+
+	// Lock the editor group so clicking on files doesn't open them over the panel.
+	await delay(100)
+	await vscode.commands.executeCommand("workbench.action.lockEditorGroup")
+
+	return tabProvider
+}
+
+export const openClineInNewTab = async (
+	options: Omit<RegisterCommandOptions, "provider">,
+	{ forceNew = false }: { forceNew?: boolean } = {},
+) => {
+	const { context } = options
+
+	// If a Bro Code tab is already open, just reveal it instead of spawning a
+	// duplicate panel (which also left a stray empty editor group behind).
+	// `forceNew` skips this so "New Task" from within an editor tab can open
+	// an additional tab alongside the one already open.
+	if (!forceNew) {
+		const lastEntry = Array.from(tabProviders.entries()).pop()
+
+		if (lastEntry) {
+			const [existingProvider, existingPanel] = lastEntry
+			existingPanel.reveal(existingPanel.viewColumn)
+			return existingProvider
+		}
+	}
+
 	const lastCol = Math.max(...vscode.window.visibleTextEditors.map((editor) => editor.viewColumn || 0))
 
-	// Check if there are any visible text editors, otherwise open a new group
-	// to the right.
-	const hasVisibleEditors = vscode.window.visibleTextEditors.length > 0
+	// Check if there are any visible editor groups (text editors or other
+	// webview panel tabs), otherwise open a new group to the right.
+	const hasVisibleEditors = vscode.window.tabGroups.all.length > 0
 
 	if (!hasVisibleEditors) {
 		await vscode.commands.executeCommand("workbench.action.newGroupRight")
@@ -257,42 +352,74 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 		localResourceRoots: [context.extensionUri],
 	})
 
-	// Save as tab type panel.
-	setPanel(newPanel, "tab")
+	return attachTabPanel(newPanel, options)
+}
 
-	// TODO: Use better svg icon with light and dark variants (see
-	// https://stackoverflow.com/questions/58365687/vscode-extension-iconpath).
-	newPanel.iconPath = {
-		light: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_light.png"),
-		dark: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_dark.png"),
-	}
+/**
+ * Restore Bro Code editor tabs across a window reload. VS Code persists tab
+ * placement for any panel whose view type was registered with a serializer
+ * at the time the window closed, then replays it here with a fresh
+ * `WebviewPanel` shell that still needs its webview options and `ClineProvider`
+ * wired up - same as a newly opened tab, just without the reveal/placement step.
+ */
+export function registerTabPanelSerializer(options: Omit<RegisterCommandOptions, "provider">) {
+	const { context, outputChannel } = options
 
-	await tabProvider.resolveWebviewView(newPanel)
+	return vscode.window.registerWebviewPanelSerializer(ClineProvider.tabPanelId, {
+		async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: { taskId?: string } | undefined) {
+			// `attachTabPanel` throwing here (e.g. a dependency not ready yet
+			// this early in activation) would otherwise leave VS Code's restored
+			// panel shell permanently blank with no visible error anywhere, since
+			// nothing surfaces a rejected deserializeWebviewPanel promise to the
+			// user. Catch broadly and log so a failure is at least diagnosable.
+			try {
+				outputChannel.appendLine(
+					`[registerTabPanelSerializer] Restoring tab panel (state: ${JSON.stringify(state)})`,
+				)
 
-	// Add listener for visibility changes to notify webview
-	newPanel.onDidChangeViewState(
-		(e) => {
-			const panel = e.webviewPanel
-			if (panel.visible) {
-				panel.webview.postMessage({ type: "action", action: "didBecomeVisible" }) // Use the same message type as in SettingsView.tsx
+				panel.webview.options = {
+					enableScripts: true,
+					localResourceRoots: [context.extensionUri],
+				}
+
+				const tabProvider = await attachTabPanel(panel, options)
+				outputChannel.appendLine(`[registerTabPanelSerializer] Tab panel restored`)
+
+				// Restored panels can come back reporting `visible: false` even
+				// though they're the front-most tab in their group - a known VS
+				// Code quirk where the webview never gets nudged to actually
+				// mount its content, leaving it permanently blank/gray. An
+				// explicit reveal forces VS Code to (re-)activate it.
+				panel.reveal(panel.viewColumn)
+
+				// `state` is whatever the webview last passed to `vscode.setState()`
+				// (see ExtensionStateContext's "state" message handler), so the tab
+				// reopens with the same task instead of a blank chat.
+				//
+				// Deliberately not awaited: `showTaskWithId`'s trailing
+				// `postMessageToWebview` call can hang indefinitely against a
+				// freshly restored panel whose webview content hasn't finished
+				// mounting yet (its postMessage promise never settles until the
+				// page is ready). The existing `resumeTask`/`webviewDidLaunch`
+				// call sites already treat `showTaskWithId` as fire-and-forget
+				// for the same reason - awaiting it here would otherwise block
+				// the whole panel-restore flow forever.
+				if (state?.taskId) {
+					const taskId = state.taskId
+					tabProvider
+						.showTaskWithId(taskId)
+						.then(() => outputChannel.appendLine(`[registerTabPanelSerializer] Restored task ${taskId}`))
+						.catch((error) =>
+							outputChannel.appendLine(
+								`[registerTabPanelSerializer] Failed to restore task ${taskId}: ${error}`,
+							),
+						)
+				}
+			} catch (error) {
+				outputChannel.appendLine(
+					`[registerTabPanelSerializer] Failed to restore tab panel: ${error instanceof Error ? (error.stack ?? error.message) : error}`,
+				)
 			}
 		},
-		null, // First null is for `thisArgs`
-		context.subscriptions, // Register listener for disposal
-	)
-
-	// Handle panel closing events.
-	newPanel.onDidDispose(
-		() => {
-			setPanel(undefined, "tab")
-		},
-		null,
-		context.subscriptions, // Also register dispose listener
-	)
-
-	// Lock the editor group so clicking on files doesn't open them over the panel.
-	await delay(100)
-	await vscode.commands.executeCommand("workbench.action.lockEditorGroup")
-
-	return tabProvider
+	})
 }

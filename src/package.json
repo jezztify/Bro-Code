@@ -3,7 +3,7 @@
 	"displayName": "%extension.displayName%",
 	"description": "%extension.description%",
 	"publisher": "BroCodeOrganization",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"icon": "assets/icons/icon.png",
 	"galleryBanner": {
 		"color": "#617A91",
@@ -47,7 +47,8 @@
 	],
 	"activationEvents": [
 		"onLanguage",
-		"onStartupFinished"
+		"onStartupFinished",
+		"onWebviewPanel:bro-code.TabPanelProvider"
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
