@@ -66,7 +66,7 @@ for this exact support, so if you are having problems or if you have question, j
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
 - ...
-  </details>
+    </details>
 
 ---
 
@@ -79,6 +79,25 @@ for this exact support, so if you are having problems or if you have question, j
 - Answer Questions about your codebase
 - Automate repetitive tasks
 - Utilize MCP Servers
+
+## LM Studio Provider Setup
+
+Bro Code's primary focus is the LM Studio provider, for running local models instead of a cloud API. Setup:
+
+1. **Install and run [LM Studio](https://lmstudio.ai/)**, download a model, and start its local server (LM Studio → Developer tab → Start Server). By default it serves an OpenAI-compatible API at `http://localhost:1234`.
+2. **In Bro Code**, open Settings → Providers, and set **API Provider** to `LM Studio`.
+3. **Base URL**: leave as the default `http://localhost:1234` unless LM Studio is running on a different host/port.
+4. **Model ID**: select your loaded model from the dropdown (refresh if it doesn't appear), or type the model ID manually.
+5. Click **Test Connection** to confirm Bro Code can reach the LM Studio server before starting a task.
+
+Optional settings:
+
+- **Use REST API** — toggle if you want model listing/requests routed through LM Studio's REST API instead of the default endpoint.
+- **Bypass system proxy** / **Proxy URL** — enable if VS Code's configured `http.proxy` is rejecting local/LAN requests to LM Studio.
+- **Enable Speculative Decoding** + **Draft Model ID** — speeds up generation using a smaller draft model; the draft model must be from the same model family as your main model.
+- **Detect tool calls written as plain JSON text** (Advanced settings) — enabled by default. Many local models don't reliably emit real native tool calls and instead write the tool's arguments as plain text in JSON or XML-ish forms; Bro Code detects this and runs it as the intended tool call anyway. Disable this only if it misfires on a model that legitimately needs to answer with bare JSON/XML-shaped text.
+
+> **Model choice matters.** Smaller or non-tool-tuned local models may not reliably use the native tool-calling protocol at all, even with the detection fallback above — if a model in LM Studio frequently fails to complete tasks or never calls tools correctly, try a model with stronger native function-calling support.
 
 ## Modes
 

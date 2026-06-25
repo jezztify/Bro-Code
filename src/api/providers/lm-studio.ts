@@ -126,14 +126,94 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 					}) as const,
 			)
 
+			// Some models loaded in LM Studio don't reliably emit real `tool_calls`, even when
+			// `tools` is passed - they write the bare JSON arguments object as plain text instead
+			// (sometimes copying a tool description's example verbatim). While no real tool call
+			// has been seen yet, buffer text that could be such a JSON object so it can be routed
+			// through the normal tool pipeline instead of displayed as raw JSON.
+			// Defaults to enabled; users can turn it off in Providers > Advanced settings if it
+			// ever misfires on a model that legitimately returns bare JSON as its answer.
+			const jsonToolCallFallbackEnabled = this.options.lmStudioJsonToolCallFallbackEnabled !== false
+			let jsonCandidateBuffer: string | null = null
+			let sawRealToolCall = false
+			let fallbackToolCallId = 0
+
+			// Scope fallback detection to the tools actually offered for this request (and, when
+			// the current mode further restricts which tools can be invoked, to that subset).
+			// Matching against the full tool registry would risk converting a model's illustrative
+			// example of unrelated tool syntax (e.g. while explaining how a tool works in a
+			// restricted/explain-only mode) into a real tool call attempt.
+			const offeredTools = (metadata?.tools ?? []).filter(
+				(tool) =>
+					tool.type === "function" &&
+					(!metadata?.allowedFunctionNames || metadata.allowedFunctionNames.includes(tool.function.name)),
+			)
+
+			const handleTextChunk = function* (processedChunk: { type: "reasoning" | "text"; text: string }) {
+				if (!jsonToolCallFallbackEnabled || processedChunk.type !== "text" || sawRealToolCall) {
+					yield processedChunk
+					return
+				}
+
+				const buffer = (jsonCandidateBuffer ?? "") + processedChunk.text
+				const trimmedStart = buffer.replace(/^\s+/, "")
+
+				if (trimmedStart.length === 0) {
+					jsonCandidateBuffer = buffer
+					return
+				}
+
+				if (trimmedStart[0] !== "{" && trimmedStart[0] !== "<") {
+					jsonCandidateBuffer = null
+					yield { type: "text", text: buffer } as const
+					return
+				}
+
+				const status = NativeToolCallParser.getBufferStatus(buffer)
+
+				if (status === "incomplete") {
+					jsonCandidateBuffer = buffer
+					return
+				}
+
+				jsonCandidateBuffer = null
+
+				if (status === "balanced") {
+					const detected = NativeToolCallParser.detectToolCallAttempt(buffer, offeredTools)
+					if (detected) {
+						yield {
+							type: "tool_call",
+							id: `lmstudio-fallback-${++fallbackToolCallId}`,
+							name: detected.name,
+							arguments: detected.arguments,
+						} as const
+						return
+					}
+				}
+
+				// Invalid, or balanced but not a recognized tool shape - show as plain text.
+				yield { type: "text", text: buffer } as const
+			}
+
 			for await (const chunk of results) {
 				const delta = chunk.choices[0]?.delta
 				const finishReason = chunk.choices[0]?.finish_reason
 
+				if (delta?.tool_calls) {
+					sawRealToolCall = true
+					if (jsonCandidateBuffer) {
+						assistantText += jsonCandidateBuffer
+						yield { type: "text", text: jsonCandidateBuffer }
+						jsonCandidateBuffer = null
+					}
+				}
+
 				if (delta?.content) {
 					assistantText += delta.content
 					for (const processedChunk of matcher.update(delta.content)) {
-						yield processedChunk
+						for (const outputChunk of handleTextChunk(processedChunk)) {
+							yield outputChunk
+						}
 					}
 				}
 
@@ -160,7 +240,15 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 			}
 
 			for (const processedChunk of matcher.final()) {
-				yield processedChunk
+				for (const outputChunk of handleTextChunk(processedChunk)) {
+					yield outputChunk
+				}
+			}
+
+			// Stream ended while still buffering a candidate that never closed - flush as plain text.
+			if (jsonCandidateBuffer) {
+				yield { type: "text", text: jsonCandidateBuffer }
+				jsonCandidateBuffer = null
 			}
 
 			let outputTokens = 0

@@ -2,6 +2,7 @@ import React, { memo, useCallback, useEffect, useMemo, useState } from "react"
 import { convertHeadersToObject } from "./utils/headers"
 import { useDebounce } from "react-use"
 import { VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { Checkbox } from "vscrui"
 import { ExternalLinkIcon } from "@radix-ui/react-icons"
 
 import {
@@ -777,6 +778,20 @@ const ApiOptions = ({
 											{t("settings:providers.poeBaseUrl")}
 										</label>
 									</VSCodeTextField>
+								)}
+								{selectedProvider === "lmstudio" && (
+									<div>
+										<Checkbox
+											checked={apiConfiguration?.lmStudioJsonToolCallFallbackEnabled !== false}
+											onChange={(checked) => {
+												setApiConfigurationField("lmStudioJsonToolCallFallbackEnabled", checked)
+											}}>
+											{t("settings:providers.lmStudio.jsonToolCallFallback")}
+										</Checkbox>
+										<div className="text-sm text-vscode-descriptionForeground mt-1">
+											{t("settings:providers.lmStudio.jsonToolCallFallbackDesc")}
+										</div>
+									</div>
 								)}
 								{selectedProvider === "openrouter" &&
 									openRouterModelProviders &&

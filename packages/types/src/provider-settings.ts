@@ -290,6 +290,7 @@ const lmStudioSchema = baseProviderSettingsSchema.extend({
 	lmStudioUseRestApi: z.boolean().optional(),
 	lmStudioBypassProxy: z.boolean().optional(),
 	lmStudioProxyUrl: z.string().optional(),
+	lmStudioJsonToolCallFallbackEnabled: z.boolean().optional(),
 })
 
 const geminiSchema = apiModelIdProviderModelSchema.extend({

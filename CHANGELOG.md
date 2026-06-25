@@ -34,7 +34,7 @@
 
 ### Minor Changes
 
-- Add Rules Management UI — new Rules tab in Settings to create, delete, and open global and workspace Zoo rules (#660 by @ivanarifin, PR #657 by @ivanarifin)
+- Add Rules Management UI — new Rules tab in Settings to create, delete, and open global and workspace Bro rules (#660 by @ivanarifin, PR #657 by @ivanarifin)
 - Add completion change review actions — "See New Changes" and "Restore Changes" buttons after task completion let you inspect and undo changes from the latest prompt (#661 by @ivanarifin, PR #633 by @ivanarifin)
 - Add kimi-k2p7-code model on Fireworks provider (PR #599 by @p12tic)
 - feat: add abort signal core plumbing — threads AbortSignal through the API metadata layer for future provider-level cancellation (#434 by @easonLiangWorldedtech, PR #674 by @easonLiangWorldedtech)
@@ -52,6 +52,17 @@
 - chore(deps): update @types/node, @vscode/test-cli, execa, axios (PR #669, #670, #671, #673 by @renovate)
 - test(mcp): fix McpHub Windows command wrapping test ordering (PR #632 by @HappyLiang12)
 - fix(McpHub): resolve flaky McpHub.spec.ts tests after Vitest 4 upgrade (PR #666 by @edelauna)
+
+## [1.0.5]
+
+### Minor Changes
+
+- Fix LM Studio models that don't reliably emit real tool calls writing raw tool-call JSON (e.g. `{ "result": "..." }`, `{ "question": "...", "follow_up": [...] }`) as plain text instead — Bro Code now detects and executes it as the intended tool call rather than displaying the JSON verbatim
+- When a native tool call has missing or wrong parameters (e.g. an `attempt_completion` call with no `result`, or a `read_file` call using `file_path` instead of `path`), the error sent back to the model now names the specific missing and/or unrecognized parameter(s) instead of a generic "missing nativeArgs" message, so weaker models can self-correct instead of retrying with the same invalid arguments
+- Fix LM Studio models writing a real tool name as a literal XML tag (e.g. `<attempt_completion/>`) instead of issuing a real tool call — Bro Code now detects this and routes it through the normal tool pipeline (including the parameter-error feedback above) instead of letting it leak as inert chat text that looks like the task silently finished
+- The LM Studio bare-JSON/XML-tag tool-call fallback now only matches against the tools actually offered for the current request/mode, instead of every tool that exists anywhere in Bro Code — this avoids mistaking a model's illustrative example of tool syntax (e.g. while explaining how a tool works in a restricted or explain-only mode) for a real call attempt
+- Fix a regression where a recognized tool name detected via the bare-JSON/XML-tag fallback (e.g. `<attempt_completion/>` with no `result`) silently produced no assistant content at all when its arguments couldn't be validated, which was indistinguishable from the model not responding and triggered the more severe "model did not provide any assistant messages" retry path instead of the specific missing-parameter error
+- Rework the LM Studio tool-call fallback into an ordered multi-pass detector, adding support for two more syntaxes weaker models fall back to: a self-closing tag with parameters as XML attributes (e.g. `<attempt_completion result="..."/>`) and the legacy Cline/Roo Code multi-child-tag format (e.g. `<read_file><path>...</path><mode>slice</mode></read_file>`)
 
 ## [3.62.0]
 

@@ -40,6 +40,7 @@ import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
 
 import { formatResponse } from "../prompts/responses"
 import { sanitizeToolUseId } from "../../utils/tool-id"
+import { NativeToolCallParser } from "./NativeToolCallParser"
 
 /**
  * Processes and presents assistant message content to the user interface.
@@ -425,9 +426,21 @@ export async function presentAssistantMessage(cline: Task) {
 				const customTool = stateExperiments?.customTools ? customToolRegistry.get(block.name) : undefined
 				const isKnownTool = isValidToolName(String(block.name), stateExperiments)
 				if (isKnownTool && !block.nativeArgs && !customTool) {
+					const { missing, unrecognized } = NativeToolCallParser.diagnoseParams(block.name, block.params)
 					const errorMessage =
-						`Invalid tool call for '${block.name}': missing nativeArgs. ` +
-						`This usually means the model streamed invalid or incomplete arguments and the call could not be finalized.`
+						missing.length > 0 || unrecognized.length > 0
+							? [
+									`Invalid tool call for '${block.name}':`,
+									missing.length > 0 ? `missing required parameter(s): ${missing.join(", ")}.` : "",
+									unrecognized.length > 0
+										? `unrecognized parameter(s): ${unrecognized.join(", ")} (not valid for this tool).`
+										: "",
+									"Retry the tool call with the correct parameter names and all required parameters included.",
+								]
+									.filter(Boolean)
+									.join(" ")
+							: `Invalid tool call for '${block.name}': missing nativeArgs. ` +
+								`This usually means the model streamed invalid or incomplete arguments and the call could not be finalized.`
 
 					cline.consecutiveMistakeCount++
 					try {

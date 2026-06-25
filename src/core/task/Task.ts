@@ -2982,6 +2982,39 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 								if (!toolUse) {
 									console.error(`Failed to parse tool call for task ${this.taskId}:`, chunk)
+
+									// parseToolCall returns null when a known tool's nativeArgs couldn't be
+									// constructed (e.g. missing/invalid required parameters). We must still
+									// surface a tool_use block so presentAssistantMessage can report the
+									// specific missing-parameter error back to the model - otherwise this
+									// turn ends up with no assistant content at all, which looks identical to
+									// the model failing to respond and triggers the "no assistant messages"
+									// retry path instead of a fixable tool error.
+									const fallbackParams: Partial<Record<ToolParamName, string>> = {}
+									try {
+										const parsedArgs = chunk.arguments ? JSON.parse(chunk.arguments) : {}
+										for (const [key, value] of Object.entries(parsedArgs)) {
+											if (toolParamNames.includes(key as ToolParamName)) {
+												fallbackParams[key as ToolParamName] =
+													typeof value === "string" ? value : JSON.stringify(value)
+											}
+										}
+									} catch {
+										// Leave fallbackParams empty if arguments aren't valid JSON.
+									}
+
+									const fallbackToolUse: ToolUse = {
+										type: "tool_use",
+										name: chunk.name as ToolName,
+										params: fallbackParams,
+										partial: false,
+										nativeArgs: undefined,
+									}
+									fallbackToolUse.id = chunk.id
+
+									this.assistantMessageContent.push(fallbackToolUse)
+									this.userMessageContentReady = false
+									presentAssistantMessage(this)
 									break
 								}
 
