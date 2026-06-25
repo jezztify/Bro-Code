@@ -51,6 +51,12 @@ REQUIRED PRECONDITION
 
 Before producing ANY user-facing response, you MUST perform a skill applicability check.
 
+Perform the ENTIRE check below (Step 1, Step 2, and the internal verification) inside a single
+<thinking></thinking> block. Nothing in this check — including section tags like
+<if_skill_applies>, <if_no_skill_applies>, or <internal_verification> — must ever appear outside
+of <thinking></thinking> tags. Only your actual response to the user (after the check is done)
+belongs outside the <thinking></thinking> block.
+
 Step 1: Skill Evaluation
 - Evaluate the user's request against ALL available skill <description> entries in <available_skills>.
 - Determine whether at least one skill clearly and unambiguously applies.

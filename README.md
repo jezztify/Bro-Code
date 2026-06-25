@@ -14,39 +14,13 @@
 
 > Your AI-Powered Dev Team, Right in Your Editor
 
-## We are Bro Code
-
-> You may have seen the
-> [recent announcement](https://x.com/mattrubens/status/2046636598859559114)
-> from the Bro team 🦘🦘🦘. The TLDR is the team is winding down active Bro
-> Code development as they focus on [Bromote](https://bromote.dev/). That news
-> was difficult for many Bro users, this plugin means a lot to this community.
->
-> We want to thank the entire Bro team for the work they put into this plugin.
-> We won't call out each person by name here, but we can all agree they are
-> exceptional developers and, just as importantly, incredible people. Thank you
-> to the Bro team.
->
-> As Bro coders, we come in all kinds of shapes and sizes. Some of us are using
-> it professionally in our day-to-day work, some are using it to tinker and
-> scheme unimaginably complicated workflows. Some are using it to improve Bro
-> itself while others are using it to improve the very models that Bro is using
-> (super meta). The point we are making is that the community is
-> diverse, and although a kangaroo 🦘🦘🦘 is a distinguished and noble animal,
-> we felt a "Bro" 🐘🦡🦒🦓🦛🦧🦭🦦 of different species better reflected this
-> diversity of the plugin's users.
->
-> So we would like to announce that **Bro Code** will continue development on
-> this important project. The core team is a group of developers who contributed
-> to Bro previously and care deeply about this plugin. We will continue to make
-> model updates, fix bugs, and release features. But more than anything, we plan
-> to listen to the community that made this plugin so special. Feel free to join
-> us on [Discord](https://discord.gg/VxfP4Vx3gX),
-> [Reddit](https://www.reddit.com/r/BroCode), or
-> [open a PR or issue](https://github.com/Bro-Code-Org/Bro-Code), and above all,
-> please stay involved, connected, and active as a community.
->
-> _-Bro Code Team_
+> **Bro Code is a fork of [Zoo Code](https://github.com/Zoo-Code-Org/Zoo-Code)**, which is itself
+> a fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code). Both projects are licensed under
+> the [Apache License 2.0](./LICENSE), and Bro Code is distributed under the same license. See the
+> [License](#license) section below for the required attribution.
+> This focuses on updating the features to primarily focus on developing features
+> for LM Studio API Provider.
+> This project is only for educational purposes so I can learn how to Vibe Code properly. Use at your own risk.
 
 ## Bro Code to Bro Code migration
 
@@ -92,7 +66,7 @@ for this exact support, so if you are having problems or if you have question, j
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
 - ...
-      </details>
+  </details>
 
 ---
 
@@ -246,6 +220,13 @@ We love community contributions! Get started by reading our
 ---
 
 ## License
+
+Bro Code is licensed under the [Apache License 2.0](./LICENSE).
+
+Bro Code is a fork of [Zoo Code](https://github.com/Zoo-Code-Org/Zoo-Code) (Copyright © 2026 Zoo
+Code), which is itself a fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code). We are
+grateful to the Zoo Code and Roo Code teams and communities for their work, which this project is
+built upon in accordance with the terms of the Apache License 2.0.
 
 [Apache 2.0 © 2026 Bro Code Org](./LICENSE)
 

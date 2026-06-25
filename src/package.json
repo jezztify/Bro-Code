@@ -47,7 +47,8 @@
 	],
 	"activationEvents": [
 		"onLanguage",
-		"onStartupFinished"
+		"onStartupFinished",
+		"onWebviewPanel:bro-code.TabPanelProvider"
 	],
 	"main": "./dist/extension.js",
 	"contributes": {

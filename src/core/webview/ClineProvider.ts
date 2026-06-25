@@ -1292,9 +1292,12 @@ export class ClineProvider
 		}
 
 		try {
-			await this.view?.webview.postMessage(message)
-		} catch {
-			// View disposed, drop message silently
+			const delivered = await this.view?.webview.postMessage(message)
+			if (message.type === "action") {
+				this.log(`[postMessageToWebview] action=${message.action} delivered=${delivered}`)
+			}
+		} catch (error) {
+			this.log(`[postMessageToWebview] postMessage threw: ${error}`)
 		}
 	}
 
@@ -2022,10 +2025,14 @@ export class ClineProvider
 		if (id !== this.getCurrentTask()?.taskId) {
 			// Non-current task.
 			const { historyItem } = await this.getTaskWithId(id)
+			this.log(`[showTaskWithId] calling createTaskWithHistoryItem for ${id}`)
 			await this.createTaskWithHistoryItem(historyItem) // Clears existing task.
+			this.log(`[showTaskWithId] createTaskWithHistoryItem returned for ${id}`)
 		}
 
+		this.log(`[showTaskWithId] posting chatButtonClicked for ${id}`)
 		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+		this.log(`[showTaskWithId] posted chatButtonClicked for ${id}`)
 	}
 
 	async exportTaskWithId(id: string) {
@@ -3524,6 +3531,10 @@ export class ClineProvider
 
 	public get cwd() {
 		return this.currentWorkspacePath || getWorkspacePath()
+	}
+
+	public get isEditorTab(): boolean {
+		return this.renderContext === "editor"
 	}
 
 	/**

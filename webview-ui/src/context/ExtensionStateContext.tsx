@@ -322,6 +322,15 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 					setState((prevState) => mergeExtensionState(prevState, newState))
 					setShowWelcome(!checkExistKey(newState.apiConfiguration))
 					setDidHydrateState(true)
+					// Persisted in VS Code's webview-panel storage so an editor
+					// tab can restore its task after `Developer: Reload Window`
+					// (read back via the WebviewPanelSerializer's `state` arg).
+					// Checked with `in` rather than `!== undefined` so clearing
+					// the active task (currentTaskId explicitly undefined) also
+					// clears the persisted taskId, instead of leaving a stale one.
+					if ("currentTaskId" in newState) {
+						vscode.setState({ taskId: newState.currentTaskId })
+					}
 					// Update alwaysAllowFollowupQuestions if present in state message
 					if ((newState as any).alwaysAllowFollowupQuestions !== undefined) {
 						setAlwaysAllowFollowupQuestions((newState as any).alwaysAllowFollowupQuestions)

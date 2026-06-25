@@ -15,6 +15,7 @@ vi.mock("vscode", () => ({
 	},
 	window: {
 		createTextEditorDecorationType: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+		registerWebviewPanelSerializer: vi.fn().mockReturnValue({ dispose: vi.fn() }),
 	},
 	workspace: {
 		workspaceFolders: [
