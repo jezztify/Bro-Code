@@ -48,6 +48,7 @@ export interface ChatViewProps {
 	isHidden: boolean
 	showAnnouncement: boolean
 	hideAnnouncement: () => void
+	onBackToHistory?: () => void
 }
 
 export interface ChatViewRef {
@@ -64,7 +65,7 @@ const CHAT_VIEWPORT_BUFFER = {
 const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0
 
 const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewProps> = (
-	{ isHidden, showAnnouncement, hideAnnouncement },
+	{ isHidden, showAnnouncement, hideAnnouncement, onBackToHistory },
 	ref,
 ) => {
 	const [audioBaseUri] = useState(() => {
@@ -1637,6 +1638,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				<>
 					<TaskHeader
 						task={task}
+						onBackToHistory={onBackToHistory}
 						tokensIn={apiMetrics.totalTokensIn}
 						tokensOut={apiMetrics.totalTokensOut}
 						cacheWrites={apiMetrics.totalCacheWrites}

@@ -3617,38 +3617,13 @@ export class ClineProvider
 		//    This ensures the child's system prompt and configuration are based on the correct mode.
 		//    The mode switch must happen before createTask() because the Task constructor
 		//    initializes its mode from provider.getState() during initializeTaskMode().
-		//
-		//    Capture the parent's active provider config first: handleModeSwitch() may swap the
-		//    active provider to whatever profile is associated with the new mode (sticky-mode
-		//    config), which is correct for in-task mode switches but wrong for delegation — a
-		//    subtask should inherit the parent's provider, not an unrelated mode-linked one.
-		const { currentApiConfigName: parentApiConfigName } = await this.getState()
-
+		//    handleModeSwitch() loads the API config assigned to the new mode (sticky-mode
+		//    config), same as any other mode switch.
 		try {
 			await this.handleModeSwitch(mode as any)
 		} catch (e) {
 			this.log(
 				`[delegateParentAndOpenChild] handleModeSwitch failed for mode '${mode}': ${
-					(e as Error)?.message ?? String(e)
-				}`,
-			)
-		}
-
-		// Restore the parent's provider if the mode switch moved it elsewhere. Skip persisting
-		// this back to the mode's sticky config so the user's own mode->provider mapping (if any)
-		// is left untouched.
-		try {
-			const { currentApiConfigName: activeApiConfigName } = await this.getState()
-
-			if (parentApiConfigName && activeApiConfigName !== parentApiConfigName) {
-				await this.activateProviderProfile(
-					{ name: parentApiConfigName },
-					{ persistModeConfig: false, persistTaskHistory: false },
-				)
-			}
-		} catch (e) {
-			this.log(
-				`[delegateParentAndOpenChild] Failed to restore parent's provider profile '${parentApiConfigName}': ${
 					(e as Error)?.message ?? String(e)
 				}`,
 			)

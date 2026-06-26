@@ -41,13 +41,17 @@ vi.mock("vscode", () => {
 				this.name = "CancellationError"
 			}
 		},
+		LanguageModelChatMessageRole: {
+			User: 1,
+			Assistant: 2,
+		},
 		LanguageModelChatMessage: {
 			Assistant: vi.fn((content) => ({
-				role: "assistant",
+				role: 2,
 				content: Array.isArray(content) ? content : [new MockLanguageModelTextPart(content)],
 			})),
 			User: vi.fn((content) => ({
-				role: "user",
+				role: 1,
 				content: Array.isArray(content) ? content : [new MockLanguageModelTextPart(content)],
 			})),
 		},

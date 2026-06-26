@@ -66,7 +66,7 @@ for this exact support, so if you are having problems or if you have question, j
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
 - ...
-    </details>
+      </details>
 
 ---
 
@@ -98,6 +98,27 @@ Optional settings:
 - **Detect tool calls written as plain JSON text** (Advanced settings) — enabled by default. Many local models don't reliably emit real native tool calls and instead write the tool's arguments as plain text in JSON or XML-ish forms; Bro Code detects this and runs it as the intended tool call anyway. Disable this only if it misfires on a model that legitimately needs to answer with bare JSON/XML-shaped text.
 
 > **Model choice matters.** Smaller or non-tool-tuned local models may not reliably use the native tool-calling protocol at all, even with the detection fallback above — if a model in LM Studio frequently fails to complete tasks or never calls tools correctly, try a model with stronger native function-calling support.
+
+## Codebase Indexing Setup (Qdrant)
+
+Codebase indexing lets Bro Code semantically search your project instead of relying only on plain-text search, by embedding your code and storing the vectors in a [Qdrant](https://qdrant.tech/) vector database. Setup:
+
+1. **Run a Qdrant instance.** The quickest way is Docker:
+    ```sh
+    docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
+    ```
+    This exposes Qdrant at `http://localhost:6333`. (Use [Qdrant Cloud](https://cloud.qdrant.io/) instead if you'd rather not self-host.)
+2. **In Bro Code**, open the chat view and click the database icon next to the chat input to open the **Codebase Indexing** popover.
+3. Make sure **Enable Codebase Indexing** is checked, then expand **Setup**.
+4. **Embedder Provider**: choose how your code gets turned into vectors — `LM Studio` and `Ollama` run locally, or use `OpenAI`, `Gemini`, `Mistral`, `OpenRouter`, `Bedrock`, `Vercel AI Gateway`, or an OpenAI-compatible endpoint. Fill in the API key/base URL and model fields that appear for your chosen provider.
+    - For local models via **LM Studio**: set the **Base URL** (default `http://localhost:1234`) and pick an embedding model (e.g. `nomic-embed-text` or `text-embedding-nomic-embed-text-v1.5`) — this can be loaded in LM Studio alongside your chat model.
+5. **Qdrant URL**: enter your Qdrant instance's address — defaults to `http://localhost:6333`.
+6. **Qdrant API Key**: required for Qdrant Cloud; leave blank for a local instance with no auth configured.
+7. Click **Save Settings**, then **Start Indexing**. Progress and status (Standby/Indexing/Indexed/Error) are shown in the popover and as a badge on the database icon.
+
+Optional (Advanced settings): tune **Search Score Threshold** and **Maximum Search Results** to control how relevant/numerous the search results returned to the model are.
+
+> Indexing is per-workspace — use the **Enable indexing for this workspace** toggle in the popover to turn it on/off per project, and **Clear Index Data** to wipe and rebuild the index for the current workspace.
 
 ## Modes
 

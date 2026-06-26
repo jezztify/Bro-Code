@@ -24,6 +24,7 @@ import { LucideIconButton } from "./LucideIconButton"
 
 export interface TaskHeaderProps {
 	task: ClineMessage
+	onBackToHistory?: () => void
 	tokensIn: number
 	tokensOut: number
 	cacheWrites?: number
@@ -41,6 +42,7 @@ export interface TaskHeaderProps {
 
 const TaskHeader = ({
 	task,
+	onBackToHistory,
 	tokensIn,
 	tokensOut,
 	cacheWrites,
@@ -149,6 +151,13 @@ const TaskHeader = ({
 				}}>
 				<div className="flex justify-between items-center gap-0">
 					<div className="flex items-center select-none grow min-w-0">
+						<div className="shrink-0 -ml-1.5" onClick={(e) => e.stopPropagation()}>
+							<LucideIconButton
+								title={t("chat:task.backToHistory")}
+								icon={ArrowLeft}
+								onClick={onBackToHistory}
+							/>
+						</div>
 						<div className="grow min-w-0">
 							{isTaskExpanded && <span className="font-bold">{t("chat:task.title")}</span>}
 							{!isTaskExpanded && (
