@@ -377,11 +377,26 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 			content: this.cleanMessageContent(msg.content),
 		}))
 
-		// Convert Anthropic messages to VS Code LM messages
-		const vsCodeLmMessages: vscode.LanguageModelChatMessage[] = [
-			vscode.LanguageModelChatMessage.Assistant(systemPrompt),
-			...convertToVsCodeLmMessages(cleanedMessages),
-		]
+		// Convert Anthropic messages to VS Code LM messages.
+		// The VS Code LM API only has User/Assistant roles (no System), and strict
+		// backends (e.g. the claude-code vendor) require the conversation to start
+		// with a User message and strictly alternate roles. Sending the system
+		// prompt as a leading Assistant message violates that and causes some
+		// backends to silently return an empty stream instead of erroring, so we
+		// merge it into the first User turn instead of inserting a separate message.
+		const convertedMessages = convertToVsCodeLmMessages(cleanedMessages)
+		let vsCodeLmMessages: vscode.LanguageModelChatMessage[]
+
+		if (convertedMessages.length > 0 && convertedMessages[0].role === vscode.LanguageModelChatMessageRole.User) {
+			const [firstMessage, ...rest] = convertedMessages
+			const existingContent = Array.isArray(firstMessage.content)
+				? firstMessage.content
+				: [new vscode.LanguageModelTextPart(String(firstMessage.content))]
+			firstMessage.content = [new vscode.LanguageModelTextPart(systemPrompt), ...existingContent]
+			vsCodeLmMessages = [firstMessage, ...rest]
+		} else {
+			vsCodeLmMessages = [vscode.LanguageModelChatMessage.User(systemPrompt), ...convertedMessages]
+		}
 
 		// Initialize cancellation token for the request
 		this.currentRequestCancellation = new vscode.CancellationTokenSource()

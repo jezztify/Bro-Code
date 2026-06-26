@@ -22,14 +22,16 @@
 > for LM Studio API Provider.
 > This project is only for educational purposes so I can learn how to Vibe Code properly. Use at your own risk.
 
-## What's New in v1.0.5
+## What's New in v1.0.6
 
+- Add a back arrow button to the task view header that returns to the task history list, instead of requiring the history toolbar icon
 - Fix LM Studio models that don't reliably emit real tool calls writing raw tool-call JSON (e.g. `{ "result": "..." }`, `{ "question": "...", "follow_up": [...] }`) as plain text instead — Bro Code now detects and executes it as the intended tool call rather than displaying the JSON verbatim
 - When a native tool call has missing or wrong parameters (e.g. an `attempt_completion` call with no `result`, or a `read_file` call using `file_path` instead of `path`), the error sent back to the model now names the specific missing and/or unrecognized parameter(s) instead of a generic "missing nativeArgs" message, so weaker models can self-correct instead of retrying with the same invalid arguments
 - Fix LM Studio models writing a real tool name as a literal XML tag (e.g. `<attempt_completion/>`) instead of issuing a real tool call - Bro Code now detects this and routes it through the normal tool pipeline (including the parameter-error feedback above) instead of letting it leak as inert chat text that looks like the task silently finished
 - The LM Studio bare-JSON/XML-tag tool-call fallback now only matches against the tools actually offered for the current request/mode, instead of every tool that exists anywhere in Bro Code - this avoids mistaking a model's illustrative example of tool syntax (e.g. while explaining how a tool works in a restricted or explain-only mode) for a real call attempt
 - Fix a regression where a recognized tool name detected via the bare-JSON/XML-tag fallback (e.g. `<attempt_completion/>` with no `result`) silently produced no assistant content at all when its arguments couldn't be validated, which was indistinguishable from the model not responding and triggered the more severe "model did not provide any assistant messages" retry path instead of the specific missing-parameter error
 - Rework the LM Studio tool-call fallback into an ordered multi-pass detector, adding support for two more syntaxes weaker models fall back to: a self-closing tag with parameters as XML attributes (e.g. `<attempt_completion result="..."/>`) and the legacy Cline/Roo Code multi-child-tag format (e.g. `<read_file><path>...</path><mode>slice</mode></read_file>`)
+- Fix subtasks created during orchestration (mode delegation) ignoring the API configuration assigned to their mode in settings — they now load the mode's own provider profile instead of inheriting the parent task's
 
 <details>
   <summary>🌐 Available languages</summary>
@@ -53,7 +55,7 @@
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
 - ...
-    </details>
+      </details>
 
 ---
 
@@ -85,6 +87,27 @@ Optional settings:
 - **Detect tool calls written as plain JSON text** (Advanced settings) — enabled by default. Many local models don't reliably emit real native tool calls and instead write the tool's arguments as plain text in JSON or XML-ish forms; Bro Code detects this and runs it as the intended tool call anyway. Disable this only if it misfires on a model that legitimately needs to answer with bare JSON/XML-shaped text.
 
 > **Model choice matters.** Smaller or non-tool-tuned local models may not reliably use the native tool-calling protocol at all, even with the detection fallback above — if a model in LM Studio frequently fails to complete tasks or never calls tools correctly, try a model with stronger native function-calling support.
+
+## Codebase Indexing Setup (Qdrant)
+
+Codebase indexing lets Bro Code semantically search your project instead of relying only on plain-text search, by embedding your code and storing the vectors in a [Qdrant](https://qdrant.tech/) vector database. Setup:
+
+1. **Run a Qdrant instance.** The quickest way is Docker:
+    ```sh
+    docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
+    ```
+    This exposes Qdrant at `http://localhost:6333`. (Use [Qdrant Cloud](https://cloud.qdrant.io/) instead if you'd rather not self-host.)
+2. **In Bro Code**, open the chat view and click the database icon next to the chat input to open the **Codebase Indexing** popover.
+3. Make sure **Enable Codebase Indexing** is checked, then expand **Setup**.
+4. **Embedder Provider**: choose how your code gets turned into vectors — `LM Studio` and `Ollama` run locally, or use `OpenAI`, `Gemini`, `Mistral`, `OpenRouter`, `Bedrock`, `Vercel AI Gateway`, or an OpenAI-compatible endpoint. Fill in the API key/base URL and model fields that appear for your chosen provider.
+    - For local models via **LM Studio**: set the **Base URL** (default `http://localhost:1234`) and pick an embedding model (e.g. `nomic-embed-text` or `text-embedding-nomic-embed-text-v1.5`) — this can be loaded in LM Studio alongside your chat model.
+5. **Qdrant URL**: enter your Qdrant instance's address — defaults to `http://localhost:6333`.
+6. **Qdrant API Key**: required for Qdrant Cloud; leave blank for a local instance with no auth configured.
+7. Click **Save Settings**, then **Start Indexing**. Progress and status (Standby/Indexing/Indexed/Error) are shown in the popover and as a badge on the database icon.
+
+Optional (Advanced settings): tune **Search Score Threshold** and **Maximum Search Results** to control how relevant/numerous the search results returned to the model are.
+
+> Indexing is per-workspace — use the **Enable indexing for this workspace** toggle in the popover to turn it on/off per project, and **Clear Index Data** to wipe and rebuild the index for the current workspace.
 
 ## Modes
 

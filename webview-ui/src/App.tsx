@@ -251,6 +251,7 @@ const App = () => {
 				isHidden={tab !== "chat"}
 				showAnnouncement={showAnnouncement}
 				hideAnnouncement={() => setShowAnnouncement(false)}
+				onBackToHistory={() => switchTab("history")}
 			/>
 			{deleteMessageDialogState.hasCheckpoint ? (
 				<MemoizedCheckpointRestoreDialog

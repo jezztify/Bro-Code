@@ -5,6 +5,7 @@ import {
 	type FollowUpData,
 	type ExtensionState,
 	isNonBlockingAsk,
+	isResumableAsk,
 } from "@bro-code/types"
 
 import { ClineAskResponse } from "../../shared/WebviewMessage"
@@ -55,7 +56,7 @@ export async function checkAutoApproval({
 	text?: string
 	isProtected?: boolean
 }): Promise<CheckAutoApprovalResult> {
-	if (isNonBlockingAsk(ask)) {
+	if (isNonBlockingAsk(ask) || isResumableAsk(ask)) {
 		return { decision: "approve" }
 	}
 
