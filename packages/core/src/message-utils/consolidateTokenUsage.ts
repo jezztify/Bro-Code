@@ -7,6 +7,7 @@ export type ParsedApiReqStartedTextType = {
 	cacheReads: number
 	cost?: number // Only present if consolidateApiRequests has been called
 	apiProtocol?: "anthropic" | "openai"
+	profileName?: string
 }
 
 /**
@@ -36,12 +37,14 @@ export function consolidateTokenUsage(messages: ClineMessage[]): TokenUsage {
 		contextTokens: 0,
 	}
 
+	let profileBreakdown: Record<string, NonNullable<TokenUsage["profileBreakdown"]>[string]> | undefined
+
 	// Calculate running totals.
 	messages.forEach((message) => {
 		if (message.type === "say" && message.say === "api_req_started" && message.text) {
 			try {
 				const parsedText: ParsedApiReqStartedTextType = JSON.parse(message.text)
-				const { tokensIn, tokensOut, cacheWrites, cacheReads, cost } = parsedText
+				const { tokensIn, tokensOut, cacheWrites, cacheReads, cost, profileName } = parsedText
 
 				if (typeof tokensIn === "number") {
 					result.totalTokensIn += tokensIn
@@ -62,6 +65,37 @@ export function consolidateTokenUsage(messages: ClineMessage[]): TokenUsage {
 				if (typeof cost === "number") {
 					result.totalCost += cost
 				}
+
+				if (profileName) {
+					profileBreakdown ??= {}
+					const entry = (profileBreakdown[profileName] ??= {
+						tokensIn: 0,
+						tokensOut: 0,
+						cacheWrites: undefined,
+						cacheReads: undefined,
+						cost: 0,
+					})
+
+					if (typeof tokensIn === "number") {
+						entry.tokensIn += tokensIn
+					}
+
+					if (typeof tokensOut === "number") {
+						entry.tokensOut += tokensOut
+					}
+
+					if (typeof cacheWrites === "number") {
+						entry.cacheWrites = (entry.cacheWrites ?? 0) + cacheWrites
+					}
+
+					if (typeof cacheReads === "number") {
+						entry.cacheReads = (entry.cacheReads ?? 0) + cacheReads
+					}
+
+					if (typeof cost === "number") {
+						entry.cost += cost
+					}
+				}
 			} catch (error) {
 				console.error("Error parsing JSON:", error)
 			}
@@ -69,6 +103,10 @@ export function consolidateTokenUsage(messages: ClineMessage[]): TokenUsage {
 			result.totalCost += message.contextCondense?.cost ?? 0
 		}
 	})
+
+	if (profileBreakdown) {
+		result.profileBreakdown = profileBreakdown
+	}
 
 	// Calculate context tokens, from the last API request started or condense
 	// context message.

@@ -1,4 +1,4 @@
-import type { HistoryItem } from "@bro-code/types"
+import type { HistoryItem, TokenUsage } from "@bro-code/types"
 
 export interface AggregatedCosts {
 	ownCost: number // This task's own API costs
@@ -8,6 +8,38 @@ export interface AggregatedCosts {
 		// Optional detailed breakdown
 		[childId: string]: AggregatedCosts
 	}
+	// Per-provider-profile token breakdown merged across this task and all its subtasks (recursive).
+	profileBreakdown?: NonNullable<TokenUsage["profileBreakdown"]>
+}
+
+function mergeProfileBreakdowns(
+	a: NonNullable<TokenUsage["profileBreakdown"]> | undefined,
+	b: NonNullable<TokenUsage["profileBreakdown"]> | undefined,
+): NonNullable<TokenUsage["profileBreakdown"]> | undefined {
+	if (!a && !b) {
+		return undefined
+	}
+
+	const merged: NonNullable<TokenUsage["profileBreakdown"]> = { ...a }
+
+	for (const [profileName, usage] of Object.entries(b ?? {})) {
+		const existing = merged[profileName]
+		merged[profileName] = {
+			tokensIn: (existing?.tokensIn ?? 0) + usage.tokensIn,
+			tokensOut: (existing?.tokensOut ?? 0) + usage.tokensOut,
+			cacheWrites:
+				existing?.cacheWrites !== undefined || usage.cacheWrites !== undefined
+					? (existing?.cacheWrites ?? 0) + (usage.cacheWrites ?? 0)
+					: undefined,
+			cacheReads:
+				existing?.cacheReads !== undefined || usage.cacheReads !== undefined
+					? (existing?.cacheReads ?? 0) + (usage.cacheReads ?? 0)
+					: undefined,
+			cost: (existing?.cost ?? 0) + usage.cost,
+		}
+	}
+
+	return merged
 }
 
 /**
@@ -40,6 +72,7 @@ export async function aggregateTaskCostsRecursive(
 	const ownCost = history.totalCost || 0
 	let childrenCost = 0
 	const childBreakdown: { [childId: string]: AggregatedCosts } = {}
+	let profileBreakdown = history.profileBreakdown
 
 	// Recursively aggregate child costs
 	if (history.childIds && history.childIds.length > 0) {
@@ -51,12 +84,14 @@ export async function aggregateTaskCostsRecursive(
 			)
 			childrenCost += childAggregated.totalCost
 			childBreakdown[childId] = childAggregated
+			profileBreakdown = mergeProfileBreakdowns(profileBreakdown, childAggregated.profileBreakdown)
 		}
 	}
 
 	const result: AggregatedCosts = {
 		ownCost,
 		childrenCost,
+		profileBreakdown,
 		totalCost: ownCost + childrenCost,
 		childBreakdown,
 	}

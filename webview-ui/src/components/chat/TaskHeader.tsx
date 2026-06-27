@@ -1,9 +1,9 @@
 import { memo, useRef, useState, useMemo } from "react"
 import { useTranslation } from "react-i18next"
-import { ChevronUp, ChevronDown, HardDriveDownload, HardDriveUpload, FoldVertical, ArrowLeft } from "lucide-react"
+import { ChevronUp, ChevronDown, HardDriveDownload, HardDriveUpload, FoldVertical, ArrowLeft, Info } from "lucide-react"
 import prettyBytes from "pretty-bytes"
 
-import type { ClineMessage } from "@bro-code/types"
+import type { ClineMessage, TokenUsage } from "@bro-code/types"
 
 import { getModelMaxOutputTokens } from "@bro/api"
 
@@ -21,6 +21,7 @@ import { ContextWindowProgress } from "./ContextWindowProgress"
 import { Mention } from "./Mention"
 import { TodoListDisplay } from "./TodoListDisplay"
 import { LucideIconButton } from "./LucideIconButton"
+import { TokenBreakdownModal } from "./TokenBreakdownModal"
 
 export interface TaskHeaderProps {
 	task: ClineMessage
@@ -34,6 +35,7 @@ export interface TaskHeaderProps {
 	hasSubtasks?: boolean
 	parentTaskId?: string
 	costBreakdown?: string
+	profileBreakdown?: TokenUsage["profileBreakdown"]
 	contextTokens: number
 	buttonsDisabled: boolean
 	handleCondenseContext: (taskId: string) => void
@@ -52,6 +54,7 @@ const TaskHeader = ({
 	hasSubtasks,
 	parentTaskId,
 	costBreakdown,
+	profileBreakdown,
 	contextTokens,
 	buttonsDisabled,
 	handleCondenseContext,
@@ -61,6 +64,8 @@ const TaskHeader = ({
 	const { apiConfiguration, currentTaskItem } = useExtensionState()
 	const { id: modelId, info: model } = useSelectedModel(apiConfiguration)
 	const [isTaskExpanded, setIsTaskExpanded] = useState(false)
+	const [isTokenBreakdownOpen, setIsTokenBreakdownOpen] = useState(false)
+	const hasProfileBreakdown = !!profileBreakdown && Object.keys(profileBreakdown).length > 0
 
 	const textContainerRef = useRef<HTMLDivElement>(null)
 	const textRef = useRef<HTMLDivElement>(null)
@@ -344,6 +349,17 @@ const TaskHeader = ({
 												{typeof tokensOut === "number" && tokensOut > 0 && (
 													<span>↓ {formatLargeNumber(tokensOut)}</span>
 												)}
+												{hasProfileBreakdown && (
+													<LucideIconButton
+														title={t("chat:task.tokenBreakdown")}
+														icon={Info}
+														onClick={(e) => {
+															e.stopPropagation()
+															setIsTokenBreakdownOpen(true)
+														}}
+														className="size-4 p-0 opacity-70"
+													/>
+												)}
 											</div>
 										</td>
 									</tr>
@@ -434,6 +450,13 @@ const TaskHeader = ({
 				{/* Todo list - always shown at bottom when todos exist */}
 				{hasTodos && <TodoListDisplay todos={todos ?? (task as any)?.tool?.todos ?? []} />}
 			</div>
+			{hasProfileBreakdown && (
+				<TokenBreakdownModal
+					open={isTokenBreakdownOpen}
+					onOpenChange={setIsTokenBreakdownOpen}
+					profileBreakdown={profileBreakdown!}
+				/>
+			)}
 		</div>
 	)
 }

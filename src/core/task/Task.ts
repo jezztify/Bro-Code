@@ -2567,6 +2567,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				"api_req_started",
 				JSON.stringify({
 					apiProtocol,
+					profileName: this.taskApiConfigName,
 				}),
 			)
 
@@ -2646,6 +2647,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			this.clineMessages[lastApiReqIndex].text = JSON.stringify({
 				apiProtocol,
+				profileName: this.taskApiConfigName,
 			} satisfies ClineApiReqInfo)
 
 			await this.saveClineMessages()

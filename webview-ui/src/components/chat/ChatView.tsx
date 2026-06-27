@@ -10,7 +10,15 @@ import { appendImages } from "@src/utils/imageUtils"
 import { getCostBreakdownIfNeeded } from "@src/utils/costFormatting"
 import { batchConsecutive } from "@src/utils/batchConsecutive"
 
-import type { ClineAsk, ClineSayTool, ClineMessage, ExtensionMessage, AudioType, SuggestionItem } from "@bro-code/types"
+import type {
+	ClineAsk,
+	ClineSayTool,
+	ClineMessage,
+	ExtensionMessage,
+	AudioType,
+	SuggestionItem,
+	TokenUsage,
+} from "@bro-code/types"
 import { getCompletionCheckpoint, getSuggestionMode, isRetiredProvider } from "@bro-code/types"
 
 import { findLast } from "@bro/array"
@@ -77,6 +85,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	const {
 		clineMessages: messages,
+		currentTaskId,
 		currentTaskItem,
 		currentTaskTodos,
 		taskHistory,
@@ -112,6 +121,13 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	// task, then the extension is in a bad state and needs to be debugged (see
 	// Cline.abort).
 	const task = useMemo(() => messages.at(0), [messages])
+
+	// A task can be active (e.g. a freshly delegated subtask) before its first
+	// `clineMessages` entry has streamed in. Without this, the brief window where
+	// `currentTaskId` is set but `messages` is still empty falls through to the
+	// `!task` branch below and renders the homepage instead of the (soon-to-be
+	// populated) chat view, making new subtasks appear to vanish.
+	const hasActiveTask = !!task || !!currentTaskId
 
 	const latestTodos = useMemo(() => {
 		// First check if we have initial todos from the state (for new subtasks)
@@ -195,6 +211,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				totalCost: number
 				ownCost: number
 				childrenCost: number
+				profileBreakdown?: TokenUsage["profileBreakdown"]
 			}
 		>
 	>(new Map())
@@ -1665,6 +1682,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 									})
 								: undefined
 						}
+						profileBreakdown={
+							(currentTaskItem?.id && aggregatedCostsMap.get(currentTaskItem.id)?.profileBreakdown) ||
+							apiMetrics.profileBreakdown
+						}
 						contextTokens={apiMetrics.contextTokens}
 						buttonsDisabled={sendingDisabled}
 						handleCondenseContext={handleCondenseContext}
@@ -1677,7 +1698,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						</div>
 					)}
 				</>
-			) : (
+			) : hasActiveTask ? null : (
 				<div className="flex flex-col h-full p-6 min-h-0 overflow-y-auto gap-4 relative">
 					<div className="flex flex-col items-start gap-2 my-auto min-[400px]:px-6">
 						<VersionIndicator
@@ -1694,7 +1715,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				</div>
 			)}
 
-			{!task && showWorktreesInHomeScreen && <WorktreeSelector />}
+			{!hasActiveTask && showWorktreesInHomeScreen && <WorktreeSelector />}
 
 			{task && (
 				<>
