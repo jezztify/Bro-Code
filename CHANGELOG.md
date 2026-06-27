@@ -1,5 +1,17 @@
 # Bro Code Changelog
 
+## [1.0.6]
+
+### Patch Changes
+
+- Add a token usage breakdown modal to the task header — when a task's requests (including its subtasks, recursively) span more than one provider profile, an info button next to the token count opens a breakdown of tokens in/out and cost per profile
+- Add a back arrow button to the task view header that returns to the task history list, instead of requiring the history toolbar icon
+- Add README instructions for setting up Codebase Indexing with a self-hosted or cloud Qdrant instance
+- Fix newly created subtasks briefly bouncing back to the homepage instead of showing their chat view — the webview was switching to the new subtask before its first message had streamed in, making it look like the subtask never started
+- Fix subtasks created during orchestration (mode delegation) ignoring the API configuration assigned to their mode in settings — they now load the mode's own provider profile instead of inheriting the parent task's
+- Fix the VS Code Language Model provider sending the system prompt as a leading Assistant message, which strict backends (e.g. the `claude-code` vendor) silently returned an empty stream for instead of erroring — the system prompt is now merged into the first User turn
+- Fix tasks opened from the history list immediately auto-continuing instead of waiting for your confirmation to resume
+
 ## [1.0.5]
 
 ### Minor Changes

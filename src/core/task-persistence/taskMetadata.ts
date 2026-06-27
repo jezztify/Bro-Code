@@ -107,6 +107,7 @@ export async function taskMetadata({
 		cacheWrites: tokenUsage.totalCacheWrites,
 		cacheReads: tokenUsage.totalCacheReads,
 		totalCost: tokenUsage.totalCost,
+		profileBreakdown: tokenUsage.profileBreakdown,
 		size: taskDirSize,
 		workspace,
 		mode,

@@ -24,14 +24,13 @@
 
 ## What's New in v1.0.6
 
+- Add a token usage breakdown modal to the task header — when a task's requests (including its subtasks, recursively) span more than one provider profile, an info button next to the token count opens a breakdown of tokens in/out and cost per profile
 - Add a back arrow button to the task view header that returns to the task history list, instead of requiring the history toolbar icon
-- Fix LM Studio models that don't reliably emit real tool calls writing raw tool-call JSON (e.g. `{ "result": "..." }`, `{ "question": "...", "follow_up": [...] }`) as plain text instead — Bro Code now detects and executes it as the intended tool call rather than displaying the JSON verbatim
-- When a native tool call has missing or wrong parameters (e.g. an `attempt_completion` call with no `result`, or a `read_file` call using `file_path` instead of `path`), the error sent back to the model now names the specific missing and/or unrecognized parameter(s) instead of a generic "missing nativeArgs" message, so weaker models can self-correct instead of retrying with the same invalid arguments
-- Fix LM Studio models writing a real tool name as a literal XML tag (e.g. `<attempt_completion/>`) instead of issuing a real tool call - Bro Code now detects this and routes it through the normal tool pipeline (including the parameter-error feedback above) instead of letting it leak as inert chat text that looks like the task silently finished
-- The LM Studio bare-JSON/XML-tag tool-call fallback now only matches against the tools actually offered for the current request/mode, instead of every tool that exists anywhere in Bro Code - this avoids mistaking a model's illustrative example of tool syntax (e.g. while explaining how a tool works in a restricted or explain-only mode) for a real call attempt
-- Fix a regression where a recognized tool name detected via the bare-JSON/XML-tag fallback (e.g. `<attempt_completion/>` with no `result`) silently produced no assistant content at all when its arguments couldn't be validated, which was indistinguishable from the model not responding and triggered the more severe "model did not provide any assistant messages" retry path instead of the specific missing-parameter error
-- Rework the LM Studio tool-call fallback into an ordered multi-pass detector, adding support for two more syntaxes weaker models fall back to: a self-closing tag with parameters as XML attributes (e.g. `<attempt_completion result="..."/>`) and the legacy Cline/Roo Code multi-child-tag format (e.g. `<read_file><path>...</path><mode>slice</mode></read_file>`)
+- Add README instructions for setting up Codebase Indexing with a self-hosted or cloud Qdrant instance
+- Fix newly created subtasks briefly bouncing back to the homepage instead of showing their chat view — the webview was switching to the new subtask before its first message had streamed in, making it look like the subtask never started
 - Fix subtasks created during orchestration (mode delegation) ignoring the API configuration assigned to their mode in settings — they now load the mode's own provider profile instead of inheriting the parent task's
+- Fix the VS Code Language Model provider sending the system prompt as a leading Assistant message, which strict backends (e.g. the `claude-code` vendor) silently returned an empty stream for instead of erroring — the system prompt is now merged into the first User turn
+- Fix tasks opened from the history list immediately auto-continuing instead of waiting for your confirmation to resume
 
 <details>
   <summary>🌐 Available languages</summary>
