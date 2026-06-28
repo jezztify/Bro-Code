@@ -19,6 +19,22 @@
 		"placeholder": "Search settings...",
 		"noResults": "No settings found"
 	},
+	"tierRouting": {
+		"title": "Step Difficulty Routing",
+		"description": "Route subtasks to a specific provider profile based on the difficulty tier declared when the subtask is created (new_task's optional 'tier' parameter). Falls back to the mode's configured profile, then the global default, when a tier has no mapping here.",
+		"useModeDefault": "Use mode's default profile",
+		"tiers": {
+			"trivial": "Trivial",
+			"standard": "Standard",
+			"hard": "Hard"
+		},
+		"applyRecommendation": {
+			"label": "Apply eval harness recommendation",
+			"description": "Paste the {tier: profileName} recommendation printed by `tsx scripts/eval/runner.ts` to apply it in one step. Profile names must match an existing provider profile.",
+			"apply": "Apply",
+			"unresolved": "No matching provider profile found for: {{tiers}}"
+		}
+	},
 	"unsavedChangesDialog": {
 		"title": "Unsaved Changes",
 		"description": "Do you want to discard changes and continue?",

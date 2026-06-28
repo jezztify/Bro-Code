@@ -1069,7 +1069,12 @@ export class ClineProvider
 		const isRehydratingCurrentTask = currentTask && currentTask.taskId === historyItem.id
 
 		if (!isRehydratingCurrentTask) {
-			await this.removeClineFromStack()
+			// skipDelegationRepair: this only swaps which task is being viewed (e.g. showTaskWithId
+			// navigating to a different task in history). It must not be treated as the active
+			// delegated child being abandoned -- that would clear the parent's awaitingChildId and
+			// permanently prevent the child from ever resuming the parent via attempt_completion.
+			// Genuine abandonment (cancel/delete) repairs the parent through their own dedicated paths.
+			await this.removeClineFromStack({ skipDelegationRepair: true })
 		}
 
 		// If the history item has a saved mode, restore it and its associated API configuration.
@@ -1585,6 +1590,44 @@ export class ClineProvider
 		}
 
 		await this.postStateToWebview()
+	}
+
+	/**
+	 * Resolve a difficulty tier (e.g. "trivial" | "standard" | "hard") to a configured provider
+	 * profile and activate it, if the user has mapped that tier to a profile in settings.
+	 *
+	 * Per Feature 2 (per-step model router): tier mapping takes priority over the mode's own
+	 * sticky API config. If no tier is given, or no mapping/profile is configured for it, this
+	 * is a no-op and the caller's existing mode-based resolution (already applied) stands —
+	 * giving the fallback chain tier -> mode's modeApiConfig -> global default.
+	 */
+	public async activateTierProfileIfConfigured(tier?: string) {
+		if (!tier) {
+			return
+		}
+
+		const tierApiConfigs = this.getGlobalState("tierApiConfigs") ?? {}
+		const configId = tierApiConfigs[tier]
+
+		if (!configId) {
+			return
+		}
+
+		const listApiConfig = await this.providerSettingsManager.listConfig()
+		const profile = listApiConfig.find(({ id }) => id === configId)
+
+		if (!profile?.name) {
+			return
+		}
+
+		const fullProfile = await this.providerSettingsManager.getProfile({ name: profile.name })
+
+		if (!fullProfile.apiProvider) {
+			// Unconfigured/empty profile; leave the current configuration in place.
+			return
+		}
+
+		await this.activateProviderProfile({ name: profile.name })
 	}
 
 	// Provider Profile Management
@@ -2347,6 +2390,7 @@ export class ClineProvider
 			mode,
 			customModePrompts,
 			customSupportPrompts,
+			tierApiConfigs,
 			enhancementApiConfigId,
 			condensingApiConfigId,
 			autoApprovalEnabled,
@@ -2506,6 +2550,7 @@ export class ClineProvider
 			mode: mode ?? defaultModeSlug,
 			customModePrompts: customModePrompts ?? {},
 			customSupportPrompts: customSupportPrompts ?? {},
+			tierApiConfigs: tierApiConfigs ?? {},
 			enhancementApiConfigId,
 			condensingApiConfigId,
 			autoApprovalEnabled: autoApprovalEnabled ?? false,
@@ -2723,6 +2768,7 @@ export class ClineProvider
 			listApiConfigMeta: stateValues.listApiConfigMeta ?? [],
 			pinnedApiConfigs: stateValues.pinnedApiConfigs ?? {},
 			modeApiConfigs: stateValues.modeApiConfigs ?? ({} as Record<Mode, string>),
+			tierApiConfigs: stateValues.tierApiConfigs ?? {},
 			customModePrompts: stateValues.customModePrompts ?? {},
 			customSupportPrompts: stateValues.customSupportPrompts ?? {},
 			enhancementApiConfigId: stateValues.enhancementApiConfigId,
@@ -3196,7 +3242,7 @@ export class ClineProvider
 			task: text,
 			images,
 			experiments,
-			rootTask: this.clineStack.length > 0 ? this.clineStack[0] : undefined,
+			rootTask: parentTask ? (parentTask.rootTask ?? parentTask) : undefined,
 			parentTask,
 			taskNumber: this.clineStack.length + 1,
 			onCreated: this.taskCreationCallback,
@@ -3550,8 +3596,9 @@ export class ClineProvider
 		message: string
 		initialTodos: TodoItem[]
 		mode: string
+		tier?: string
 	}): Promise<Task> {
-		const { parentTaskId, message, initialTodos, mode } = params
+		const { parentTaskId, message, initialTodos, mode, tier } = params
 
 		// Metadata-driven delegation is always enabled
 
@@ -3624,6 +3671,18 @@ export class ClineProvider
 		} catch (e) {
 			this.log(
 				`[delegateParentAndOpenChild] handleModeSwitch failed for mode '${mode}': ${
+					(e as Error)?.message ?? String(e)
+				}`,
+			)
+		}
+
+		// 3b) If the subtask declared a difficulty tier and the user has mapped it to a
+		//     provider profile, that mapping wins over the mode's sticky config (Feature 2).
+		try {
+			await this.activateTierProfileIfConfigured(tier)
+		} catch (e) {
+			this.log(
+				`[delegateParentAndOpenChild] activateTierProfileIfConfigured failed for tier '${tier}': ${
 					(e as Error)?.message ?? String(e)
 				}`,
 			)

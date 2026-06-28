@@ -20,6 +20,8 @@ export const historyItemSchema = z.object({
 	totalCost: z.number(),
 	// This task's own per-provider-profile token breakdown (see TokenUsage.profileBreakdown).
 	profileBreakdown: z.record(z.string(), tokenUsageProfileBreakdownEntrySchema).optional(),
+	// This task's own per-model token breakdown (see TokenUsage.modelBreakdown).
+	modelBreakdown: z.record(z.string(), tokenUsageProfileBreakdownEntrySchema).optional(),
 	size: z.number().optional(),
 	workspace: z.string().optional(),
 	mode: z.string().optional(),

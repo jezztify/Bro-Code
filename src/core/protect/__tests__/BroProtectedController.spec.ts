@@ -160,6 +160,7 @@ describe("BroProtectedController", () => {
 				".brorules*",
 				".clinerules*",
 				".bro/**",
+				".brocode/**",
 				".vscode/**",
 				"*.code-workspace",
 				".broprotected",

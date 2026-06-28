@@ -53,6 +53,33 @@
 - test(mcp): fix McpHub Windows command wrapping test ordering (PR #632 by @HappyLiang12)
 - fix(McpHub): resolve flaky McpHub.spec.ts tests after Vitest 4 upgrade (PR #666 by @edelauna)
 
+## [1.1.2]
+
+### Patch Changes
+
+- Fix the task header's token count not matching the token usage breakdown modal for tasks with subtasks — the header showed only the current task's own tokens while the modal showed totals aggregated recursively across all subtasks; the header now shows the same aggregated total, marked with the same subtask indicator already used for cost
+
+## [1.1.1]
+
+### Patch Changes
+
+- The token usage breakdown modal in the task header can now also break tokens down by model — each API request now records the model used (not just the provider profile), and the modal shows a Model / Provider Profile toggle, defaulting to the per-model view, when a task's requests span more than one of either
+
+## [1.1.0]
+
+### Minor Changes
+
+- Add durable, file-based task state via new `read_state`/`write_state` tools — subtasks can hand off structured artifacts (plans, API contracts, findings) under `.brocode/state/<rootTaskId>/`, available in every mode automatically with no per-mode configuration required
+- Add an optional per-workflow state schema (`.brocode/state/<rootTaskId>/_schema.json`) — when present, `write_state` validates the key and format against it instead of accepting anything
+- Add a State Inspector panel to the task header for viewing state artifacts written by a task and its subtasks
+- Add `.brocode/state/` to checkpoint snapshots/restores, so durable state travels with code through checkpoint revert/restore
+- Add per-step model routing — `new_task` accepts an optional difficulty tier (`trivial`/`standard`/`hard`); a new Settings → Providers section maps each tier to a provider profile, falling back to the mode's own profile, then the global default, when a tier has no mapping
+- Add a headless eval harness (`scripts/eval/`) — score configured provider profiles per difficulty tier against golden fixtures (classification accuracy, file-selection precision/recall/F1, freeform-answer embedding similarity), producing a model × tier scorecard and a recommended tier → profile mapping that can be applied to the model router config in one step from Settings
+
+### Patch Changes
+
+- Fix a delegated subtask never returning control to its parent task if you viewed any other task (e.g. the parent itself) in the history list while the subtask was still running — switching views was incorrectly treated as the subtask being abandoned, which detached it from the parent so its later `attempt_completion` had nothing to resume
+
 ## [1.0.6]
 
 ### Patch Changes

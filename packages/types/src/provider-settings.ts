@@ -538,6 +538,18 @@ export const modelIdKeys = [
 export type ModelIdKey = (typeof modelIdKeys)[number]
 
 export const getModelId = (settings: ProviderSettings): string | undefined => {
+	// The VS Code LM API (e.g. GitHub Copilot models) selects its model via a
+	// vendor/family/version selector object rather than one of the plain
+	// string `modelIdKeys` fields below.
+	if (settings.apiProvider === "vscode-lm") {
+		const selector = settings.vsCodeLmModelSelector
+		if (!selector) {
+			return undefined
+		}
+		const joined = [selector.vendor, selector.family].filter(Boolean).join("/")
+		return selector.id ?? (joined || undefined)
+	}
+
 	const modelIdKey = modelIdKeys.find((key) => settings[key])
 	return modelIdKey ? settings[modelIdKey] : undefined
 }
