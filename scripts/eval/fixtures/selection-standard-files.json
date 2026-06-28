@@ -1,0 +1,9 @@
+{
+	"id": "selection-standard-files",
+	"tier": "standard",
+	"taskType": "selection",
+	"description": "File-selection step: pick the files relevant to a described change. Scored with precision/recall/F1 against the golden set.",
+	"systemPrompt": "You select the files relevant to a task. Respond with ONLY a JSON array of file paths, nothing else.",
+	"userPrompt": "Given this repo layout: src/core/tools/ReadStateTool.ts, src/core/tools/WriteStateTool.ts, src/core/task-persistence/StateStore.ts, src/shared/tools.ts, webview-ui/src/components/chat/TaskHeader.tsx, README.md — which files would you touch to add a new `delete_state` tool that removes a state artifact by key?",
+	"expected": ["src/core/tools/ReadStateTool.ts", "src/core/task-persistence/StateStore.ts", "src/shared/tools.ts"]
+}

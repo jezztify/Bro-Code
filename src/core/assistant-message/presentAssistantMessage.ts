@@ -31,6 +31,8 @@ import { switchModeTool } from "../tools/SwitchModeTool"
 import { attemptCompletionTool, AttemptCompletionCallbacks } from "../tools/AttemptCompletionTool"
 import { newTaskTool } from "../tools/NewTaskTool"
 import { updateTodoListTool } from "../tools/UpdateTodoListTool"
+import { readStateTool } from "../tools/ReadStateTool"
+import { writeStateTool } from "../tools/WriteStateTool"
 import { runSlashCommandTool } from "../tools/RunSlashCommandTool"
 import { skillTool } from "../tools/SkillTool"
 import { generateImageTool } from "../tools/GenerateImageTool"
@@ -378,6 +380,10 @@ export async function presentAssistantMessage(cline: Task) {
 						return `[${block.name} for '${block.params.artifact_id}']`
 					case "update_todo_list":
 						return `[${block.name}]`
+					case "read_state":
+						return `[${block.name} for '${block.params.key}']`
+					case "write_state":
+						return `[${block.name} for '${block.params.key}']`
 					case "new_task": {
 						const mode = block.params.mode ?? defaultModeSlug
 						const message = block.params.message ?? "(no message)"
@@ -705,6 +711,20 @@ export async function presentAssistantMessage(cline: Task) {
 					break
 				case "update_todo_list":
 					await updateTodoListTool.handle(cline, block as ToolUse<"update_todo_list">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+					})
+					break
+				case "read_state":
+					await readStateTool.handle(cline, block as ToolUse<"read_state">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+					})
+					break
+				case "write_state":
+					await writeStateTool.handle(cline, block as ToolUse<"write_state">, {
 						askApproval,
 						handleError,
 						pushToolResult,

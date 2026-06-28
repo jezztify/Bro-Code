@@ -8,6 +8,7 @@ export type ParsedApiReqStartedTextType = {
 	cost?: number // Only present if consolidateApiRequests has been called
 	apiProtocol?: "anthropic" | "openai"
 	profileName?: string
+	modelId?: string
 }
 
 /**
@@ -37,14 +38,59 @@ export function consolidateTokenUsage(messages: ClineMessage[]): TokenUsage {
 		contextTokens: 0,
 	}
 
-	let profileBreakdown: Record<string, NonNullable<TokenUsage["profileBreakdown"]>[string]> | undefined
+	type BreakdownEntry = NonNullable<TokenUsage["profileBreakdown"]>[string]
+	type Breakdown = Record<string, BreakdownEntry>
+
+	let profileBreakdown: Breakdown | undefined
+	let modelBreakdown: Breakdown | undefined
+
+	const accumulate = (
+		breakdown: Breakdown | undefined,
+		key: string,
+		tokensIn?: number,
+		tokensOut?: number,
+		cacheWrites?: number,
+		cacheReads?: number,
+		cost?: number,
+	): Breakdown => {
+		breakdown ??= {}
+		const entry = (breakdown[key] ??= {
+			tokensIn: 0,
+			tokensOut: 0,
+			cacheWrites: undefined,
+			cacheReads: undefined,
+			cost: 0,
+		})
+
+		if (typeof tokensIn === "number") {
+			entry.tokensIn += tokensIn
+		}
+
+		if (typeof tokensOut === "number") {
+			entry.tokensOut += tokensOut
+		}
+
+		if (typeof cacheWrites === "number") {
+			entry.cacheWrites = (entry.cacheWrites ?? 0) + cacheWrites
+		}
+
+		if (typeof cacheReads === "number") {
+			entry.cacheReads = (entry.cacheReads ?? 0) + cacheReads
+		}
+
+		if (typeof cost === "number") {
+			entry.cost += cost
+		}
+
+		return breakdown
+	}
 
 	// Calculate running totals.
 	messages.forEach((message) => {
 		if (message.type === "say" && message.say === "api_req_started" && message.text) {
 			try {
 				const parsedText: ParsedApiReqStartedTextType = JSON.parse(message.text)
-				const { tokensIn, tokensOut, cacheWrites, cacheReads, cost, profileName } = parsedText
+				const { tokensIn, tokensOut, cacheWrites, cacheReads, cost, profileName, modelId } = parsedText
 
 				if (typeof tokensIn === "number") {
 					result.totalTokensIn += tokensIn
@@ -67,34 +113,27 @@ export function consolidateTokenUsage(messages: ClineMessage[]): TokenUsage {
 				}
 
 				if (profileName) {
-					profileBreakdown ??= {}
-					const entry = (profileBreakdown[profileName] ??= {
-						tokensIn: 0,
-						tokensOut: 0,
-						cacheWrites: undefined,
-						cacheReads: undefined,
-						cost: 0,
-					})
+					profileBreakdown = accumulate(
+						profileBreakdown,
+						profileName,
+						tokensIn,
+						tokensOut,
+						cacheWrites,
+						cacheReads,
+						cost,
+					)
+				}
 
-					if (typeof tokensIn === "number") {
-						entry.tokensIn += tokensIn
-					}
-
-					if (typeof tokensOut === "number") {
-						entry.tokensOut += tokensOut
-					}
-
-					if (typeof cacheWrites === "number") {
-						entry.cacheWrites = (entry.cacheWrites ?? 0) + cacheWrites
-					}
-
-					if (typeof cacheReads === "number") {
-						entry.cacheReads = (entry.cacheReads ?? 0) + cacheReads
-					}
-
-					if (typeof cost === "number") {
-						entry.cost += cost
-					}
+				if (modelId) {
+					modelBreakdown = accumulate(
+						modelBreakdown,
+						modelId,
+						tokensIn,
+						tokensOut,
+						cacheWrites,
+						cacheReads,
+						cost,
+					)
 				}
 			} catch (error) {
 				console.error("Error parsing JSON:", error)
@@ -106,6 +145,10 @@ export function consolidateTokenUsage(messages: ClineMessage[]): TokenUsage {
 
 	if (profileBreakdown) {
 		result.profileBreakdown = profileBreakdown
+	}
+
+	if (modelBreakdown) {
+		result.modelBreakdown = modelBreakdown
 	}
 
 	// Calculate context tokens, from the last API request started or condense

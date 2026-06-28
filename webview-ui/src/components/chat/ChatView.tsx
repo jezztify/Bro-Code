@@ -192,7 +192,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				totalCost: number
 				ownCost: number
 				childrenCost: number
+				totalTokensIn: number
+				totalTokensOut: number
 				profileBreakdown?: TokenUsage["profileBreakdown"]
+				modelBreakdown?: TokenUsage["modelBreakdown"]
 			}
 		>
 	>(new Map())
@@ -1641,6 +1644,16 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 								? aggregatedCostsMap.get(currentTaskItem.id)!.totalCost
 								: undefined
 						}
+						aggregatedTokensIn={
+							currentTaskItem?.id && aggregatedCostsMap.has(currentTaskItem.id)
+								? aggregatedCostsMap.get(currentTaskItem.id)!.totalTokensIn
+								: undefined
+						}
+						aggregatedTokensOut={
+							currentTaskItem?.id && aggregatedCostsMap.has(currentTaskItem.id)
+								? aggregatedCostsMap.get(currentTaskItem.id)!.totalTokensOut
+								: undefined
+						}
 						hasSubtasks={
 							!!(
 								currentTaskItem?.id &&
@@ -1660,6 +1673,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						profileBreakdown={
 							(currentTaskItem?.id && aggregatedCostsMap.get(currentTaskItem.id)?.profileBreakdown) ||
 							apiMetrics.profileBreakdown
+						}
+						modelBreakdown={
+							(currentTaskItem?.id && aggregatedCostsMap.get(currentTaskItem.id)?.modelBreakdown) ||
+							apiMetrics.modelBreakdown
 						}
 						contextTokens={apiMetrics.contextTokens}
 						buttonsDisabled={sendingDisabled}

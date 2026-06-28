@@ -195,6 +195,28 @@ describe.each([[RepoPerTaskCheckpointService, "RepoPerTaskCheckpointService"]])(
 				expect(await fs.readFile(testFile, "utf-8")).toBe("Hello, world!")
 			})
 
+			it("snapshots and restores .brocode/state/ artifacts alongside code (Feature 1, F1.5)", async () => {
+				// .brocode/state/ is not in the checkpoint exclude list, so MRAgent-style
+				// durable state artifacts should travel with code through checkpoints.
+				const stateDir = path.join(service.workspaceDir, ".brocode", "state", "root-task-1")
+				const artifactPath = path.join(stateDir, "plan.json")
+				await fs.mkdir(stateDir, { recursive: true })
+				await fs.writeFile(artifactPath, JSON.stringify({ step: 1 }))
+
+				const commit1 = await service.saveCheckpoint("Write initial plan state")
+				expect(commit1?.commit).toBeTruthy()
+
+				await fs.writeFile(artifactPath, JSON.stringify({ step: 2 }))
+				const commit2 = await service.saveCheckpoint("Advance plan state")
+				expect(commit2?.commit).toBeTruthy()
+
+				await service.restoreCheckpoint(commit1!.commit)
+				expect(JSON.parse(await fs.readFile(artifactPath, "utf-8"))).toEqual({ step: 1 })
+
+				await service.restoreCheckpoint(commit2!.commit)
+				expect(JSON.parse(await fs.readFile(artifactPath, "utf-8"))).toEqual({ step: 2 })
+			})
+
 			it("preserves workspace and index state after saving checkpoint", async () => {
 				// Create three files with different states: staged, unstaged, and mixed.
 				const unstagedFile = path.join(service.workspaceDir, "unstaged.txt")

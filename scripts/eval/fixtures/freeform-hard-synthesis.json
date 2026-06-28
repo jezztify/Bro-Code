@@ -1,0 +1,9 @@
+{
+	"id": "freeform-hard-synthesis",
+	"tier": "hard",
+	"taskType": "freeform",
+	"description": "Open-ended synthesis step needing nuanced judgment — scored by embedding cosine similarity against a reference answer.",
+	"systemPrompt": "You are a senior engineer summarizing a design trade-off for a teammate. Be concise (2-4 sentences).",
+	"userPrompt": "We need durable hand-off between orchestration subtasks. Option A: a graph database. Option B: files under a per-task directory that participate in git checkpoints. Which would you recommend for a local-first VS Code extension, and why?",
+	"expected": "Files under a per-task directory are the better fit here: they're human-editable, git-native (so they snapshot and restore with checkpoints for free), and need no new infrastructure or dependency. A graph database adds operational overhead and doesn't match the local-first, single-user nature of the tool, and can be introduced later as a separate feature if cross-task relationship queries become necessary."
+}

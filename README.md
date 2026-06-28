@@ -22,15 +22,15 @@
 > for LM Studio API Provider.
 > This project is only for educational purposes so I can learn how to Vibe Code properly. Use at your own risk.
 
-## What's New in v1.0.6
+## What's New in v1.1.2
 
-- Add a token usage breakdown modal to the task header — when a task's requests (including its subtasks, recursively) span more than one provider profile, an info button next to the token count opens a breakdown of tokens in/out and cost per profile
-- Add a back arrow button to the task view header that returns to the task history list, instead of requiring the history toolbar icon
-- Add README instructions for setting up Codebase Indexing with a self-hosted or cloud Qdrant instance
-- Fix newly created subtasks briefly bouncing back to the homepage instead of showing their chat view — the webview was switching to the new subtask before its first message had streamed in, making it look like the subtask never started
-- Fix subtasks created during orchestration (mode delegation) ignoring the API configuration assigned to their mode in settings — they now load the mode's own provider profile instead of inheriting the parent task's
-- Fix the VS Code Language Model provider sending the system prompt as a leading Assistant message, which strict backends (e.g. the `claude-code` vendor) silently returned an empty stream for instead of erroring — the system prompt is now merged into the first User turn
-- Fix tasks opened from the history list immediately auto-continuing instead of waiting for your confirmation to resume
+- Fix the task header's token count not matching the token usage breakdown modal for tasks with subtasks — the header now shows the same recursively aggregated total as the modal, marked with the same subtask indicator already used for cost
+- The token usage breakdown modal in the task header can now break tokens down by **Model** in addition to provider profile — it now records the model used for each API request, not just the provider profile, and defaults to the per-model view when both are available
+- Add durable, file-based task state via new `read_state`/`write_state` tools — subtasks can hand off structured artifacts (plans, API contracts, findings) under `.brocode/state/`, available in every mode automatically, validated against an optional per-workflow schema, and included in checkpoint snapshots/restores
+- Add a State Inspector panel to the task header for viewing state artifacts written by a task and its subtasks
+- Add per-step model routing — `new_task` can declare a difficulty tier (trivial/standard/hard), configurable in Settings → Providers to route subtasks to a specific provider profile, falling back to the mode's own profile when no tier mapping is set
+- Add a headless eval harness (`scripts/eval/`) for scoring provider profiles per difficulty tier against golden fixtures, producing a model × tier scorecard and a recommended tier → profile mapping that can be applied to the model router config in one step
+- Fix a delegated subtask never returning control to its parent task if you viewed any other task in the history list while the subtask was still running
 
 <details>
   <summary>🌐 Available languages</summary>
@@ -54,7 +54,7 @@
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
 - ...
-      </details>
+  </details>
 
 ---
 
