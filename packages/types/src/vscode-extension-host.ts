@@ -5,7 +5,7 @@ import type { ProviderSettings, ProviderSettingsEntry } from "./provider-setting
 import type { HistoryItem } from "./history.js"
 import type { ModeConfig, PromptComponent } from "./mode.js"
 import type { Experiments } from "./experiment.js"
-import type { ClineMessage, QueuedMessage } from "./message.js"
+import type { ClineMessage, QueuedMessage, TokenUsage } from "./message.js"
 import type { MarketplaceItem, MarketplaceInstalledMetadata, InstallMarketplaceItemOptions } from "./marketplace.js"
 import type { TodoItem } from "./todo.js"
 import type { CloudUserInfo, CloudOrganizationMembership, OrganizationAllowList, ShareVisibility } from "./cloud.js"
@@ -103,6 +103,8 @@ export interface ExtensionMessage {
 		| "skills"
 		| "fileContent"
 		| "broHistoryImportProgress"
+		| "taskStateData"
+		| "applyTierRecommendationsResult"
 	text?: string
 	/** For fileContent: { path, content, error? } */
 	fileContent?: { path: string; content: string | null; error?: string }
@@ -155,6 +157,10 @@ export interface ExtensionMessage {
 	results?:
 		| { path: string; type: "file" | "folder"; label?: string }[]
 		| { name: string; description?: string; argumentHint?: string; source: "global" | "project" | "built-in" }[]
+	/** For taskStateData: response to getTaskState */
+	taskStateArtifacts?: Array<{ key: string; format: "json" | "markdown"; content: string; mtime: number }>
+	/** For applyTierRecommendationsResult: tiers whose recommended profile name didn't match any configured profile */
+	unresolvedTiers?: string[]
 	error?: string
 	setting?: string
 	value?: any // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -196,6 +202,12 @@ export interface ExtensionMessage {
 		totalCost: number
 		ownCost: number
 		childrenCost: number
+		totalTokensIn: number
+		totalTokensOut: number
+		// Per-provider-profile token breakdown merged across this task and all its subtasks.
+		profileBreakdown?: TokenUsage["profileBreakdown"]
+		// Per-model token breakdown merged across this task and all its subtasks.
+		modelBreakdown?: TokenUsage["modelBreakdown"]
 	}
 	historyItem?: HistoryItem
 	taskHistory?: HistoryItem[] // For taskHistoryUpdated: full sorted task history
@@ -300,6 +312,7 @@ export type ExtensionState = Pick<
 	| "autoCloseBroOpenedNewFiles"
 	| "language"
 	| "modeApiConfigs"
+	| "tierApiConfigs"
 	| "customModePrompts"
 	| "customSupportPrompts"
 	| "enhancementApiConfigId"
@@ -530,6 +543,9 @@ export interface WebviewMessage {
 		| "codebaseIndexEnabled"
 		| "telemetrySetting"
 		| "searchFiles"
+		| "getTaskState"
+		| "tierApiConfigs"
+		| "applyTierRecommendations"
 		| "toggleApiConfigPin"
 		| "hasOpenedModeSelector"
 		| "lockApiConfigAcrossModes"
@@ -646,6 +662,10 @@ export interface WebviewMessage {
 	/** Generic payload for webview messages that use `values` */
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	values?: Record<string, any>
+	/** For tierApiConfigs: full replacement map of difficulty tier -> API config profile id */
+	tierApiConfigs?: Record<string, string>
+	/** For applyTierRecommendations: difficulty tier -> API config profile NAME (Feature 3 eval harness export) */
+	tierRecommendations?: Record<string, string>
 	query?: string
 	setting?: string
 	slug?: string
@@ -816,7 +836,14 @@ export interface ClineSayTool {
 		| "runSlashCommand"
 		| "updateTodoList"
 		| "skill"
+		| "readState"
+		| "writeState"
 	path?: string
+	// For readState/writeState
+	key?: string
+	format?: "json" | "markdown"
+	// For newTask: optional difficulty tier used for per-step model routing
+	tier?: "trivial" | "standard" | "hard"
 	// For readCommandOutput
 	readStart?: number
 	readEnd?: number
@@ -894,6 +921,10 @@ export interface ClineApiReqInfo {
 	cancelReason?: ClineApiReqCancelReason
 	streamingFailedMessage?: string
 	apiProtocol?: "anthropic" | "openai"
+	// The provider profile name active when this request was made.
+	profileName?: string
+	// The model id active when this request was made.
+	modelId?: string
 }
 
 export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled"

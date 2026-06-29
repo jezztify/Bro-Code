@@ -592,6 +592,24 @@ export class NativeToolCallParser {
 				}
 				break
 
+			case "read_state":
+				if (partialArgs.key !== undefined) {
+					nativeArgs = {
+						key: partialArgs.key,
+					}
+				}
+				break
+
+			case "write_state":
+				if (partialArgs.key !== undefined || partialArgs.content !== undefined) {
+					nativeArgs = {
+						key: partialArgs.key,
+						content: partialArgs.content,
+						format: partialArgs.format,
+					}
+				}
+				break
+
 			case "use_mcp_tool":
 				if (partialArgs.server_name !== undefined || partialArgs.tool_name !== undefined) {
 					nativeArgs = {
@@ -670,6 +688,7 @@ export class NativeToolCallParser {
 						mode: partialArgs.mode,
 						message: partialArgs.message,
 						todos: partialArgs.todos,
+						tier: partialArgs.tier,
 					}
 				}
 				break
@@ -936,6 +955,24 @@ export class NativeToolCallParser {
 					}
 					break
 
+				case "read_state":
+					if (args.key !== undefined) {
+						nativeArgs = {
+							key: args.key,
+						} as NativeArgsFor<TName>
+					}
+					break
+
+				case "write_state":
+					if (args.key !== undefined && args.content !== undefined) {
+						nativeArgs = {
+							key: args.key,
+							content: args.content,
+							format: args.format,
+						} as NativeArgsFor<TName>
+					}
+					break
+
 				case "read_command_output":
 					if (args.artifact_id !== undefined) {
 						nativeArgs = {
@@ -1027,6 +1064,7 @@ export class NativeToolCallParser {
 							mode: args.mode,
 							message: args.message,
 							todos: args.todos,
+							tier: args.tier,
 						} as NativeArgsFor<TName>
 					}
 					break

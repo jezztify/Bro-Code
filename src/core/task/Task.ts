@@ -493,6 +493,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.enableCheckpoints = enableCheckpoints
 		this.checkpointTimeout = checkpointTimeout
 
+		this.rootTask = rootTask
 		this.parentTask = parentTask
 		this.taskNumber = taskNumber
 		this.initialStatus = initialStatus
@@ -2502,6 +2503,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				"api_req_started",
 				JSON.stringify({
 					apiProtocol,
+					profileName: this.taskApiConfigName,
+					modelId,
 				}),
 			)
 
@@ -2581,6 +2584,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			this.clineMessages[lastApiReqIndex].text = JSON.stringify({
 				apiProtocol,
+				profileName: this.taskApiConfigName,
+				modelId,
 			} satisfies ClineApiReqInfo)
 
 			await this.saveClineMessages()

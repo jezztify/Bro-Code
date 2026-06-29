@@ -1,15 +1,56 @@
 # Bro Code Changelog
 
+## [1.1.2]
+
+### Patch Changes
+
+- Fix the task header's token count not matching the token usage breakdown modal for tasks with subtasks — the header showed only the current task's own tokens while the modal showed totals aggregated recursively across all subtasks; the header now shows the same aggregated total, marked with the same subtask indicator already used for cost
+
+## [1.1.1]
+
+### Patch Changes
+
+- The token usage breakdown modal in the task header can now also break tokens down by model — each API request now records the model used (not just the provider profile), and the modal shows a Model / Provider Profile toggle, defaulting to the per-model view, when a task's requests span more than one of either
+
+## [1.1.0]
+
+### Minor Changes
+
+- Add durable, file-based task state via new `read_state`/`write_state` tools — subtasks can hand off structured artifacts (plans, API contracts, findings) under `.brocode/state/<rootTaskId>/`, available in every mode automatically with no per-mode configuration required
+- Add an optional per-workflow state schema (`.brocode/state/<rootTaskId>/_schema.json`) — when present, `write_state` validates the key and format against it instead of accepting anything
+- Add a State Inspector panel to the task header for viewing state artifacts written by a task and its subtasks
+- Add `.brocode/state/` to checkpoint snapshots/restores, so durable state travels with code through checkpoint revert/restore
+- Add per-step model routing — `new_task` accepts an optional difficulty tier (`trivial`/`standard`/`hard`); a new Settings → Providers section maps each tier to a provider profile, falling back to the mode's own profile, then the global default, when a tier has no mapping
+- Add a headless eval harness (`scripts/eval/`) — score configured provider profiles per difficulty tier against golden fixtures (classification accuracy, file-selection precision/recall/F1, freeform-answer embedding similarity), producing a model × tier scorecard and a recommended tier → profile mapping that can be applied to the model router config in one step from Settings
+
+### Patch Changes
+
+- Fix a delegated subtask never returning control to its parent task if you viewed any other task (e.g. the parent itself) in the history list while the subtask was still running — switching views was incorrectly treated as the subtask being abandoned, which detached it from the parent so its later `attempt_completion` had nothing to resume
+
+## [1.0.6]
+
+### Patch Changes
+
+- Add a token usage breakdown modal to the task header — when a task's requests (including its subtasks, recursively) span more than one provider profile, an info button next to the token count opens a breakdown of tokens in/out and cost per profile
+- Add a back arrow button to the task view header that returns to the task history list, instead of requiring the history toolbar icon
+- Add README instructions for setting up Codebase Indexing with a self-hosted or cloud Qdrant instance
+- Fix newly created subtasks briefly bouncing back to the homepage instead of showing their chat view — the webview was switching to the new subtask before its first message had streamed in, making it look like the subtask never started
+- Fix subtasks created during orchestration (mode delegation) ignoring the API configuration assigned to their mode in settings — they now load the mode's own provider profile instead of inheriting the parent task's
+- Fix the VS Code Language Model provider sending the system prompt as a leading Assistant message, which strict backends (e.g. the `claude-code` vendor) silently returned an empty stream for instead of erroring — the system prompt is now merged into the first User turn
+- Fix tasks opened from the history list immediately auto-continuing instead of waiting for your confirmation to resume
+
 ## [1.0.5]
 
 ### Minor Changes
 
+- Add a back arrow button to the task view header that returns to the task history list, instead of requiring the history toolbar icon
 - Fix LM Studio models that don't reliably emit real tool calls writing raw tool-call JSON (e.g. `{ "result": "..." }`, `{ "question": "...", "follow_up": [...] }`) as plain text instead — Bro Code now detects and executes it as the intended tool call rather than displaying the JSON verbatim
 - When a native tool call has missing or wrong parameters (e.g. an `attempt_completion` call with no `result`, or a `read_file` call using `file_path` instead of `path`), the error sent back to the model now names the specific missing and/or unrecognized parameter(s) instead of a generic "missing nativeArgs" message, so weaker models can self-correct instead of retrying with the same invalid arguments
 - Fix LM Studio models writing a real tool name as a literal XML tag (e.g. `<attempt_completion/>`) instead of issuing a real tool call — Bro Code now detects this and routes it through the normal tool pipeline (including the parameter-error feedback above) instead of letting it leak as inert chat text that looks like the task silently finished
 - The LM Studio bare-JSON/XML-tag tool-call fallback now only matches against the tools actually offered for the current request/mode, instead of every tool that exists anywhere in Bro Code — this avoids mistaking a model's illustrative example of tool syntax (e.g. while explaining how a tool works in a restricted or explain-only mode) for a real call attempt
 - Fix a regression where a recognized tool name detected via the bare-JSON/XML-tag fallback (e.g. `<attempt_completion/>` with no `result`) silently produced no assistant content at all when its arguments couldn't be validated, which was indistinguishable from the model not responding and triggered the more severe "model did not provide any assistant messages" retry path instead of the specific missing-parameter error
 - Rework the LM Studio tool-call fallback into an ordered multi-pass detector, adding support for two more syntaxes weaker models fall back to: a self-closing tag with parameters as XML attributes (e.g. `<attempt_completion result="..."/>`) and the legacy Cline/Roo Code multi-child-tag format (e.g. `<read_file><path>...</path><mode>slice</mode></read_file>`)
+- Fix subtasks created during orchestration (mode delegation) ignoring the API configuration assigned to their mode in settings — they now load the mode's own provider profile instead of inheriting the parent task's
 
 ## [3.62.0]
 

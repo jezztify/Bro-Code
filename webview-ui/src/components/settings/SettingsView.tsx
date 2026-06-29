@@ -75,6 +75,7 @@ import { LanguageSettings } from "./LanguageSettings"
 import { About } from "./About"
 import { Section } from "./Section"
 import PromptsSettings from "./PromptsSettings"
+import TierRoutingSettings from "./TierRoutingSettings"
 import { SlashCommandsSettings } from "./SlashCommandsSettings"
 import { SkillsSettings } from "./SkillsSettings"
 import { UISettings } from "./UISettings"
@@ -786,6 +787,11 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 										setErrorMessage={setErrorMessage}
 									/>
 								</Section>
+								<TierRoutingSettings
+									listApiConfigMeta={listApiConfigMeta ?? []}
+									tierApiConfigs={extensionState.tierApiConfigs ?? {}}
+									setTierApiConfigs={extensionState.setTierApiConfigs}
+								/>
 							</div>
 						)}
 

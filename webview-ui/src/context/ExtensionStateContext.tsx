@@ -104,6 +104,8 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setMode: (value: Mode) => void
 	setCustomModePrompts: (value: CustomModePrompts) => void
 	setCustomSupportPrompts: (value: CustomSupportPrompts) => void
+	tierApiConfigs?: Record<string, string>
+	setTierApiConfigs: (value: Record<string, string>) => void
 	enhancementApiConfigId?: string
 	setEnhancementApiConfigId: (value: string) => void
 	condensingApiConfigId?: string
@@ -222,6 +224,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		customModePrompts: defaultPrompts,
 		customSupportPrompts: {},
 		experiments: experimentDefault,
+		tierApiConfigs: {},
 		enhancementApiConfigId: "",
 		condensingApiConfigId: "",
 		hasOpenedModeSelector: false, // Default to false (not opened yet)
@@ -578,6 +581,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setMode: (value: Mode) => setState((prevState) => ({ ...prevState, mode: value })),
 		setCustomModePrompts: (value) => setState((prevState) => ({ ...prevState, customModePrompts: value })),
 		setCustomSupportPrompts: (value) => setState((prevState) => ({ ...prevState, customSupportPrompts: value })),
+		setTierApiConfigs: (value) => setState((prevState) => ({ ...prevState, tierApiConfigs: value })),
 		setEnhancementApiConfigId: (value) =>
 			setState((prevState) => ({ ...prevState, enhancementApiConfigId: value })),
 		setCondensingApiConfigId: (value) => setState((prevState) => ({ ...prevState, condensingApiConfigId: value })),

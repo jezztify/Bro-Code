@@ -17,7 +17,31 @@
 		"delete": "Delete Task (Shift + Click to skip confirmation)",
 		"openApiHistory": "Open API History",
 		"openUiHistory": "Open UI History",
-		"backToParentTask": "Parent task"
+		"backToParentTask": "Parent task",
+		"backToHistory": "Back to task history",
+		"tokenBreakdown": "View token breakdown by model or provider profile",
+		"viewState": "View task state"
+	},
+	"tokenBreakdownModal": {
+		"titleByModel": "Tokens by Model",
+		"titleByProfile": "Tokens by Provider Profile",
+		"descriptionByModel": "Tokens sent and received for each model used in this task.",
+		"descriptionByProfile": "Tokens sent and received for each provider profile used in this task.",
+		"viewByModel": "Model",
+		"viewByProfile": "Provider Profile",
+		"model": "Model",
+		"profile": "Profile",
+		"tokensIn": "Tokens In",
+		"tokensOut": "Tokens Out",
+		"cacheWrites": "Cache Writes",
+		"cacheReads": "Cache Reads",
+		"cost": "Cost"
+	},
+	"stateInspectorModal": {
+		"title": "Task State",
+		"description": "Durable artifacts written under .brocode/state/ by this task and its subtasks.",
+		"loading": "Loading state...",
+		"empty": "No state artifacts have been written for this task yet."
 	},
 	"unpin": "Unpin",
 	"pin": "Pin",

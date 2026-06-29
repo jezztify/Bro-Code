@@ -29,6 +29,7 @@ import { TelemetryService } from "@bro-code/telemetry"
 import { type ApiMessage } from "../task-persistence/apiMessages"
 import { saveTaskMessages } from "../task-persistence"
 import { importBroTaskHistory } from "../task-persistence/importBroTaskHistory"
+import { listArtifacts, readArtifact } from "../task-persistence/StateStore"
 
 import { ClineProvider } from "./ClineProvider"
 import { handleCheckpointRestoreOperation } from "./checkpointRestoreHandler"
@@ -1850,6 +1851,34 @@ export const webviewMessageHandler = async (
 			await updateGlobalState("condensingApiConfigId", message.text)
 			await provider.postStateToWebview()
 			break
+		case "tierApiConfigs":
+			await updateGlobalState("tierApiConfigs", message.tierApiConfigs ?? {})
+			await provider.postStateToWebview()
+			break
+		case "applyTierRecommendations": {
+			// Feature 3 (eval harness) exports a recommendation keyed by profile NAME
+			// (the scorecard's model label). Resolve each to its profile id and merge
+			// into Feature 2's tierApiConfigs in one step.
+			const recommendations = message.tierRecommendations ?? {}
+			const listApiConfig = await provider.providerSettingsManager.listConfig()
+			const existing = getGlobalState("tierApiConfigs") ?? {}
+			const next = { ...existing }
+			const unresolvedTiers: string[] = []
+
+			for (const [tier, profileName] of Object.entries(recommendations)) {
+				const profile = listApiConfig.find((c) => c.name === profileName)
+				if (profile?.id) {
+					next[tier] = profile.id
+				} else {
+					unresolvedTiers.push(tier)
+				}
+			}
+
+			await updateGlobalState("tierApiConfigs", next)
+			await provider.postStateToWebview()
+			await provider.postMessageToWebview({ type: "applyTierRecommendationsResult", unresolvedTiers })
+			break
+		}
 
 		case "autoApprovalEnabled":
 			await updateGlobalState("autoApprovalEnabled", message.bool ?? false)
@@ -2007,6 +2036,45 @@ export const webviewMessageHandler = async (
 					results: [],
 					error: errorMessage,
 					requestId: message.requestId,
+				})
+			}
+			break
+		}
+		case "getTaskState": {
+			const currentTask = provider.getCurrentTask()
+			const workspacePath = getCurrentCwd()
+
+			if (!currentTask || !workspacePath) {
+				await provider.postMessageToWebview({
+					type: "taskStateData",
+					taskStateArtifacts: [],
+					requestId: message.requestId,
+					error: "No active task",
+				})
+				break
+			}
+
+			try {
+				const rootTaskId = currentTask.rootTaskId ?? currentTask.taskId
+				const summaries = await listArtifacts(workspacePath, rootTaskId)
+				const artifacts = await Promise.all(
+					summaries.map(async (summary) => {
+						const artifact = await readArtifact(workspacePath, rootTaskId, summary.key)
+						return artifact!
+					}),
+				)
+
+				await provider.postMessageToWebview({
+					type: "taskStateData",
+					taskStateArtifacts: artifacts,
+					requestId: message.requestId,
+				})
+			} catch (error) {
+				await provider.postMessageToWebview({
+					type: "taskStateData",
+					taskStateArtifacts: [],
+					requestId: message.requestId,
+					error: error instanceof Error ? error.message : String(error),
 				})
 			}
 			break

@@ -323,4 +323,30 @@ describe("aggregateTaskCostsRecursive", () => {
 		// Total: 1.0 + 0.6 + 0.4 = 2.0
 		expect(result.totalCost).toBe(2.0)
 	})
+
+	it("should aggregate tokensIn/tokensOut across subtasks", async () => {
+		const mockHistory: Record<string, HistoryItem> = {
+			parent: {
+				id: "parent",
+				totalCost: 1.0,
+				tokensIn: 100,
+				tokensOut: 10,
+				childIds: ["child-1"],
+			} as unknown as HistoryItem,
+			"child-1": {
+				id: "child-1",
+				totalCost: 0.5,
+				tokensIn: 200,
+				tokensOut: 20,
+				childIds: [],
+			} as unknown as HistoryItem,
+		}
+
+		const getTaskHistory = vi.fn(async (id: string) => mockHistory[id])
+
+		const result = await aggregateTaskCostsRecursive("parent", getTaskHistory)
+
+		expect(result.totalTokensIn).toBe(300)
+		expect(result.totalTokensOut).toBe(30)
+	})
 })

@@ -146,6 +146,12 @@ export async function checkAutoApproval({
 			return { decision: "approve" }
 		}
 
+		// read_state/write_state are confined to .brocode/state/ and can never affect
+		// user source files, so they're auto-approved regardless of read/write settings.
+		if (tool.tool === "readState" || tool.tool === "writeState") {
+			return { decision: "approve" }
+		}
+
 		// The skill tool only loads pre-defined instructions from global or project skills.
 		// It does not read arbitrary files - skills must be explicitly installed/defined by the user.
 		// Auto-approval is intentional to provide a seamless experience when loading task instructions.

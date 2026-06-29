@@ -18,6 +18,7 @@ export class BroProtectedController {
 		".brorules*",
 		".clinerules*",
 		".bro/**",
+		".brocode/**",
 		".vscode/**",
 		"*.code-workspace",
 		".broprotected", // For future use

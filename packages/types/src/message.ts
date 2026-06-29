@@ -279,6 +279,16 @@ export type ClineMessage = z.infer<typeof clineMessageSchema>
  * TokenUsage
  */
 
+export const tokenUsageProfileBreakdownEntrySchema = z.object({
+	tokensIn: z.number(),
+	tokensOut: z.number(),
+	cacheWrites: z.number().optional(),
+	cacheReads: z.number().optional(),
+	cost: z.number(),
+})
+
+export type TokenUsageProfileBreakdownEntry = z.infer<typeof tokenUsageProfileBreakdownEntrySchema>
+
 export const tokenUsageSchema = z.object({
 	totalTokensIn: z.number(),
 	totalTokensOut: z.number(),
@@ -286,6 +296,14 @@ export const tokenUsageSchema = z.object({
 	totalCacheReads: z.number().optional(),
 	totalCost: z.number(),
 	contextTokens: z.number(),
+	// Per-provider-profile breakdown, keyed by profile name. Populated when a
+	// task's requests span more than one provider profile (e.g. mid-task
+	// profile switches or subtasks inheriting a different profile).
+	profileBreakdown: z.record(z.string(), tokenUsageProfileBreakdownEntrySchema).optional(),
+	// Per-model breakdown, keyed by model id. Populated when a task's
+	// requests span more than one model (e.g. mid-task model switches or
+	// subtasks inheriting a different model).
+	modelBreakdown: z.record(z.string(), tokenUsageProfileBreakdownEntrySchema).optional(),
 })
 
 export type TokenUsage = z.infer<typeof tokenUsageSchema>
