@@ -147,6 +147,13 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 	const [cachedState, setCachedState] = useState(() => extensionState)
 
+	// The profile name currently shown/edited in the Providers tab. This is a local
+	// draft: selecting a different profile only previews its settings for editing and
+	// must not activate it (mutate global state, the mode's provider mapping, or the
+	// live task's API handler) until the user explicitly saves.
+	const [draftApiConfigName, setDraftApiConfigName] = useState(currentApiConfigName)
+	const previewRequestIdRef = useRef<string>()
+
 	const {
 		alwaysAllowReadOnly,
 		alwaysAllowReadOnlyOutsideWorkspace,
@@ -223,6 +230,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 		setCachedState((prevCachedState) => ({ ...prevCachedState, ...extensionState }))
 		prevApiConfigName.current = currentApiConfigName
+		setDraftApiConfigName(currentApiConfigName)
 		setChangeDetected(false)
 	}, [currentApiConfigName, extensionState])
 
@@ -440,7 +448,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 			// These have more complex logic so they aren't (yet) handled
 			// by the `updateSettings` message.
-			vscode.postMessage({ type: "upsertApiConfiguration", text: currentApiConfigName, apiConfiguration })
+			vscode.postMessage({ type: "upsertApiConfiguration", text: draftApiConfigName, apiConfiguration })
 			vscode.postMessage({ type: "telemetrySetting", text: telemetrySetting })
 			vscode.postMessage({ type: "debugSetting", bool: cachedState.debug })
 
@@ -467,6 +475,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			if (confirm) {
 				// Discard changes: Reset state and flag
 				setCachedState(extensionState) // Revert to original state
+				setDraftApiConfigName(extensionState.currentApiConfigName) // Revert any browsed profile preview
 				setChangeDetected(false) // Reset change flag
 				confirmDialogHandler.current?.() // Execute the pending action (e.g., tab switch)
 			}
@@ -580,6 +589,35 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			window.removeEventListener("message", handleMessage)
 		}
 	}, [scrollToActiveTab])
+
+	// Load the settings of a browsed (not-yet-saved) provider profile into the draft
+	// state so it can be previewed/edited without activating it.
+	useEffect(() => {
+		const handleMessage = (event: MessageEvent) => {
+			const message = event.data
+			if (
+				message.type === "apiConfigurationByName" &&
+				message.requestId &&
+				message.requestId === previewRequestIdRef.current
+			) {
+				setCachedState((prevState) => ({ ...prevState, apiConfiguration: message.apiConfiguration }))
+				setChangeDetected(true)
+			}
+		}
+
+		window.addEventListener("message", handleMessage)
+
+		return () => {
+			window.removeEventListener("message", handleMessage)
+		}
+	}, [])
+
+	const onSelectApiConfig = useCallback((configName: string) => {
+		setDraftApiConfigName(configName)
+		const requestId = Math.random().toString(36).substring(2, 9)
+		previewRequestIdRef.current = requestId
+		vscode.postMessage({ type: "getApiConfigurationByName", text: configName, requestId })
+	}, [])
 
 	// Search index registry - settings register themselves on mount
 	const getSectionLabel = useCallback((section: SectionName) => t(`settings:sections.${section}`), [t])
@@ -753,12 +791,10 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 								<Section>
 									<ApiConfigManager
-										currentApiConfigName={currentApiConfigName}
+										currentApiConfigName={draftApiConfigName}
 										listApiConfigMeta={listApiConfigMeta}
 										onSelectConfig={(configName: string) =>
-											checkUnsaveChanges(() =>
-												vscode.postMessage({ type: "loadApiConfiguration", text: configName }),
-											)
+											checkUnsaveChanges(() => onSelectApiConfig(configName))
 										}
 										onDeleteConfig={(configName: string) =>
 											vscode.postMessage({ type: "deleteApiConfiguration", text: configName })
@@ -770,6 +806,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 												apiConfiguration,
 											})
 											prevApiConfigName.current = newName
+											setDraftApiConfigName(newName)
 										}}
 										onUpsertConfig={(configName: string) =>
 											vscode.postMessage({

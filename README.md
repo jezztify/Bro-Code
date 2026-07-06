@@ -27,6 +27,7 @@
 - Add per-mode API provider fallback — a mode can now fail over to an ordered list of backup provider profiles when its primary provider keeps hitting transient errors (429/408, 5xx, or network failures), retrying the same profile first before cycling through fallbacks once each; hard request-level errors (401/403/400/422) still fail loud
 - When a failover happens, Bro posts a chat message noting the switch, and the active provider shown at the bottom of the chatbox follows the fallback for the rest of the task, without changing the mode's configured primary profile
 - Configure the fallback chain per mode under Settings → Modes, including a configurable cap on how many fallbacks each mode may use
+- Fix browsing provider profiles in Settings immediately activating them — selecting a different profile in the dropdown now only previews its settings for editing; nothing is applied to the running configuration until you click Save
 
 <details>
   <summary>🌐 Available languages</summary>
@@ -50,7 +51,7 @@
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
 - ...
-    </details>
+      </details>
 
 ---
 

@@ -46,6 +46,8 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 					"Upstream Bro Code handoff: Pulled in the latest upstream sunset merge and related platform updates to keep Bro Code aligned with the community handoff work.",
 				"chat:announcement.release.highlight3":
 					"Stability fixes across chat and providers: Fixed MCP sign-in copy, Gemini full-tool requests, OpenAI temperature handling, and Markdown single-tilde rendering.",
+				"chat:announcement.release.highlight4":
+					"Fixed: browsing provider profiles in Settings no longer activates them immediately — selecting a profile now only previews it for editing, and nothing is applied until you click Save.",
 				"chat:announcement.handoff.heading": "The Bro Code plugin is not going away.",
 			}
 
@@ -80,10 +82,10 @@ describe("Announcement", () => {
 		).toBeInTheDocument()
 	})
 
-	it("renders exactly three release highlight bullets", () => {
+	it("renders exactly four release highlight bullets", () => {
 		render(<Announcement hideAnnouncement={vi.fn()} />)
 
-		expect(screen.getAllByRole("listitem")).toHaveLength(3)
+		expect(screen.getAllByRole("listitem")).toHaveLength(4)
 	})
 
 	it("links support users to the Bro Code GitHub repository", () => {

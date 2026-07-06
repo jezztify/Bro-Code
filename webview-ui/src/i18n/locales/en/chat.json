@@ -378,7 +378,8 @@
 			"heading": "What's New:",
 			"highlight1": "Per-mode API provider fallback — configure an ordered list of backup provider profiles per mode in Settings → Modes, so a task can fail over automatically when its primary provider keeps hitting transient errors.",
 			"highlight2": "Fallback chain retries the primary profile first, then cycles through backups once each — hard errors like invalid API keys or bad requests still fail loud instead of cycling through fallbacks.",
-			"highlight3": "A chat message now announces when a failover happens, and the active provider shown in the chatbox follows the fallback for the rest of the task."
+			"highlight3": "A chat message now announces when a failover happens, and the active provider shown in the chatbox follows the fallback for the rest of the task.",
+			"highlight4": "Fixed: browsing provider profiles in Settings no longer activates them immediately — selecting a profile now only previews it for editing, and nothing is applied until you click Save."
 		},
 		"cloudAgents": {
 			"heading": "New in the Cloud:",

@@ -37,6 +37,7 @@ export interface ExtensionMessage {
 		| "enhancedPrompt"
 		| "commitSearchResults"
 		| "listApiConfig"
+		| "apiConfigurationByName"
 		| "routerModels"
 		| "broGatewayCredentialsReady"
 		| "openAiModels"
@@ -145,6 +146,7 @@ export interface ExtensionMessage {
 	mcpServers?: McpServer[]
 	commits?: GitCommit[]
 	listApiConfig?: ProviderSettingsEntry[]
+	apiConfiguration?: ProviderSettings
 	mode?: string
 	customMode?: ModeConfig
 	slug?: string
@@ -463,6 +465,7 @@ export interface WebviewMessage {
 		| "loadApiConfigurationById"
 		| "renameApiConfiguration"
 		| "getListApiConfiguration"
+		| "getApiConfigurationByName"
 		| "customInstructions"
 		| "webviewDidLaunch"
 		| "newTask"
