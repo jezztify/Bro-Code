@@ -1921,6 +1921,14 @@ export const webviewMessageHandler = async (
 			await updateGlobalState("tierApiConfigs", message.tierApiConfigs ?? {})
 			await provider.postStateToWebview()
 			break
+		case "maxFallbacksPerMode": {
+			// Clamp to a non-negative integer; undefined/invalid resets to the default.
+			const raw = message.maxFallbacksPerMode
+			const next = typeof raw === "number" && Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : undefined
+			await updateGlobalState("maxFallbacksPerMode", next)
+			await provider.postStateToWebview()
+			break
+		}
 		case "applyTierRecommendations": {
 			// Feature 3 (eval harness) exports a recommendation keyed by profile NAME
 			// (the scorecard's model label). Resolve each to its profile id and merge

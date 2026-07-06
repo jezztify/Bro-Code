@@ -21,6 +21,7 @@ import {
 	ORGANIZATION_ALLOW_ALL,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
+	DEFAULT_MAX_FALLBACKS_PER_MODE,
 } from "@bro-code/types"
 
 import { findLastIndex } from "@bro/array"
@@ -107,6 +108,8 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setCustomSupportPrompts: (value: CustomSupportPrompts) => void
 	tierApiConfigs?: Record<string, string>
 	setTierApiConfigs: (value: Record<string, string>) => void
+	maxFallbacksPerMode?: number
+	setMaxFallbacksPerMode: (value: number) => void
 	enhancementApiConfigId?: string
 	setEnhancementApiConfigId: (value: string) => void
 	condensingApiConfigId?: string
@@ -227,6 +230,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		customSupportPrompts: {},
 		experiments: experimentDefault,
 		tierApiConfigs: {},
+		maxFallbacksPerMode: DEFAULT_MAX_FALLBACKS_PER_MODE,
 		enhancementApiConfigId: "",
 		condensingApiConfigId: "",
 		hasOpenedModeSelector: false, // Default to false (not opened yet)
@@ -589,6 +593,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setCustomModePrompts: (value) => setState((prevState) => ({ ...prevState, customModePrompts: value })),
 		setCustomSupportPrompts: (value) => setState((prevState) => ({ ...prevState, customSupportPrompts: value })),
 		setTierApiConfigs: (value) => setState((prevState) => ({ ...prevState, tierApiConfigs: value })),
+		setMaxFallbacksPerMode: (value) => setState((prevState) => ({ ...prevState, maxFallbacksPerMode: value })),
 		setEnhancementApiConfigId: (value) =>
 			setState((prevState) => ({ ...prevState, enhancementApiConfigId: value })),
 		setCondensingApiConfigId: (value) => setState((prevState) => ({ ...prevState, condensingApiConfigId: value })),

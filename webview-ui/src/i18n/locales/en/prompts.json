@@ -16,6 +16,21 @@
 		"title": "API Configuration",
 		"select": "Select which API configuration to use for this mode"
 	},
+	"fallbackApiConfiguration": {
+		"title": "Fallback API Providers",
+		"description": "Backup API profiles this mode fails over to, in order, when its primary provider keeps hitting transient errors (rate limits, 5xx, network failures). Each is tried once after same-profile retries are exhausted.",
+		"maxLabel": "Max fallbacks per mode",
+		"maxDescription": "The maximum number of fallback providers you can add to any single mode.",
+		"counter": "{{count}} / {{max}}",
+		"empty": "No fallbacks configured — this mode uses only its primary profile.",
+		"builtInHint": "Fallbacks can only be set on custom modes. Duplicate this built-in mode first, then configure fallbacks on the copy.",
+		"add": "Add fallback",
+		"remove": "Remove",
+		"moveUp": "Move up",
+		"moveDown": "Move down",
+		"capReached": "You've reached the maximum number of fallbacks for a mode.",
+		"noProfilesLeft": "All available provider profiles are already in this chain."
+	},
 	"tools": {
 		"title": "Available Tools",
 		"builtInModesText": "Tools for built-in modes cannot be modified",
