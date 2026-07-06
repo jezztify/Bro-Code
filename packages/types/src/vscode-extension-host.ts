@@ -313,6 +313,7 @@ export type ExtensionState = Pick<
 	| "language"
 	| "modeApiConfigs"
 	| "tierApiConfigs"
+	| "maxFallbacksPerMode"
 	| "customModePrompts"
 	| "customSupportPrompts"
 	| "enhancementApiConfigId"
@@ -545,6 +546,7 @@ export interface WebviewMessage {
 		| "searchFiles"
 		| "getTaskState"
 		| "tierApiConfigs"
+		| "maxFallbacksPerMode"
 		| "applyTierRecommendations"
 		| "toggleApiConfigPin"
 		| "hasOpenedModeSelector"
@@ -664,6 +666,8 @@ export interface WebviewMessage {
 	values?: Record<string, any>
 	/** For tierApiConfigs: full replacement map of difficulty tier -> API config profile id */
 	tierApiConfigs?: Record<string, string>
+	/** For maxFallbacksPerMode: maximum number of fallback API profiles allowed per mode */
+	maxFallbacksPerMode?: number
 	/** For applyTierRecommendations: difficulty tier -> API config profile NAME (Feature 3 eval harness export) */
 	tierRecommendations?: Record<string, string>
 	query?: string

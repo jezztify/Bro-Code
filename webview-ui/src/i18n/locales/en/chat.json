@@ -376,9 +376,9 @@
 		"support": "Please support Bro Code by starring us on <githubLink>GitHub</githubLink>.",
 		"release": {
 			"heading": "What's New:",
-			"highlight1": "GLM-5.2 support — the latest GLM model is now available in your provider settings.",
-			"highlight2": "OpenCode-Go improvements — native model parameters, Anthropic-format routing, and a context-token fix for more reliable responses.",
-			"highlight3": "Tool-writer mode — a new specialized mode for writing and maintaining tool definitions is now available in the Marketplace."
+			"highlight1": "Per-mode API provider fallback — configure an ordered list of backup provider profiles per mode in Settings → Modes, so a task can fail over automatically when its primary provider keeps hitting transient errors.",
+			"highlight2": "Fallback chain retries the primary profile first, then cycles through backups once each — hard errors like invalid API keys or bad requests still fail loud instead of cycling through fallbacks.",
+			"highlight3": "A chat message now announces when a failover happens, and the active provider shown in the chatbox follows the fallback for the rest of the task."
 		},
 		"cloudAgents": {
 			"heading": "New in the Cloud:",
