@@ -265,3 +265,90 @@ describe("PromptsView", () => {
 		expect(selectTrigger).toHaveAttribute("aria-expanded", "false")
 	})
 })
+
+describe("ModesView fallback API providers", () => {
+	const customMode = {
+		slug: "myteam",
+		name: "My Team",
+		roleDefinition: "x",
+		groups: ["read"],
+		source: "global",
+		fallbackApiConfigIds: ["config1"],
+	}
+
+	const renderCustom = (props = {}) =>
+		render(
+			<ExtensionStateContext.Provider
+				value={
+					{
+						...mockExtensionState,
+						mode: "myteam",
+						customModes: [customMode],
+						maxFallbacksPerMode: 5,
+						setMaxFallbacksPerMode: vitest.fn(),
+						...props,
+					} as any
+				}>
+				<ModesView />
+			</ExtensionStateContext.Provider>,
+		)
+
+	beforeEach(() => {
+		vitest.clearAllMocks()
+	})
+
+	it("renders the existing fallback chain and counter for a custom mode", () => {
+		renderCustom()
+		expect(screen.getByTestId("fallback-row-0")).toBeInTheDocument()
+		// The counter is rendered (interpolated count/max come from i18n at runtime).
+		expect(screen.getByTestId("fallback-counter")).toBeInTheDocument()
+	})
+
+	it("appends a fallback via updateCustomMode when Add is clicked", () => {
+		renderCustom()
+		fireEvent.click(screen.getByTestId("fallback-add"))
+		expect(vscode.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "updateCustomMode",
+				modeConfig: expect.objectContaining({
+					slug: "myteam",
+					// config1 already used → first unused (config2) is appended.
+					fallbackApiConfigIds: ["config1", "config2"],
+				}),
+			}),
+		)
+	})
+
+	it("removes a fallback row via updateCustomMode", () => {
+		renderCustom()
+		fireEvent.click(screen.getByTestId("fallback-row-0-remove"))
+		expect(vscode.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "updateCustomMode",
+				modeConfig: expect.objectContaining({ fallbackApiConfigIds: [] }),
+			}),
+		)
+	})
+
+	it("disables Add when the configured cap is reached", () => {
+		renderCustom({ maxFallbacksPerMode: 1 })
+		expect(screen.getByTestId("fallback-add")).toBeDisabled()
+	})
+
+	it("shows the built-in hint and no chain editor for built-in modes", () => {
+		renderCustom({ mode: "code" })
+		expect(screen.getByTestId("fallback-builtin-hint")).toBeInTheDocument()
+		expect(screen.queryByTestId("fallback-add")).not.toBeInTheDocument()
+	})
+
+	it("posts maxFallbacksPerMode when the global cap input changes", () => {
+		const setMax = vitest.fn()
+		renderCustom({ setMaxFallbacksPerMode: setMax })
+		fireEvent.change(screen.getByTestId("max-fallbacks-input"), { target: { value: "3" } })
+		expect(setMax).toHaveBeenCalledWith(3)
+		expect(vscode.postMessage).toHaveBeenCalledWith({
+			type: "maxFallbacksPerMode",
+			maxFallbacksPerMode: 3,
+		})
+	})
+})

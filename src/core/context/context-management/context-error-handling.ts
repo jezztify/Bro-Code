@@ -54,6 +54,98 @@ function checkIsOpenAIContextWindowError(error: unknown): boolean {
 	}
 }
 
+/**
+ * Determines whether an API error is transient and worth retrying on a
+ * *different* (fallback) provider profile, versus a hard failure that would
+ * fail the same way on every profile and should surface to the user immediately.
+ *
+ * Retriable (try a fallback profile):
+ *  - 429 (rate limit), 408 (request timeout)
+ *  - 5xx (provider-side failures: 500/502/503/504...)
+ *  - network-level errors with no HTTP status (ECONNRESET, ETIMEDOUT,
+ *    UND_ERR_*, "fetch failed", and AbortError-from-timeout)
+ *
+ * NOT retriable (fail loud, no fallback):
+ *  - 401/403 (bad/blocked key), 400/422 (malformed request)
+ *  - any other 4xx — these reflect the request itself, not the provider,
+ *    so cycling through fallbacks just multiplies one real failure.
+ *
+ * Context-window 400s are intentionally excluded here because they are
+ * handled separately via {@link checkContextWindowExceededError} (truncate
+ * and retry the *same* profile, not fail over).
+ */
+export function isRetriableViaFallbackError(error: unknown): boolean {
+	try {
+		if (!error || typeof error !== "object") {
+			return false
+		}
+
+		// A context-window error is handled by truncation, not failover.
+		if (checkContextWindowExceededError(error)) {
+			return false
+		}
+
+		const err = error as Record<string, any>
+		const rawStatus = err.status ?? err.code ?? err.error?.status ?? err.response?.status
+		const status = typeof rawStatus === "number" ? rawStatus : Number.parseInt(String(rawStatus ?? ""), 10)
+
+		if (Number.isFinite(status)) {
+			if (status === 429 || status === 408) {
+				return true
+			}
+			if (status >= 500 && status <= 599) {
+				return true
+			}
+			// Any other recognized HTTP status (4xx) is a request-level problem.
+			if (status >= 400 && status <= 499) {
+				return false
+			}
+		}
+
+		// No usable HTTP status: treat connection/timeout failures as retriable.
+		// Walk the cause chain since undici wraps the real OS error.
+		const NETWORK_ERROR_CODES = [
+			"ECONNRESET",
+			"ECONNREFUSED",
+			"ETIMEDOUT",
+			"ENOTFOUND",
+			"EAI_AGAIN",
+			"EPIPE",
+			"UND_ERR_CONNECT_TIMEOUT",
+			"UND_ERR_HEADERS_TIMEOUT",
+			"UND_ERR_BODY_TIMEOUT",
+			"UND_ERR_SOCKET",
+		]
+		const NETWORK_ERROR_MESSAGE_PATTERNS = [
+			/fetch failed/i,
+			/network/i,
+			/socket hang up/i,
+			/timed? ?out/i,
+			/connection (?:reset|refused|closed)/i,
+		]
+
+		let current: unknown = error
+		const seen = new Set<unknown>()
+		while (current && typeof current === "object" && !seen.has(current)) {
+			seen.add(current)
+			const node = current as Record<string, any>
+			const code = node.code
+			if (typeof code === "string" && NETWORK_ERROR_CODES.includes(code)) {
+				return true
+			}
+			const message = typeof node.message === "string" ? node.message : ""
+			if (message && NETWORK_ERROR_MESSAGE_PATTERNS.some((pattern) => pattern.test(message))) {
+				return true
+			}
+			current = node.cause
+		}
+
+		return false
+	} catch {
+		return false
+	}
+}
+
 function checkIsAnthropicContextWindowError(response: unknown): boolean {
 	try {
 		// Type guard to safely access properties

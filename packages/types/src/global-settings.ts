@@ -83,6 +83,9 @@ export const MAX_CHECKPOINT_TIMEOUT_SECONDS = 60
  */
 export const DEFAULT_CHECKPOINT_TIMEOUT_SECONDS = 15
 
+/** Default cap on how many fallback API profiles a single mode may be configured with. */
+export const DEFAULT_MAX_FALLBACKS_PER_MODE = 5
+
 /**
  * GlobalSettings
  */
@@ -215,6 +218,8 @@ export const globalSettingsSchema = z.object({
 	modeApiConfigs: z.record(z.string(), z.string()).optional(),
 	/** Maps a step difficulty tier ("trivial" | "standard" | "hard") to an API config profile id. */
 	tierApiConfigs: z.record(z.string(), z.string()).optional(),
+	/** Maximum number of fallback API profiles a single mode may be configured with. */
+	maxFallbacksPerMode: z.number().int().min(0).optional(),
 	customModes: z.array(modeConfigSchema).optional(),
 	customModePrompts: customModePromptsSchema.optional(),
 	customSupportPrompts: customSupportPromptsSchema.optional(),
