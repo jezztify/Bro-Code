@@ -184,6 +184,18 @@ export const providerSettingsEntrySchema = z.object({
 export type ProviderSettingsEntry = z.infer<typeof providerSettingsEntrySchema>
 
 /**
+ * ConfigurationSet
+ */
+
+export const configurationSetSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	modeApiConfigs: z.record(z.string(), z.string()),
+})
+
+export type ConfigurationSet = z.infer<typeof configurationSetSchema>
+
+/**
  * ProviderSettings
  */
 

@@ -4,8 +4,58 @@ export function checkContextWindowExceededError(error: unknown): boolean {
 	return (
 		checkIsOpenAIContextWindowError(error) ||
 		checkIsOpenRouterContextWindowError(error) ||
-		checkIsAnthropicContextWindowError(error)
+		checkIsAnthropicContextWindowError(error) ||
+		checkIsGenericContextWindowError(error)
 	)
+}
+
+/**
+ * Provider-agnostic fallback for context-window-exceeded detection.
+ *
+ * Providers not special-cased above (Gemini, Bedrock, Vertex, Groq, DeepSeek, Ollama,
+ * LM Studio, Mistral, xAI, etc.) report overflow with their own error shapes/wording.
+ * Without this, they get no truncate-and-retry safety net at all. This is intentionally
+ * conservative: gated to 4xx-or-unknown status (never matches 5xx server errors) and to
+ * specific, low-false-positive phrasing, so it doesn't misclassify unrelated request
+ * errors (e.g. bad API key, invalid parameter) as context overflow.
+ */
+function checkIsGenericContextWindowError(error: unknown): boolean {
+	try {
+		if (!error || typeof error !== "object") {
+			return false
+		}
+
+		const err = error as Record<string, any>
+
+		const status = err.status ?? err.code ?? err.error?.status ?? err.response?.status
+		const statusNum = typeof status === "number" ? status : Number.parseInt(String(status ?? ""), 10)
+		if (Number.isFinite(statusNum) && (statusNum < 400 || statusNum >= 500)) {
+			return false
+		}
+
+		const candidateMessages = [
+			err.message,
+			err.error?.message,
+			err.response?.data?.error?.message,
+			err.body?.error?.message,
+			typeof err.body === "string" ? err.body : undefined,
+		].filter((msg): msg is string => typeof msg === "string" && msg.length > 0)
+
+		const GENERIC_CONTEXT_ERROR_PATTERNS = [
+			/\bcontext\s*(?:length|window|size)\b/i,
+			/\bmax(?:imum)?\s*(?:input\s*)?tokens?\b/i,
+			/\btoo\s*many\s*tokens?\b/i,
+			/\btoken\s*limit\b/i,
+			/\binput\s*(?:is\s*)?too\s*long\b/i,
+			/\bprompt\s*(?:is\s*)?too\s*long\b/i,
+			/\bexceeds?\s*(?:the\s*)?(?:model'?s?\s*)?(?:context|token)\b/i,
+			/\brequest\s*(?:is\s*)?too\s*large\b/i,
+		] as const
+
+		return candidateMessages.some((msg) => GENERIC_CONTEXT_ERROR_PATTERNS.some((pattern) => pattern.test(msg)))
+	} catch {
+		return false
+	}
 }
 
 function checkIsOpenRouterContextWindowError(error: unknown): boolean {

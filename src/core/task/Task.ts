@@ -1686,10 +1686,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// Activate the fallback profile for this task: this sets
 				// `currentApiConfigName` (so the chatbox provider indicator follows),
 				// refreshes `listApiConfigMeta`, rebuilds the task's API handler, and
-				// posts state to the webview. We pass `persistModeConfig: false` so the
-				// mode's configured primary profile is left untouched — the switch lasts
-				// only for this task, not as a permanent change to the mode.
-				await provider.activateProviderProfile({ id: fallbackId }, { persistModeConfig: false })
+				// posts state to the webview. Activating a profile never reassigns a
+				// mode's configured primary profile (that's now always an explicit,
+				// separate action), so the switch naturally lasts only for this task.
+				await provider.activateProviderProfile({ id: fallbackId })
 
 				// Keep the in-memory handler in sync (activateProviderProfile rebuilds it
 				// on the provider's current task, which is this one, but be explicit).
@@ -4080,6 +4080,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				metadata,
 				environmentDetails,
 				useAvailableInputForContextPercent,
+				forceTruncationOnCondenseFailure: true,
 			})
 
 			if (truncateResult.messages !== this.apiConversationHistory) {

@@ -229,7 +229,6 @@ export const globalSettingsSchema = z.object({
 	mcpEnabled: z.boolean().optional(),
 
 	mode: z.string().optional(),
-	modeApiConfigs: z.record(z.string(), z.string()).optional(),
 	/** Maps a step difficulty tier ("trivial" | "standard" | "hard") to an API config profile id. */
 	tierApiConfigs: z.record(z.string(), z.string()).optional(),
 	/** Maximum number of fallback API profiles a single mode may be configured with. */

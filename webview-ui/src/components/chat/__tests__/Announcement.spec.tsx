@@ -82,10 +82,10 @@ describe("Announcement", () => {
 		).toBeInTheDocument()
 	})
 
-	it("renders exactly four release highlight bullets", () => {
+	it("renders exactly five release highlight bullets", () => {
 		render(<Announcement hideAnnouncement={vi.fn()} />)
 
-		expect(screen.getAllByRole("listitem")).toHaveLength(4)
+		expect(screen.getAllByRole("listitem")).toHaveLength(5)
 	})
 
 	it("links support users to the Bro Code GitHub repository", () => {

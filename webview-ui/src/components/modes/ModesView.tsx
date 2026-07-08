@@ -55,6 +55,7 @@ import {
 	Input,
 	StandardTooltip,
 } from "@src/components/ui"
+import ConfigurationSetManager from "@src/components/settings/ConfigurationSetManager"
 import { DeleteModeDialog } from "@src/components/modes/DeleteModeDialog"
 import McpServerRestriction from "@src/components/modes/McpServerRestriction"
 import McpServerChecklist from "@src/components/modes/McpServerChecklist"
@@ -86,7 +87,13 @@ const ModesView = () => {
 		setCustomInstructions,
 		customModes,
 		mcpServers,
+		activeConfigurationSetId,
+		configurationSets,
 	} = useExtensionState()
+
+	const activeConfigurationSetName = (configurationSets || []).find(
+		(set) => set.id === activeConfigurationSetId,
+	)?.name
 
 	// Use a local state to track the visually active mode
 	// This prevents flickering when switching modes rapidly by:
@@ -957,19 +964,51 @@ const ModesView = () => {
 						)}
 					</div>
 
+					{/* Configuration Set */}
+					<div className="mb-3">
+						<ConfigurationSetManager
+							activeConfigurationSetId={activeConfigurationSetId}
+							configurationSets={configurationSets}
+							onSelectSet={(id) => {
+								vscode.postMessage({ type: "switchConfigurationSet", text: id })
+							}}
+							onCreateSet={(name, seedFromCurrent) => {
+								vscode.postMessage({
+									type: "createConfigurationSet",
+									text: name,
+									values: { seedEmpty: !seedFromCurrent },
+								})
+							}}
+							onRenameSet={(id, newName) => {
+								vscode.postMessage({
+									type: "renameConfigurationSet",
+									values: { id, newName },
+								})
+							}}
+							onDeleteSet={(id) => {
+								vscode.postMessage({ type: "deleteConfigurationSet", text: id })
+							}}
+						/>
+					</div>
+
 					{/* API Configuration - Moved Here */}
 					<div className="mb-3">
 						<div className="font-bold mb-1">{t("prompts:apiConfiguration.title")}</div>
 						<div className="text-sm text-vscode-descriptionForeground mb-2">
-							{t("prompts:apiConfiguration.select")}
+							{activeConfigurationSetName
+								? t("prompts:apiConfiguration.editingSet", { setName: activeConfigurationSetName })
+								: t("prompts:apiConfiguration.select")}
 						</div>
 						<div className="mb-2">
 							<Select
 								value={currentApiConfigName}
 								onValueChange={(value) => {
+									const config = (listApiConfigMeta || []).find((c) => c.name === value)
+									if (!config) return
 									vscode.postMessage({
-										type: "loadApiConfiguration",
-										text: value,
+										type: "assignModeConfig",
+										mode: visualMode,
+										values: { configId: config.id },
 									})
 								}}>
 								<SelectTrigger className="w-full">

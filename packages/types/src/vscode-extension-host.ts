@@ -316,7 +316,6 @@ export type ExtensionState = Pick<
 	| "autoCloseBroOpenedFilesAfterUserEdited"
 	| "autoCloseBroOpenedNewFiles"
 	| "language"
-	| "modeApiConfigs"
 	| "tierApiConfigs"
 	| "maxFallbacksPerMode"
 	| "customModePrompts"
@@ -343,6 +342,8 @@ export type ExtensionState = Pick<
 	| "disabledTools"
 > & {
 	lockApiConfigAcrossModes?: boolean
+	activeConfigurationSetId?: string
+	configurationSets?: Array<{ id: string; name: string }>
 	version: string
 	clineMessages: ClineMessage[]
 	currentTaskId?: string
@@ -559,6 +560,11 @@ export interface WebviewMessage {
 		| "toggleApiConfigPin"
 		| "hasOpenedModeSelector"
 		| "lockApiConfigAcrossModes"
+		| "createConfigurationSet"
+		| "renameConfigurationSet"
+		| "deleteConfigurationSet"
+		| "switchConfigurationSet"
+		| "assignModeConfig"
 		| "clearCloudAuthSkipModel"
 		| "broCloudSignIn"
 		| "cloudLandingPageSignIn"

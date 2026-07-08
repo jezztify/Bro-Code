@@ -247,6 +247,8 @@ describe("ClineProvider - API Handler Rebuild Guard", () => {
 				apiProvider: "openrouter",
 				openRouterModelId: "openai/gpt-4",
 			}),
+			resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+			listConfigurationSets: vi.fn().mockResolvedValue([]),
 		}
 
 		// Get the buildApiHandler mock

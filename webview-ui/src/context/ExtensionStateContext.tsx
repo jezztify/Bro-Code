@@ -281,6 +281,8 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		includeCurrentTime: true,
 		includeCurrentCost: true,
 		lockApiConfigAcrossModes: false,
+		activeConfigurationSetId: undefined,
+		configurationSets: [],
 	})
 
 	const [didHydrateState, setDidHydrateState] = useState(false)

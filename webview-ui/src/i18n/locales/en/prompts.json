@@ -12,9 +12,28 @@
 		"selectMode": "Search modes",
 		"noMatchFound": "No modes found"
 	},
+	"configurationSet": {
+		"title": "Configuration Set",
+		"description": "A named mode→provider mapping. Switch sets to change which provider every mode uses at once, e.g. \"Cheap\" vs \"Best Quality\".",
+		"select": "Select which configuration set is active",
+		"addSet": "Add configuration set",
+		"renameSet": "Rename configuration set",
+		"deleteSet": "Delete configuration set",
+		"cannotDeleteOnlySet": "Cannot delete the only configuration set",
+		"newSet": "New Configuration Set",
+		"enterSetName": "Enter configuration set name",
+		"enterNewSetName": "Enter new name",
+		"createSet": "Create Set",
+		"seedFromCurrent": "Start from the active set's mappings",
+		"nameEmpty": "Name cannot be empty",
+		"nameExists": "A configuration set with this name already exists",
+		"searchPlaceholder": "Search configuration sets",
+		"noMatchFound": "No matching configuration sets found"
+	},
 	"apiConfiguration": {
 		"title": "API Configuration",
-		"select": "Select which API configuration to use for this mode"
+		"select": "Select which API configuration to use for this mode",
+		"editingSet": "Editing set: {{setName}}"
 	},
 	"fallbackApiConfiguration": {
 		"title": "Fallback API Providers",

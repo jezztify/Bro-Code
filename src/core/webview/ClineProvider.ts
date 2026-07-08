@@ -1100,7 +1100,13 @@ export class ClineProvider
 			const lockApiConfigAcrossModes = this.context.workspaceState.get("lockApiConfigAcrossModes", false)
 
 			if (!historyItem.apiConfigName && !lockApiConfigAcrossModes && !skipProfileRestoreFromHistory) {
-				const savedConfigId = await this.providerSettingsManager.getModeConfigId(historyItem.mode)
+				const activeConfigurationSetId = this.context.workspaceState.get<string>("activeConfigurationSetId")
+				const effectiveConfigurationSetId =
+					await this.providerSettingsManager.resolveEffectiveConfigurationSetId(activeConfigurationSetId)
+				const savedConfigId = await this.providerSettingsManager.getModeConfigId(
+					historyItem.mode,
+					effectiveConfigurationSetId,
+				)
 				const listApiConfig = await this.providerSettingsManager.listConfig()
 
 				// Update listApiConfigMeta first to ensure UI has latest data.
@@ -1150,10 +1156,7 @@ export class ClineProvider
 			if (profile?.name) {
 				try {
 					if (profile.apiProvider) {
-						await this.activateProviderProfile(
-							{ name: profile.name },
-							{ persistModeConfig: false, persistTaskHistory: false },
-						)
+						await this.activateProviderProfile({ name: profile.name }, { persistTaskHistory: false })
 					}
 				} catch (error) {
 					// Log the error but continue with task restoration.
@@ -1548,49 +1551,55 @@ export class ClineProvider
 			return
 		}
 
-		// Load the saved API config for the new mode if it exists.
-		const savedConfigId = await this.providerSettingsManager.getModeConfigId(newMode)
+		const activeConfigurationSetId = this.context.workspaceState.get<string>("activeConfigurationSetId")
+		const effectiveConfigurationSetId =
+			await this.providerSettingsManager.resolveEffectiveConfigurationSetId(activeConfigurationSetId)
+
+		await this.applyModeApiConfig(newMode, effectiveConfigurationSetId)
+
+		await this.postStateToWebview()
+	}
+
+	/**
+	 * Resolve the saved provider profile for a mode within a configuration set and
+	 * activate it, guarding against empty/placeholder profiles (e.g. CLI-mode defaults
+	 * that only contain an id/name and no real settings).
+	 *
+	 * Shared by `handleModeSwitch` and explicit configuration-set switches so both
+	 * paths apply the same activation semantics.
+	 */
+	async applyModeApiConfig(mode: Mode, configurationSetId: string | undefined) {
+		const savedConfigId = await this.providerSettingsManager.getModeConfigId(mode, configurationSetId)
 		const listApiConfig = await this.providerSettingsManager.listConfig()
 
 		// Update listApiConfigMeta first to ensure UI has latest data.
 		await this.updateGlobalState("listApiConfigMeta", listApiConfig)
 
-		// If this mode has a saved config, use it.
-		if (savedConfigId) {
-			const profile = listApiConfig.find(({ id }) => id === savedConfigId)
-
-			if (profile?.name) {
-				// Check if the profile has actual API configuration (not just an id).
-				// In CLI mode, the ProviderSettingsManager may return empty default profiles
-				// that only contain 'id' and 'name' fields. Activating such a profile would
-				// overwrite the CLI's working API configuration with empty settings.
-				// Skip activation if the profile has no apiProvider set - this indicates
-				// an unconfigured/empty profile.
-				const fullProfile = await this.providerSettingsManager.getProfile({ name: profile.name })
-				const hasActualSettings = !!fullProfile.apiProvider
-
-				if (hasActualSettings) {
-					await this.activateProviderProfile({ name: profile.name })
-				} else {
-					// The task will continue with the current/default configuration.
-				}
-			} else {
-				// The task will continue with the current/default configuration.
-			}
-		} else {
-			// If no saved config for this mode, save current config as default.
-			const currentApiConfigNameAfter = this.getGlobalState("currentApiConfigName")
-
-			if (currentApiConfigNameAfter) {
-				const config = listApiConfig.find((c) => c.name === currentApiConfigNameAfter)
-
-				if (config?.id) {
-					await this.providerSettingsManager.setModeConfig(newMode, config.id)
-				}
-			}
+		if (!savedConfigId) {
+			// The task will continue with the current/default configuration.
+			return
 		}
 
-		await this.postStateToWebview()
+		const profile = listApiConfig.find(({ id }) => id === savedConfigId)
+
+		if (!profile?.name) {
+			// The task will continue with the current/default configuration.
+			return
+		}
+
+		// Check if the profile has actual API configuration (not just an id).
+		// In CLI mode, the ProviderSettingsManager may return empty default profiles
+		// that only contain 'id' and 'name' fields. Activating such a profile would
+		// overwrite the CLI's working API configuration with empty settings.
+		// Skip activation if the profile has no apiProvider set - this indicates
+		// an unconfigured/empty profile.
+		const fullProfile = await this.providerSettingsManager.getProfile({ name: profile.name })
+		const hasActualSettings = !!fullProfile.apiProvider
+
+		if (hasActualSettings) {
+			await this.activateProviderProfile({ name: profile.name })
+		}
+		// Otherwise the task will continue with the current/default configuration.
 	}
 
 	/**
@@ -1697,22 +1706,23 @@ export class ClineProvider
 			const id = await this.providerSettingsManager.saveConfig(name, providerSettings)
 
 			if (activate) {
-				const { mode } = await this.getState()
-
 				// These promises do the following:
 				// 1. Adds or updates the list of provider profiles.
 				// 2. Sets the current provider profile.
-				// 3. Sets the current mode's provider profile.
-				// 4. Copies the provider settings to the context.
+				// 3. Copies the provider settings to the context.
 				//
-				// Note: 1, 2, and 4 can be done in one `ContextProxy` call:
+				// Note: this does NOT assign the profile to the current mode's
+				// configuration set - that is now an explicit, separate action
+				// (see `assignModeConfig`), not an implicit side effect of saving
+				// or activating a profile.
+				//
+				// Note: 1, 2, and 3 can be done in one `ContextProxy` call:
 				// this.contextProxy.setValues({ ...providerSettings, listApiConfigMeta: ..., currentApiConfigName: ... })
 				// We should probably switch to that and verify that it works.
 				// I left the original implementation in just to be safe.
 				await Promise.all([
 					this.updateGlobalState("listApiConfigMeta", await this.providerSettingsManager.listConfig()),
 					this.updateGlobalState("currentApiConfigName", name),
-					this.providerSettingsManager.setModeConfig(mode, id),
 					this.contextProxy.setProviderSettings(providerSettings),
 				])
 
@@ -1789,27 +1799,19 @@ export class ClineProvider
 		}
 	}
 
-	async activateProviderProfile(
-		args: { name: string } | { id: string },
-		options?: { persistModeConfig?: boolean; persistTaskHistory?: boolean },
-	) {
-		const { name, id, ...providerSettings } = await this.providerSettingsManager.activateProfile(args)
+	async activateProviderProfile(args: { name: string } | { id: string }, options?: { persistTaskHistory?: boolean }) {
+		const { name, id: _id, ...providerSettings } = await this.providerSettingsManager.activateProfile(args)
 
-		const persistModeConfig = options?.persistModeConfig ?? true
 		const persistTaskHistory = options?.persistTaskHistory ?? true
 
 		// See `upsertProviderProfile` for a description of what this is doing.
+		// Note: this does NOT assign the profile to the current mode's configuration
+		// set - that is now an explicit, separate action (see `assignModeConfig`).
 		await Promise.all([
 			this.contextProxy.setValue("listApiConfigMeta", await this.providerSettingsManager.listConfig()),
 			this.contextProxy.setValue("currentApiConfigName", name),
 			this.contextProxy.setProviderSettings(providerSettings),
 		])
-
-		const { mode } = await this.getState()
-
-		if (id && persistModeConfig) {
-			await this.providerSettingsManager.setModeConfig(mode, id)
-		}
 
 		// Change the provider for the current task.
 		this.updateTaskApiHandlerIfNeeded(providerSettings, { forceRebuild: true })
@@ -2611,6 +2613,10 @@ export class ClineProvider
 			cloudApiUrl: getBroCodeApiUrl(),
 			hasOpenedModeSelector: this.getGlobalState("hasOpenedModeSelector") ?? false,
 			lockApiConfigAcrossModes: lockApiConfigAcrossModes ?? false,
+			activeConfigurationSetId: await this.providerSettingsManager.resolveEffectiveConfigurationSetId(
+				this.context.workspaceState.get<string>("activeConfigurationSetId"),
+			),
+			configurationSets: await this.providerSettingsManager.listConfigurationSets(),
 			alwaysAllowFollowupQuestions: alwaysAllowFollowupQuestions ?? false,
 			followupAutoApproveTimeoutMs: followupAutoApproveTimeoutMs ?? 60000,
 			includeDiagnosticMessages: includeDiagnosticMessages ?? true,
@@ -2770,7 +2776,6 @@ export class ClineProvider
 			currentApiConfigName: stateValues.currentApiConfigName ?? "default",
 			listApiConfigMeta: stateValues.listApiConfigMeta ?? [],
 			pinnedApiConfigs: stateValues.pinnedApiConfigs ?? {},
-			modeApiConfigs: stateValues.modeApiConfigs ?? ({} as Record<Mode, string>),
 			tierApiConfigs: stateValues.tierApiConfigs ?? {},
 			maxFallbacksPerMode: stateValues.maxFallbacksPerMode ?? DEFAULT_MAX_FALLBACKS_PER_MODE,
 			customModePrompts: stateValues.customModePrompts ?? {},
@@ -2826,6 +2831,10 @@ export class ClineProvider
 			},
 			profileThresholds: stateValues.profileThresholds ?? {},
 			lockApiConfigAcrossModes: this.context.workspaceState.get("lockApiConfigAcrossModes", false),
+			activeConfigurationSetId: await this.providerSettingsManager.resolveEffectiveConfigurationSetId(
+				this.context.workspaceState.get<string>("activeConfigurationSetId"),
+			),
+			configurationSets: await this.providerSettingsManager.listConfigurationSets(),
 			includeDiagnosticMessages: stateValues.includeDiagnosticMessages ?? true,
 			maxDiagnosticMessages: stateValues.maxDiagnosticMessages ?? 50,
 			includeTaskHistoryInEnhance: stateValues.includeTaskHistoryInEnhance ?? true,

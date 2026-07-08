@@ -273,6 +273,14 @@ export type ContextManagementOptions = {
 	 * (contextWindow - reserved output) instead of the full window. Others leave it undefined.
 	 */
 	useAvailableInputForContextPercent?: boolean
+	/**
+	 * When true, indicates this call is recovering from a *confirmed* API
+	 * context-window-exceeded error (not a proactive threshold check). If condensing
+	 * fails, the fallback truncation still runs regardless of the locally-computed
+	 * allowedTokens comparison, since the provider has already told us definitively
+	 * that the request didn't fit.
+	 */
+	forceTruncationOnCondenseFailure?: boolean
 }
 
 export type ContextManagementResult = SummarizeResponse & {
@@ -280,6 +288,49 @@ export type ContextManagementResult = SummarizeResponse & {
 	truncationId?: string
 	messagesRemoved?: number
 	newContextTokensAfterTruncation?: number
+}
+
+/**
+ * Verifies that a condense/truncate result actually fits within the allowed token budget.
+ * If the projected token count (from condensing or truncation) is still over budget -
+ * e.g. the LLM's summary was itself large - applies one additional aggressive truncation
+ * pass so the caller never sends a request that's already known to be oversized.
+ */
+async function assertContextFitsOrForceTruncate(
+	result: ContextManagementResult,
+	options: {
+		apiHandler: ApiHandler
+		systemPrompt: string
+		allowedTokens: number
+		taskId: string
+	},
+): Promise<ContextManagementResult> {
+	const { apiHandler, systemPrompt, allowedTokens, taskId } = options
+	const projectedTokens = result.newContextTokens ?? result.newContextTokensAfterTruncation
+
+	if (projectedTokens === undefined || projectedTokens <= allowedTokens) {
+		return result
+	}
+
+	const forced = truncateConversation(result.messages, 0.5, taskId)
+	const effectiveMessages = forced.messages.filter((msg) => !msg.truncationParent && !msg.isTruncationMarker)
+
+	let newContextTokensAfterTruncation = await estimateTokenCount([{ type: "text", text: systemPrompt }], apiHandler)
+	for (const msg of effectiveMessages) {
+		const content = msg.content
+		newContextTokensAfterTruncation += await estimateTokenCount(
+			Array.isArray(content) ? content : [{ type: "text", text: content as string }],
+			apiHandler,
+		)
+	}
+
+	return {
+		...result,
+		messages: forced.messages,
+		truncationId: forced.truncationId,
+		messagesRemoved: (result.messagesRemoved ?? 0) + forced.messagesRemoved,
+		newContextTokensAfterTruncation,
+	}
 }
 
 /**
@@ -307,6 +358,7 @@ export async function manageContext({
 	cwd,
 	broIgnoreController,
 	useAvailableInputForContextPercent,
+	forceTruncationOnCondenseFailure,
 }: ContextManagementOptions): Promise<ContextManagementResult> {
 	let error: string | undefined
 	let errorDetails: string | undefined
@@ -376,13 +428,21 @@ export async function manageContext({
 				errorDetails = result.errorDetails
 				cost = result.cost
 			} else {
-				return { ...result, prevContextTokens }
+				return assertContextFitsOrForceTruncate(
+					{ ...result, prevContextTokens },
+					{ apiHandler, systemPrompt, allowedTokens, taskId },
+				)
 			}
 		}
 	}
 
-	// Fall back to sliding window truncation if needed
-	if (prevContextTokens > allowedTokens) {
+	// Fall back to sliding window truncation if needed. This also triggers when
+	// condensing was attempted and failed while recovering from a *confirmed* API
+	// context-window-exceeded error (forceTruncationOnCondenseFailure), even if the
+	// locally-estimated prevContextTokens doesn't itself appear to exceed allowedTokens -
+	// the provider has already told us the request didn't fit, so we must not return the
+	// conversation unchanged.
+	if (prevContextTokens > allowedTokens || (error && forceTruncationOnCondenseFailure)) {
 		const truncationResult = truncateConversation(messages, 0.5, taskId)
 
 		// Calculate new context tokens after truncation by counting non-truncated messages

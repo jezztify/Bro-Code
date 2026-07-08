@@ -208,6 +208,8 @@ describe("importExport", () => {
 					test: { apiProvider: "openai" as ProviderName, apiKey: "test-key", id: "test-id" },
 				},
 				modeApiConfigs: {},
+				configurationSets: {},
+				currentConfigurationSetId: undefined,
 			})
 
 			expect(mockContextProxy.setValues).toHaveBeenCalledWith({ mode: "code", autoApprovalEnabled: true })
@@ -284,6 +286,8 @@ describe("importExport", () => {
 					test: { apiProvider: "openai" as ProviderName, apiKey: "test-key", id: "test-id" },
 				},
 				modeApiConfigs: {},
+				configurationSets: {},
+				currentConfigurationSetId: undefined,
 			})
 
 			// Should call setValues with an empty object since globalSettings is missing.
@@ -444,6 +448,8 @@ describe("importExport", () => {
 					test: { apiProvider: "openai" as ProviderName, apiKey: "test-key", id: "test-id" },
 				},
 				modeApiConfigs: {},
+				configurationSets: {},
+				currentConfigurationSetId: undefined,
 			})
 			expect(mockContextProxy.setValues).toHaveBeenCalledWith({ mode: "code", autoApprovalEnabled: true })
 		})
@@ -540,6 +546,8 @@ describe("importExport", () => {
 					},
 				},
 				modeApiConfigs: {},
+				configurationSets: {},
+				currentConfigurationSetId: undefined,
 			})
 
 			expect(mockContextProxy.setValues).toHaveBeenCalledWith({ mode: "code", autoApprovalEnabled: true })

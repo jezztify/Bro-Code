@@ -519,10 +519,10 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 			// Initialize task with history item
 			await provider.createTaskWithHistoryItem(historyItem)
 
-			// Verify provider profile was restored via activateProviderProfile (restore-only: don't persist mode config)
+			// Verify provider profile was restored via activateProviderProfile (restore-only: don't persist task history)
 			expect(activateProviderProfileSpy).toHaveBeenCalledWith(
 				{ name: "saved-profile" },
-				{ persistModeConfig: false, persistTaskHistory: false },
+				{ persistTaskHistory: false },
 			)
 		})
 

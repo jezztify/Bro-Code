@@ -48,6 +48,7 @@ const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 							<li>{t("chat:announcement.release.highlight2")}</li>
 							<li>{t("chat:announcement.release.highlight3")}</li>
 							<li>{t("chat:announcement.release.highlight4")}</li>
+							<li>{t("chat:announcement.release.highlight5")}</li>
 						</ul>
 					</div>
 

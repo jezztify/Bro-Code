@@ -87,6 +87,14 @@ describe("ProviderSettingsManager", () => {
 						},
 					},
 					modeApiConfigs: {},
+					configurationSets: {
+						"default-set-id": {
+							id: "default-set-id",
+							name: "Default",
+							modeApiConfigs: {},
+						},
+					},
+					currentConfigurationSetId: "default-set-id",
 					migrations: {
 						rateLimitSecondsMigrated: true,
 						openAiHeadersMigrated: true,
@@ -94,6 +102,7 @@ describe("ProviderSettingsManager", () => {
 						todoListEnabledMigrated: true,
 						claudeCodeLegacySettingsMigrated: true,
 						routerProviderMigrated: true,
+						configurationSetsMigrated: true,
 					},
 				}),
 			)

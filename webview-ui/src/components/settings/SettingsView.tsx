@@ -459,7 +459,16 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 			// These have more complex logic so they aren't (yet) handled
 			// by the `updateSettings` message.
-			vscode.postMessage({ type: "upsertApiConfiguration", text: draftApiConfigName, apiConfiguration })
+			//
+			// Only activate (switch the current mode's provider profile) when
+			// saving the profile that's already active. Saving a different,
+			// non-active profile should persist its settings without
+			// reassigning the active mode's provider config.
+			if (draftApiConfigName === currentApiConfigName) {
+				vscode.postMessage({ type: "upsertApiConfiguration", text: draftApiConfigName, apiConfiguration })
+			} else {
+				vscode.postMessage({ type: "saveApiConfiguration", text: draftApiConfigName, apiConfiguration })
+			}
 			vscode.postMessage({ type: "telemetrySetting", text: telemetrySetting })
 			vscode.postMessage({ type: "debugSetting", bool: cachedState.debug })
 

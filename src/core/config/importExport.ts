@@ -212,6 +212,12 @@ export async function importSettingsFromPath(
 				...previousProviderProfiles.modeApiConfigs,
 				...rawProviderProfiles.modeApiConfigs,
 			},
+			configurationSets: {
+				...previousProviderProfiles.configurationSets,
+				...rawProviderProfiles.configurationSets,
+			},
+			currentConfigurationSetId:
+				rawProviderProfiles.currentConfigurationSetId ?? previousProviderProfiles.currentConfigurationSetId,
 		}
 
 		const { sanitizedGlobalSettings, warnings: globalSettingsWarnings } = sanitizeGlobalSettings(rawGlobalSettings)
