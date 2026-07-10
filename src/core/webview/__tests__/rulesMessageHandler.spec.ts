@@ -1,4 +1,4 @@
-import type { RuleMetadata, WebviewMessage } from "@roo-code/types"
+import type { RuleMetadata, WebviewMessage } from "@bro-code/types"
 import type { ClineProvider } from "../ClineProvider"
 
 vi.mock("vscode", () => ({

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Edit, Folder, Globe, Plus, ScrollText, Trash2 } from "lucide-react"
 
-import type { RuleMetadata } from "@roo-code/types"
+import type { RuleMetadata } from "@bro-code/types"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useExtensionState } from "@/context/ExtensionStateContext"

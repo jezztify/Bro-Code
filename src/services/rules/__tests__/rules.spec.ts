@@ -32,10 +32,10 @@ describe("rules service", () => {
 	})
 
 	it("returns global and workspace generic rules with deterministic metadata", async () => {
-		await fs.mkdir(path.join(homeDir, ".roo", "rules"), { recursive: true })
-		await fs.mkdir(path.join(cwd, ".roo", "rules"), { recursive: true })
-		await fs.writeFile(path.join(homeDir, ".roo", "rules", "global-rule.md"), "# Global")
-		await fs.writeFile(path.join(cwd, ".roo", "rules", "workspace-rule.md"), "# Workspace")
+		await fs.mkdir(path.join(homeDir, ".bro", "rules"), { recursive: true })
+		await fs.mkdir(path.join(cwd, ".bro", "rules"), { recursive: true })
+		await fs.writeFile(path.join(homeDir, ".bro", "rules", "global-rule.md"), "# Global")
+		await fs.writeFile(path.join(cwd, ".bro", "rules", "workspace-rule.md"), "# Workspace")
 
 		const rules = await getRules(cwd, { modes: [] })
 
@@ -58,8 +58,8 @@ describe("rules service", () => {
 	})
 
 	it("returns mode-specific rules for provided modes", async () => {
-		await fs.mkdir(path.join(cwd, ".roo", "rules-code"), { recursive: true })
-		await fs.writeFile(path.join(cwd, ".roo", "rules-code", "code-rule.md"), "# Code")
+		await fs.mkdir(path.join(cwd, ".bro", "rules-code"), { recursive: true })
+		await fs.writeFile(path.join(cwd, ".bro", "rules-code", "code-rule.md"), "# Code")
 
 		const rules = await getRules(cwd, { modes: [{ slug: "code", name: "Code" }] })
 
@@ -87,8 +87,8 @@ describe("rules service", () => {
 			fileName: "workspace-new.md",
 		})
 
-		expect(globalPath).toBe(path.join(homeDir, ".roo", "rules", "global-new.md"))
-		expect(projectPath).toBe(path.join(cwd, ".roo", "rules-code", "workspace-new.md"))
+		expect(globalPath).toBe(path.join(homeDir, ".bro", "rules", "global-new.md"))
+		expect(projectPath).toBe(path.join(cwd, ".bro", "rules-code", "workspace-new.md"))
 		expect(await fs.readFile(globalPath, "utf-8")).toContain("# global-new")
 		expect(await fs.readFile(projectPath, "utf-8")).toContain("for code mode")
 	})
@@ -121,11 +121,11 @@ describe("rules service", () => {
 	})
 
 	it("ignores non-markdown, cache, and system files", async () => {
-		await fs.mkdir(path.join(cwd, ".roo", "rules"), { recursive: true })
-		await fs.writeFile(path.join(cwd, ".roo", "rules", "good.md"), "# Good")
-		await fs.writeFile(path.join(cwd, ".roo", "rules", "debug.log"), "log")
-		await fs.writeFile(path.join(cwd, ".roo", "rules", ".DS_Store"), "store")
-		await fs.writeFile(path.join(cwd, ".roo", "rules", "notes.txt"), "notes")
+		await fs.mkdir(path.join(cwd, ".bro", "rules"), { recursive: true })
+		await fs.writeFile(path.join(cwd, ".bro", "rules", "good.md"), "# Good")
+		await fs.writeFile(path.join(cwd, ".bro", "rules", "debug.log"), "log")
+		await fs.writeFile(path.join(cwd, ".bro", "rules", ".DS_Store"), "store")
+		await fs.writeFile(path.join(cwd, ".bro", "rules", "notes.txt"), "notes")
 
 		const rules = await getRules(cwd, { modes: [] })
 
@@ -138,14 +138,14 @@ describe("rules service", () => {
 	})
 
 	it("skips non-directory rule paths", async () => {
-		await fs.mkdir(path.join(cwd, ".roo"), { recursive: true })
-		await fs.writeFile(path.join(cwd, ".roo", "rules"), "not a directory")
+		await fs.mkdir(path.join(cwd, ".bro"), { recursive: true })
+		await fs.writeFile(path.join(cwd, ".bro", "rules"), "not a directory")
 
 		await expect(getRules(cwd, { modes: [] })).resolves.toEqual([])
 	})
 
 	it("skips symlinked directory rules outside the rules directory", async () => {
-		const projectRulesDir = path.join(cwd, ".roo", "rules")
+		const projectRulesDir = path.join(cwd, ".bro", "rules")
 		const targetRulesDir = path.join(tempDir, "target-rules")
 		const targetRulePath = path.join(targetRulesDir, "nested", "symlinked.md")
 		await fs.mkdir(path.dirname(targetRulePath), { recursive: true })
@@ -174,7 +174,7 @@ describe("rules service", () => {
 	})
 
 	it("round-trips symlinked directory rules that stay inside the rules directory", async () => {
-		const projectRulesDir = path.join(cwd, ".roo", "rules")
+		const projectRulesDir = path.join(cwd, ".bro", "rules")
 		const targetRulesDir = path.join(projectRulesDir, "target-rules")
 		const targetRulePath = path.join(targetRulesDir, "nested", "symlinked.md")
 		await fs.mkdir(path.dirname(targetRulePath), { recursive: true })
@@ -209,7 +209,7 @@ describe("rules service", () => {
 	})
 
 	it("skips symlinked rule file targets outside the rules directory", async () => {
-		const projectRulesDir = path.join(cwd, ".roo", "rules")
+		const projectRulesDir = path.join(cwd, ".bro", "rules")
 		const targetRulePath = path.join(tempDir, "linked-rule.md")
 		await fs.mkdir(projectRulesDir, { recursive: true })
 		await fs.writeFile(targetRulePath, "# Linked")
@@ -224,7 +224,7 @@ describe("rules service", () => {
 	})
 
 	it("discovers a symlinked rule file target inside the rules directory", async () => {
-		const projectRulesDir = path.join(cwd, ".roo", "rules")
+		const projectRulesDir = path.join(cwd, ".bro", "rules")
 		const targetRulePath = path.join(projectRulesDir, "target-rule.md")
 		await fs.mkdir(projectRulesDir, { recursive: true })
 		await fs.writeFile(targetRulePath, "# Linked")
@@ -246,7 +246,7 @@ describe("rules service", () => {
 	})
 
 	it("skips broken symlinks while scanning rules", async () => {
-		const projectRulesDir = path.join(cwd, ".roo", "rules")
+		const projectRulesDir = path.join(cwd, ".bro", "rules")
 		await fs.mkdir(projectRulesDir, { recursive: true })
 		await fs.symlink(path.join(tempDir, "missing-target"), path.join(projectRulesDir, "broken.md"), "file")
 
@@ -295,7 +295,7 @@ describe("rules service", () => {
 	})
 
 	it("returns undefined when resolving missing paths and directories", async () => {
-		await fs.mkdir(path.join(cwd, ".roo", "rules", "nested"), { recursive: true })
+		await fs.mkdir(path.join(cwd, ".bro", "rules", "nested"), { recursive: true })
 
 		await expect(
 			resolveRuleFile(cwd, { scope: "project", kind: "generic", relativePath: "missing.md" }),

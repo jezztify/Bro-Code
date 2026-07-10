@@ -434,14 +434,14 @@ export class API extends EventEmitter<BroCodeEvents> implements BroCodeAPI {
 		})
 
 		// Delegation events are emitted by the provider, not by individual task instances.
-		provider.on(RooCodeEventName.TaskDelegated, (parentTaskId, childTaskId) => {
-			;(this.emit as any)(RooCodeEventName.TaskDelegated, parentTaskId, childTaskId)
+		provider.on(BroCodeEventName.TaskDelegated, (parentTaskId, childTaskId) => {
+			;(this.emit as any)(BroCodeEventName.TaskDelegated, parentTaskId, childTaskId)
 		})
-		provider.on(RooCodeEventName.TaskDelegationCompleted, (parentTaskId, childTaskId, summary) => {
-			;(this.emit as any)(RooCodeEventName.TaskDelegationCompleted, parentTaskId, childTaskId, summary)
+		provider.on(BroCodeEventName.TaskDelegationCompleted, (parentTaskId, childTaskId, summary) => {
+			;(this.emit as any)(BroCodeEventName.TaskDelegationCompleted, parentTaskId, childTaskId, summary)
 		})
-		provider.on(RooCodeEventName.TaskDelegationResumed, (parentTaskId, childTaskId) => {
-			;(this.emit as any)(RooCodeEventName.TaskDelegationResumed, parentTaskId, childTaskId)
+		provider.on(BroCodeEventName.TaskDelegationResumed, (parentTaskId, childTaskId) => {
+			;(this.emit as any)(BroCodeEventName.TaskDelegationResumed, parentTaskId, childTaskId)
 		})
 	}
 

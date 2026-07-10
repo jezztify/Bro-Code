@@ -127,6 +127,57 @@ describe("LmStudioHandler", () => {
 				}
 			}).rejects.toThrow("Please check the LM Studio developer logs to debug what went wrong")
 		})
+
+		it("should emit reasoning chunks from delta.reasoning_content", async () => {
+			mockCreate.mockImplementationOnce(async () => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield { choices: [{ delta: { reasoning_content: "thinking..." }, index: 0 }] }
+					yield { choices: [{ delta: { content: "Final answer" }, index: 0 }] }
+					yield {
+						choices: [{ delta: {}, index: 0 }],
+						usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+					}
+				},
+			}))
+
+			const stream = handler.createMessage(systemPrompt, messages)
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			const reasoningChunks = chunks.filter((chunk) => chunk.type === "reasoning")
+			expect(reasoningChunks).toHaveLength(1)
+			expect(reasoningChunks[0].text).toBe("thinking...")
+
+			const textChunks = chunks.filter((chunk) => chunk.type === "text")
+			expect(textChunks).toHaveLength(1)
+			expect(textChunks[0].text).toBe("Final answer")
+		})
+
+		it("should still detect reasoning from <think> tags", async () => {
+			mockCreate.mockImplementationOnce(async () => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield { choices: [{ delta: { content: "<think>tag-based thinking</think>Answer" }, index: 0 }] }
+					yield {
+						choices: [{ delta: {}, index: 0 }],
+						usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+					}
+				},
+			}))
+
+			const stream = handler.createMessage(systemPrompt, messages)
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			const reasoningText = chunks
+				.filter((chunk) => chunk.type === "reasoning")
+				.map((chunk) => chunk.text)
+				.join("")
+			expect(reasoningText).toBe("tag-based thinking")
+		})
 	})
 
 	describe("completePrompt", () => {

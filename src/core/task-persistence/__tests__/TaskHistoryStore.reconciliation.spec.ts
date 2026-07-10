@@ -4,7 +4,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as os from "os"
 
-import type { HistoryItem } from "@roo-code/types"
+import type { HistoryItem } from "@bro-code/types"
 
 import { TaskHistoryStore, assertValidTransition } from "../TaskHistoryStore"
 

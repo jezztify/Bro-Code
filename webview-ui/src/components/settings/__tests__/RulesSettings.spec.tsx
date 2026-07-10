@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@/utils/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
-import type { RuleMetadata } from "@roo-code/types"
+import type { RuleMetadata } from "@bro-code/types"
 
 import { ExtensionStateContextProvider } from "@/context/ExtensionStateContext"
 import { vscode } from "@/utils/vscode"

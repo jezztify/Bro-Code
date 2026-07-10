@@ -1,5 +1,18 @@
 # Bro Code Changelog
 
+## [1.1.4]
+
+### Minor Changes
+
+- Add named configuration sets for managing mode→provider mappings. Create multiple named sets (e.g. "Cheap", "Best Quality") under Settings → Modes, each holding its own full mode→provider mapping, and switch between them as a single action instead of reassigning each mode's profile individually. Each VSCode workspace tracks its own active configuration set and mode independently, so switching sets or modes in one window no longer affects other open workspaces — only the underlying set/profile definitions are shared globally. This also changes existing behavior: saving or activating a provider profile no longer implicitly reassigns the active mode's provider mapping; assigning a profile to a mode within a configuration set is now an explicit action via the per-mode dropdown in Settings → Modes.
+- Rebased onto upstream Zoo Code v3.66.0 — Bro Code now includes all upstream changes through 3.66.0 (see the [3.66.0] and [3.64.0] entries below), including Claude Sonnet 5 support across Anthropic, Bedrock, and Vertex, the new Rules management UI, completion change review actions, LM Studio proxy/timeout improvements, and numerous delegation and stability fixes.
+
+### Patch Changes
+
+- Fix browsing provider profiles in Settings immediately activating them — selecting a different profile in the Providers tab dropdown now only loads its settings into the form for editing/preview; the mode's provider mapping, global state, and any running task's API handler are no longer touched until you click Save.
+- Fix saving a provider's settings in the Settings → Providers tab reassigning the currently active mode's provider profile if you had browsed to a different (non-active) profile first. Save now only activates the profile and updates the mode's mapping when you're saving the profile that's already active; saving any other profile just persists its settings without touching the active mode's configuration.
+- Fix auto context condensing sometimes failing to prevent context window overflow. Condense results that still exceeded the token budget (e.g. an oversized summary) are now caught and further truncated automatically; recovering from a confirmed context-window-exceeded API error now always shrinks the conversation even if condensing itself fails; and the truncate-and-retry safety net now recognizes context-overflow errors from providers beyond OpenAI/OpenRouter/Anthropic.
+
 ## [3.66.0]
 
 ### Minor Changes

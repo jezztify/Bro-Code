@@ -344,6 +344,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	checkpointTimeout: number
 	checkpointService?: RepoPerTaskCheckpointService
 	checkpointServiceInitializing = false
+	// Tracks the in-flight `say("checkpoint_saved", ...)` triggered by the
+	// service's "checkpoint" event so `checkpointSave()` can await it before
+	// returning. Without this, the message can be posted to the webview after
+	// a subsequent blocking ask (e.g. a follow-up question) has already been
+	// added, making the checkpoint row appear to overtake and hide the ask.
+	pendingCheckpointSay?: Promise<void>
 
 	// Message Queue Service
 	public readonly messageQueueService: MessageQueueService
@@ -3135,7 +3141,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 									this.assistantMessageContent.push(fallbackToolUse)
 									this.userMessageContentReady = false
-									presentAssistantMessage(this)
+									this.presentAssistantMessageSafe()
 									break
 								}
 

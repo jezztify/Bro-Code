@@ -27,22 +27,17 @@
 You can find a quick guide for migrating from Bro Code to Bro Code in the [Bro→Bro migration guide](https://docs.brocode.dev/bro-to-bro-migration). We plan to try and help users as they transition over, we have our [Reddit](https://www.reddit.com/r/BroCode) and [Discord](https://discord.gg/VxfP4Vx3gX)
 for this exact support, so if you are having problems or if you have question, jump on and ask.
 
-## What's New in v3.66.0
+## What's New in v1.1.4
 
-- **Claude Sonnet 5 support** — the latest Claude model is now available across Anthropic, Bedrock, and Vertex providers
-- **Semble v0.4.1 upgrade** — flattened result parsing and localized status messages
-- **Task-lifecycle status transition guard** — a new status transition guard and startup delegation reconciliation prevent invalid task state transitions
-- Fix: LiteLLM cache key collision and silent fallback to a non-existent default model
-- Fix: reliable auto context condensing for the VS Code Language Model API
-- Fix: ThinkingBudget now supports `xhigh` and all extended reasoning effort values
-- Fix: round-trip DeepSeek `reasoning_content` in thinking mode to prevent 400 errors
-- Fix: base64-encode Gemini `thoughtSignature` bypass token to fix the Vertex AI empty-response loop
-- Fix: provider cache reset after settings import
-- Fix: atomically serialize `reopenParentFromDelegation`
-- Fix: shell default profile name type guard
-- Security: dependency-review, invisible-char detection, and least-privilege workflow permissions
-- Upgrade `@anthropic-ai/sdk` to 0.104.1 and `@anthropic-ai/vertex-sdk` to 0.17.1
-- Dependency and tooling updates
+- **Configuration sets** — save a whole mode → provider mapping under a name (e.g. "Cheap", "Best Quality") in Settings → Modes, and switch every mode's provider at once instead of reassigning them one by one. Each VS Code window tracks its own active set and mode, so switching in one workspace never affects another
+- **Settings fixes** — browsing provider profiles in Settings no longer activates them immediately, and saving a non-active profile no longer reassigns your active mode's provider; Save now only activates the profile you're actually saving
+- **Context condensing overflow fix** — oversized condense results are caught and further truncated automatically, recovering from a confirmed context-window error always shrinks the conversation even if condensing fails, and the safety net now recognizes overflow errors from more providers
+- **Rebased onto upstream Zoo Code v3.66.0** — Bro Code now includes all upstream improvements through 3.66.0, including:
+    - Claude Sonnet 5 support across Anthropic, Bedrock, and Vertex providers
+    - Rules management UI — a new Rules tab in Settings to create, delete, and open global and workspace rules
+    - Completion change review actions — "See New Changes" and "Restore Changes" buttons after task completion
+    - LM Studio proxy and timeout improvements for slow local models
+    - Numerous delegation, condensing, and provider stability fixes (see [CHANGELOG](CHANGELOG.md))
 
 <details>
   <summary>🌐 Available languages</summary>

@@ -22,7 +22,7 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 	useExtensionState: () => mockExtensionState,
 }))
 
-vi.mock("@roo/modes", () => ({
+vi.mock("@bro/modes", () => ({
 	getAllModes: () => [
 		{ slug: "code", name: "Code" },
 		{ slug: "architect", name: "Architect" },

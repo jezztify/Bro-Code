@@ -1,7 +1,7 @@
 // npx vitest run __tests__/delegation-concurrent.spec.ts
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import type { HistoryItem } from "@roo-code/types"
+import type { HistoryItem } from "@bro-code/types"
 
 vi.mock("fs/promises", () => ({
 	mkdir: vi.fn().mockResolvedValue(undefined),

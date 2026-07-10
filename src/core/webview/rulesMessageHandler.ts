@@ -7,7 +7,7 @@ import type {
 	RuleMetadata,
 	RuleScope,
 	WebviewMessage,
-} from "@roo-code/types"
+} from "@bro-code/types"
 
 import type { ClineProvider } from "./ClineProvider"
 import { openFile } from "../../integrations/misc/open-file"

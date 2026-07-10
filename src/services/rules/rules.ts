@@ -9,10 +9,10 @@ import type {
 	RuleLookupInput,
 	RuleMetadata,
 	RuleScope,
-} from "@roo-code/types"
-import { DEFAULT_MODES, type ModeConfig } from "@roo-code/types"
+} from "@bro-code/types"
+import { DEFAULT_MODES, type ModeConfig } from "@bro-code/types"
 
-import { getGlobalRooDirectory, getProjectRooDirectoryForCwd } from "../roo-config"
+import { getGlobalBroDirectory, getProjectBroDirectoryForCwd } from "../bro-config"
 
 const MAX_DEPTH = 5
 const VALID_RULE_FILENAME_PATTERN = /^[a-z0-9_-]+(?:\.md)?$/
@@ -148,11 +148,11 @@ export function getRulesDirectoryPath(
 }
 
 function getRuleDirectories(cwd: string, modes: readonly RulesMode[] = DEFAULT_MODES): RuleDirectoryInfo[] {
-	const globalRooDirectory = getGlobalRooDirectory()
-	const projectRooDirectory = getProjectRooDirectoryForCwd(cwd)
-	const bases: Array<{ scope: RuleScope; basePath: string }> = [{ scope: "global", basePath: globalRooDirectory }]
+	const globalBroDirectory = getGlobalBroDirectory()
+	const projectBroDirectory = getProjectBroDirectoryForCwd(cwd)
+	const bases: Array<{ scope: RuleScope; basePath: string }> = [{ scope: "global", basePath: globalBroDirectory }]
 	if (cwd) {
-		bases.push({ scope: "project", basePath: projectRooDirectory })
+		bases.push({ scope: "project", basePath: projectBroDirectory })
 	}
 
 	return bases.flatMap(({ scope, basePath }) => [
@@ -309,7 +309,7 @@ function getTargetRuleDirectory(cwd: string, input: Pick<CreateRuleInput, "scope
 		throw new Error("Workspace rules require an open workspace")
 	}
 
-	const basePath = input.scope === "global" ? getGlobalRooDirectory() : getProjectRooDirectoryForCwd(cwd)
+	const basePath = input.scope === "global" ? getGlobalBroDirectory() : getProjectBroDirectoryForCwd(cwd)
 	return path.join(basePath, input.kind === "generic" ? "rules" : `rules-${validateModeSlug(input.modeSlug!)}`)
 }
 

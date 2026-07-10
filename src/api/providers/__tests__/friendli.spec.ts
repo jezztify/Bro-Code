@@ -3,7 +3,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import { friendliDefaultModelId, friendliModels } from "@roo-code/types"
+import { friendliDefaultModelId, friendliModels } from "@bro-code/types"
 
 import { buildApiHandler } from "../../index"
 import { getModelMaxOutputTokens } from "../../../shared/api"
@@ -142,9 +142,18 @@ describe("FriendliHandler", () => {
 		},
 	])(
 		"should expose newly added model $modelId",
-		({ modelId, contextWindow, maxTokens, supportsMaxTokens, inputPrice, outputPrice, cacheWritesPrice, cacheReadsPrice }) => {
+		({
+			modelId,
+			contextWindow,
+			maxTokens,
+			supportsMaxTokens,
+			inputPrice,
+			outputPrice,
+			cacheWritesPrice,
+			cacheReadsPrice,
+		}) => {
 			expect(friendliModels[modelId]).toBeDefined()
-			const info = friendliModels[modelId] as import("@roo-code/types").ModelInfo
+			const info = friendliModels[modelId] as import("@bro-code/types").ModelInfo
 			expect(info.maxTokens).toBe(maxTokens)
 			expect(info.contextWindow).toBe(contextWindow)
 			expect(info.supportsMaxTokens).toBe(supportsMaxTokens)

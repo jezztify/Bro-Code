@@ -17,6 +17,7 @@ import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from ".
 import { getModelsFromCache } from "./fetchers/modelCache"
 import { handleOpenAIError } from "./utils/error-handler"
 import { getLmStudioFetchConfig } from "./utils/lmstudio-proxy"
+import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 
 export class LmStudioHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
@@ -215,6 +216,15 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 							yield outputChunk
 						}
 					}
+				}
+
+				// Some models loaded in LM Studio emit reasoning as a structured
+				// `reasoning`/`reasoning_content` delta field instead of (or in addition to)
+				// inline <think>/<thought> tags - catch that format too, same as the other
+				// OpenAI-compatible providers.
+				const reasoningText = extractReasoningFromDelta(delta)
+				if (reasoningText) {
+					yield { type: "reasoning", text: reasoningText }
 				}
 
 				// Handle tool calls in stream - emit partial chunks for NativeToolCallParser

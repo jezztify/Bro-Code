@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react"
 
-import { getAllModes } from "@roo/modes"
+import { getAllModes } from "@bro/modes"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useExtensionState } from "@/context/ExtensionStateContext"

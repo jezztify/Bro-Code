@@ -3,7 +3,7 @@
 import React from "react"
 import { render, screen, fireEvent } from "@/utils/test-utils"
 import { Ollama } from "../Ollama"
-import { ProviderSettings } from "@roo-code/types"
+import { ProviderSettings } from "@bro-code/types"
 
 // Mock the vscrui Checkbox component
 vi.mock("vscrui", () => ({

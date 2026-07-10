@@ -1830,9 +1830,9 @@ describe("DiffViewProvider", () => {
 			expect(vscode.window.showTextDocument).toHaveBeenCalled()
 		})
 
-		it("defaults keep the transient tab open when all settings are unset", async () => {
-			// No auto-close settings in state: auto-closing is opt-in, so an
-			// untouched transient tab is kept and re-shown (long-standing behavior).
+		it("defaults close the transient tab when all settings are unset", async () => {
+			// No auto-close settings in state: Bro Code defaults autoCloseBroOpenedFiles to
+			// true (opt-out), so an untouched transient tab is closed (long-standing behavior).
 			const provider = setupProvider({})
 			const closeFileTab = vi.fn().mockResolvedValue(undefined)
 			;(provider as any).closeFileTab = closeFileTab
@@ -1843,8 +1843,7 @@ describe("DiffViewProvider", () => {
 
 			await provider.saveChanges(false)
 
-			expect(closeFileTab).not.toHaveBeenCalled()
-			expect(vscode.window.showTextDocument).toHaveBeenCalled()
+			expect(closeFileTab).toHaveBeenCalledWith(mockTargetPath)
 		})
 	})
 })

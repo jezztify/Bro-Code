@@ -67,7 +67,7 @@ import * as vscode from "vscode"
 import { VsCodeLmHandler } from "../vscode-lm"
 import type { ApiHandlerOptions } from "../../../shared/api"
 import type { Anthropic } from "@anthropic-ai/sdk"
-import { openAiModelInfoSaneDefaults, vscodeLlmDefaultModelId, vscodeLlmModels } from "@roo-code/types"
+import { openAiModelInfoSaneDefaults, vscodeLlmDefaultModelId, vscodeLlmModels } from "@bro-code/types"
 
 const mockLanguageModelChat = {
 	id: "test-model",

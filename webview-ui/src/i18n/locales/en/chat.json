@@ -384,9 +384,11 @@
 		"support": "Please support Bro Code by starring us on <githubLink>GitHub</githubLink>.",
 		"release": {
 			"heading": "What's New:",
-			"highlight1": "Claude Sonnet 5 support — the latest Claude model is now available across Anthropic, Bedrock, and Vertex providers.",
-			"highlight2": "Semble v0.4.1 upgrade — flattened result parsing and localized status messages.",
-			"highlight3": "Task-lifecycle status transition guard — a new status transition guard and startup delegation reconciliation prevent invalid task state transitions."
+			"highlight1": "Configuration sets: save a whole mode → provider mapping under a name (e.g. \"Cheap\", \"Best Quality\") in Settings → Modes, and switch every mode's provider at once instead of reassigning them one by one. Each VS Code window tracks its own active set and mode, so switching in one workspace never affects another.",
+			"highlight2": "Fixed: browsing provider profiles in Settings no longer activates them immediately, and saving a non-active profile no longer reassigns your active mode's provider — Save now only activates the profile you're actually saving.",
+			"highlight3": "Fixed: auto context condensing could sometimes fail to prevent context window overflow. An oversized condense result is now caught and further truncated automatically, recovering from a confirmed context-window error now always shrinks the conversation even if condensing fails, and the safety net now recognizes overflow errors from more providers.",
+			"highlight4": "Rebased onto upstream Zoo Code v3.66.0 — Bro Code now includes all upstream improvements through 3.66.0.",
+			"highlight5": "Upstream highlights: Claude Sonnet 5 support across Anthropic, Bedrock, and Vertex; a new Rules management UI in Settings; completion change review actions; and many LM Studio, delegation, and stability fixes."
 		},
 		"cloudAgents": {
 			"heading": "New in the Cloud:",

@@ -1,6 +1,6 @@
 import React from "react"
 import { render, screen, fireEvent } from "@/utils/test-utils"
-import type { ProviderSettings } from "@roo-code/types"
+import type { ProviderSettings } from "@bro-code/types"
 
 import { Friendli } from "../Friendli"
 

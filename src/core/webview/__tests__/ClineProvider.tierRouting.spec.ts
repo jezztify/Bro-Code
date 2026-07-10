@@ -259,7 +259,7 @@ describe("ClineProvider - Tier Routing (Feature 2)", () => {
 		vi.spyOn(provider, "getTaskWithId").mockResolvedValue({
 			historyItem: { id: "parent-1", childIds: [] },
 		} as any)
-		vi.spyOn(provider as any, "updateTaskHistory").mockResolvedValue([])
+		vi.spyOn(provider.taskHistoryStore, "atomicReadAndUpdate").mockResolvedValue([])
 
 		await provider.delegateParentAndOpenChild({
 			parentTaskId: "parent-1",

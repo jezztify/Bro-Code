@@ -174,18 +174,26 @@ async function checkGitInstallation(
 
 				// Always create the chat message but include the suppress flag in the payload
 				// so the chatview can choose not to render it while keeping it in history.
-				task.say(
-					"checkpoint_saved",
-					to,
-					undefined,
-					undefined,
-					{ from, to, suppressMessage: !!suppressMessage },
-					undefined,
-					{ isNonInteractive: true },
-				).catch((err) => {
-					log("[Task#getCheckpointService] caught unexpected error in say('checkpoint_saved')")
-					console.error(err)
-				})
+				//
+				// This is tracked on the task so `checkpointSave()` can await it before
+				// returning control to the tool loop. Otherwise this fire-and-forget say
+				// can lose the race with a subsequent blocking ask (e.g. a follow-up
+				// question) and post after it, making the checkpoint row appear to be
+				// the last message and the pending ask look stuck in the webview.
+				task.pendingCheckpointSay = task
+					.say(
+						"checkpoint_saved",
+						to,
+						undefined,
+						undefined,
+						{ from, to, suppressMessage: !!suppressMessage },
+						undefined,
+						{ isNonInteractive: true },
+					)
+					.catch((err) => {
+						log("[Task#getCheckpointService] caught unexpected error in say('checkpoint_saved')")
+						console.error(err)
+					})
 			} catch (err) {
 				log("[Task#getCheckpointService] caught unexpected error in on('checkpoint'), disabling checkpoints")
 				console.error(err)
@@ -218,13 +226,24 @@ export async function checkpointSave(task: Task, force = false, suppressMessage 
 
 	TelemetryService.instance.captureCheckpointCreated(task.taskId)
 
-	// Start the checkpoint process in the background.
-	return service
+	const result = await service
 		.saveCheckpoint(`Task: ${task.taskId}, Time: ${Date.now()}`, { allowEmpty: force, suppressMessage })
 		.catch((err) => {
 			console.error("[Task#checkpointSave] caught unexpected error, disabling checkpoints", err)
 			task.enableCheckpoints = false
+			return undefined
 		})
+
+	// The "checkpoint" event listener (registered in checkGitInstallation) fires
+	// synchronously during saveCheckpoint() above and kicks off task.say(...);
+	// wait for it here so callers (e.g. the tool loop) don't proceed to the next
+	// ask until the checkpoint message has actually been added and posted.
+	if (task.pendingCheckpointSay) {
+		await task.pendingCheckpointSay
+		task.pendingCheckpointSay = undefined
+	}
+
+	return result
 }
 
 export type CheckpointRestoreOptions = {

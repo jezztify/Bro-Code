@@ -1,4 +1,4 @@
-import { type FriendliModelId, friendliDefaultModelId, friendliModels } from "@roo-code/types"
+import { type FriendliModelId, friendliDefaultModelId, friendliModels } from "@bro-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
