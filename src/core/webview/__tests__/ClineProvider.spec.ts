@@ -1463,6 +1463,13 @@ describe("ClineProvider", () => {
 			setModeConfig: vi.fn(),
 		} as any
 
+		// "test-config" (per the mocked globalState above) is already the active
+		// profile, so saving it should activate it.
+		vi.spyOn(provider, "getState").mockResolvedValue({
+			mode: "code",
+			currentApiConfigName: "test-config",
+		} as any)
+
 		// Update API configuration
 		await messageHandler({
 			type: "upsertApiConfiguration",
@@ -2225,6 +2232,13 @@ describe("ClineProvider", () => {
 					.mockResolvedValue([{ name: "test-config", id: "test-id", apiProvider: "anthropic" }]),
 			} as any
 
+			// "test-config" is the profile that's already active, so saving it should
+			// activate it (reassign the mode's provider mapping, global state, etc.).
+			vi.spyOn(provider, "getState").mockResolvedValue({
+				mode: "code",
+				currentApiConfigName: "test-config",
+			} as any)
+
 			const testApiConfig = {
 				apiProvider: "anthropic" as const,
 				apiKey: "test-key",
@@ -2268,6 +2282,13 @@ describe("ClineProvider", () => {
 					.mockResolvedValue([{ name: "test-config", id: "test-id", apiProvider: "anthropic" }]),
 			} as any
 
+			// "test-config" is the profile that's already active, so saving it should
+			// activate it, which is what exercises the buildApiHandler error path below.
+			vi.spyOn(provider, "getState").mockResolvedValue({
+				mode: "code",
+				currentApiConfigName: "test-config",
+			} as any)
+
 			// Setup Task instance with auto-mock from the top of the file
 			const mockCline = new Task(defaultTaskOptions) // Create a new mocked instance
 			await provider.addClineToStack(mockCline)
@@ -2295,6 +2316,46 @@ describe("ClineProvider", () => {
 				{ name: "test-config", id: "test-id", apiProvider: "anthropic" },
 			])
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("currentApiConfigName", "test-config")
+		})
+
+		test("saving edits to a non-active profile persists settings without activating it", async () => {
+			await provider.resolveWebviewView(mockWebviewView)
+			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
+
+			;(provider as any).providerSettingsManager = {
+				setModeConfig: vi.fn(),
+				saveConfig: vi.fn().mockResolvedValue("other-id"),
+				hasConfig: vi.fn().mockResolvedValue(true),
+				listConfig: vi
+					.fn()
+					.mockResolvedValue([{ name: "other-config", id: "other-id", apiProvider: "anthropic" }]),
+			} as any
+
+			// "current-config" (the default mocked active profile) stays active; the user
+			// merely browsed to "other-config" in the dropdown and saved edits to it.
+			vi.spyOn(provider, "getState").mockResolvedValue({
+				mode: "code",
+				currentApiConfigName: "current-config",
+			} as any)
+
+			const testApiConfig = {
+				apiProvider: "anthropic" as const,
+				apiKey: "other-key",
+			}
+
+			await messageHandler({
+				type: "upsertApiConfiguration",
+				text: "other-config",
+				apiConfiguration: testApiConfig,
+			})
+
+			// The edited profile's settings are persisted...
+			expect(provider.providerSettingsManager.saveConfig).toHaveBeenCalledWith("other-config", testApiConfig)
+
+			// ...but the active mode's provider mapping and global "current" profile are
+			// left untouched.
+			expect(provider.providerSettingsManager.setModeConfig).not.toHaveBeenCalled()
+			expect(mockContext.globalState.update).not.toHaveBeenCalledWith("currentApiConfigName", "other-config")
 		})
 
 		test("handles successful saveApiConfiguration", async () => {

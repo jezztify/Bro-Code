@@ -2109,7 +2109,35 @@ export const webviewMessageHandler = async (
 			break
 		case "upsertApiConfiguration":
 			if (message.text && message.apiConfiguration) {
-				await provider.upsertProviderProfile(message.text, message.apiConfiguration)
+				// Only activate (reassign the active mode's provider mapping, global state,
+				// and any running task's API handler) if we're saving the profile that's
+				// already active, or creating a brand-new profile. Saving edits to a
+				// different, non-active profile that the user merely browsed to should just
+				// persist its settings without touching what's currently active.
+				const { currentApiConfigName } = await provider.getState()
+				const isActiveProfile = message.text === currentApiConfigName
+				const shouldActivate =
+					isActiveProfile || !(await provider.providerSettingsManager.hasConfig(message.text))
+				await provider.upsertProviderProfile(message.text, message.apiConfiguration, shouldActivate)
+			}
+			break
+		case "getApiConfigurationByName":
+			if (message.text) {
+				try {
+					const { name: _name, ...apiConfiguration } = await provider.providerSettingsManager.getProfile({
+						name: message.text,
+					})
+					provider.postMessageToWebview({
+						type: "apiConfigurationByName",
+						apiConfiguration,
+						requestId: message.requestId,
+					})
+				} catch (error) {
+					provider.log(
+						`Error get api configuration by name: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
+					)
+					vscode.window.showErrorMessage(t("common:errors.load_api_config"))
+				}
 			}
 			break
 		case "renameApiConfiguration":

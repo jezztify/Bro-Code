@@ -38,6 +38,7 @@ export interface ExtensionMessage {
 		| "enhancedPrompt"
 		| "commitSearchResults"
 		| "listApiConfig"
+		| "apiConfigurationByName"
 		| "routerModels"
 		| "zooGatewayCredentialsReady"
 		| "openAiModels"
@@ -142,6 +143,8 @@ export interface ExtensionMessage {
 	mcpServers?: McpServer[]
 	commits?: GitCommit[]
 	listApiConfig?: ProviderSettingsEntry[]
+	/** For apiConfigurationByName: settings of the profile requested for preview (see `getApiConfigurationByName`). */
+	apiConfiguration?: ProviderSettings
 	mode?: string
 	customMode?: ModeConfig
 	slug?: string
@@ -456,6 +459,7 @@ export interface WebviewMessage {
 		| "loadApiConfigurationById"
 		| "renameApiConfiguration"
 		| "getListApiConfiguration"
+		| "getApiConfigurationByName"
 		| "customInstructions"
 		| "webviewDidLaunch"
 		| "newTask"
