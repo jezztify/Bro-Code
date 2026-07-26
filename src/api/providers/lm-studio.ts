@@ -16,6 +16,7 @@ import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata, CompletePromptOptions } from "../index"
 import { getModelsFromCache } from "./fetchers/modelCache"
 import { handleOpenAIError } from "./utils/error-handler"
+import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 
 export class LmStudioHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
@@ -112,15 +113,102 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 					}) as const,
 			)
 
+			// Some models loaded in LM Studio don't reliably emit real `tool_calls`, even when
+			// `tools` is passed - they write the tool call as plain text instead (bare JSON,
+			// self-closing XML, XML wrapping JSON, or the legacy multi-child-tag XML format),
+			// sometimes copying a tool description's example verbatim. While no real tool call
+			// has been seen yet, buffer text that could be such a call so it can be routed through
+			// the normal tool pipeline instead of displayed as raw text/markup.
+			let fallbackCandidateBuffer: string | null = null
+			let sawRealToolCall = false
+			let fallbackToolCallId = 0
+
+			// Scope fallback detection to the tools actually offered for this request (and, when
+			// the current mode further restricts which tools can be invoked, to that subset).
+			// Matching against the full tool registry would risk converting a model's illustrative
+			// example of unrelated tool syntax (e.g. while explaining how a tool works in a
+			// restricted/explain-only mode) into a real tool call attempt.
+			const offeredTools = (metadata?.tools ?? []).filter(
+				(tool) =>
+					tool.type === "function" &&
+					(!metadata?.allowedFunctionNames || metadata.allowedFunctionNames.includes(tool.function.name)),
+			)
+
+			const handleTextChunk = function* (processedChunk: { type: "reasoning" | "text"; text: string }) {
+				if (processedChunk.type !== "text" || sawRealToolCall) {
+					yield processedChunk
+					return
+				}
+
+				const buffer = (fallbackCandidateBuffer ?? "") + processedChunk.text
+				const trimmedStart = buffer.replace(/^\s+/, "")
+
+				if (trimmedStart.length === 0) {
+					fallbackCandidateBuffer = buffer
+					return
+				}
+
+				if (trimmedStart[0] !== "{" && trimmedStart[0] !== "<") {
+					fallbackCandidateBuffer = null
+					yield { type: "text", text: buffer } as const
+					return
+				}
+
+				const status = NativeToolCallParser.getBufferStatus(buffer)
+
+				if (status === "incomplete") {
+					fallbackCandidateBuffer = buffer
+					return
+				}
+
+				fallbackCandidateBuffer = null
+
+				if (status === "balanced") {
+					const detected = NativeToolCallParser.detectToolCallAttempt(buffer, offeredTools)
+					if (detected) {
+						yield {
+							type: "tool_call",
+							id: `lmstudio-fallback-${++fallbackToolCallId}`,
+							name: detected.name,
+							arguments: detected.arguments,
+						} as const
+						return
+					}
+				}
+
+				// Invalid, or balanced but not a recognized tool shape - show as plain text.
+				yield { type: "text", text: buffer } as const
+			}
+
 			for await (const chunk of results) {
 				const delta = chunk.choices[0]?.delta
 				const finishReason = chunk.choices[0]?.finish_reason
 
+				if (delta?.tool_calls) {
+					sawRealToolCall = true
+					if (fallbackCandidateBuffer) {
+						assistantText += fallbackCandidateBuffer
+						yield { type: "text", text: fallbackCandidateBuffer }
+						fallbackCandidateBuffer = null
+					}
+				}
+
 				if (delta?.content) {
 					assistantText += delta.content
 					for (const processedChunk of matcher.update(delta.content)) {
-						yield processedChunk
+						for (const outputChunk of handleTextChunk(processedChunk)) {
+							yield outputChunk
+						}
 					}
+				}
+
+				// Some models loaded in LM Studio emit reasoning as a structured
+				// `reasoning`/`reasoning_content` delta field instead of (or in addition to)
+				// inline <think>/<thought> tags - catch that format too, matching how other
+				// OpenAI-compatible providers on this branch handle it.
+				const reasoningText = extractReasoningFromDelta(delta)
+				if (reasoningText) {
+					yield { type: "reasoning", text: reasoningText }
 				}
 
 				// Handle tool calls in stream - emit partial chunks for NativeToolCallParser
@@ -146,7 +234,15 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 			}
 
 			for (const processedChunk of matcher.final()) {
-				yield processedChunk
+				for (const outputChunk of handleTextChunk(processedChunk)) {
+					yield outputChunk
+				}
+			}
+
+			// Stream ended while still buffering a candidate that never closed - flush as plain text.
+			if (fallbackCandidateBuffer) {
+				yield { type: "text", text: fallbackCandidateBuffer }
+				fallbackCandidateBuffer = null
 			}
 
 			let outputTokens = 0

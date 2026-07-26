@@ -1,4 +1,5 @@
 import { parseJSON } from "partial-json"
+import type OpenAI from "openai"
 
 import { type ToolName, toolNames, type FileEntry } from "@roo-code/types"
 import { customToolRegistry } from "@roo-code/core"
@@ -11,12 +12,14 @@ import {
 	toolParamNames,
 } from "../../shared/tools"
 import { resolveToolAlias } from "../prompts/tools/filter-tools-for-mode"
+import { getNativeTools } from "../prompts/tools/native-tools"
 import type {
 	ApiStreamToolCallStartChunk,
 	ApiStreamToolCallDeltaChunk,
 	ApiStreamToolCallEndChunk,
 } from "../../api/transform/stream"
 import { MCP_TOOL_PREFIX, MCP_TOOL_SEPARATOR, parseMcpToolName, normalizeMcpToolName } from "../../utils/mcp-name"
+import { findClosestMatch } from "../../utils/text-similarity"
 
 /**
  * Helper type to extract properly typed native arguments for a given tool.
@@ -1079,5 +1082,378 @@ export class NativeToolCallParser {
 			console.error(`Failed to parse dynamic MCP tool:`, error)
 			return null
 		}
+	}
+
+	/**
+	 * Diagnose a tool call's parsed params against the tool's own native schema: which required
+	 * params are missing, and which supplied params aren't recognized for this tool (e.g. a model
+	 * sending `file_path` to `read_file`, which expects `path`). Used to give the model an
+	 * actionable error instead of a generic "missing nativeArgs" message it can't act on.
+	 *
+	 * For each unrecognized param, also suggests the likely intended param name when it's an
+	 * unambiguous near-miss of a valid one — tool schemas aren't consistent about naming (e.g.
+	 * `file_path` vs `path` across different edit tools), so this is a common, recoverable mistake
+	 * rather than a hallucinated field.
+	 */
+	public static diagnoseParams(
+		name: string,
+		params: Partial<Record<ToolParamName, string>>,
+	): { missing: string[]; unrecognized: string[]; suggestions: Record<string, string> } {
+		const toolDef = getNativeTools().find((t) => t.type === "function" && t.function.name === name)
+		if (!toolDef || toolDef.type !== "function") {
+			return { missing: [], unrecognized: [], suggestions: {} }
+		}
+
+		const schema = toolDef.function.parameters as
+			| { required?: string[]; properties?: Record<string, unknown> }
+			| undefined
+		const required = schema?.required ?? []
+		const allowedKeys = new Set(schema?.properties ? Object.keys(schema.properties) : [])
+
+		const missing = required.filter((key) => params[key as ToolParamName] === undefined)
+		const unrecognized = Object.keys(params).filter((key) => !allowedKeys.has(key))
+
+		// Prefer matching against still-missing required params (most actionable), falling back
+		// to any allowed param not already supplied.
+		const suppliedKeys = new Set(Object.keys(params))
+		const fallbackCandidates = [...allowedKeys].filter((key) => !suppliedKeys.has(key))
+
+		const suggestions: Record<string, string> = {}
+		for (const key of unrecognized) {
+			const suggestion =
+				findClosestMatch(key.toLowerCase(), missing, (candidate) => candidate.toLowerCase()) ??
+				findClosestMatch(key.toLowerCase(), fallbackCandidates, (candidate) => candidate.toLowerCase())
+			if (suggestion) {
+				suggestions[key] = suggestion
+			}
+		}
+
+		return { missing, unrecognized, suggestions }
+	}
+
+	/**
+	 * Scans a string for a single top-level JSON object, ignoring braces inside string
+	 * literals. Used by getBufferStatus to decide whether to keep buffering a model's plain-text
+	 * output that might turn out to be a tool call written as bare JSON (see
+	 * detectToolCallAttempt's tryBareJson pass).
+	 *
+	 * - "incomplete": the buffered text could still become a balanced object with more input
+	 * - "balanced": a top-level object closed, and only whitespace follows it
+	 * - "invalid": the text can never be a single bare JSON object (e.g. unbalanced braces,
+	 *   or non-whitespace content after the object closed)
+	 */
+	private static getJsonObjectBufferStatus(text: string): "incomplete" | "balanced" | "invalid" {
+		let depth = 0
+		let inString = false
+		let escaped = false
+		let started = false
+		let closedAt = -1
+
+		for (let i = 0; i < text.length; i++) {
+			const char = text[i]
+
+			if (closedAt !== -1) {
+				if (!/\s/.test(char)) {
+					return "invalid"
+				}
+				continue
+			}
+
+			if (inString) {
+				if (escaped) {
+					escaped = false
+				} else if (char === "\\") {
+					escaped = true
+				} else if (char === '"') {
+					inString = false
+				}
+				continue
+			}
+
+			if (char === '"') {
+				inString = true
+			} else if (char === "{") {
+				depth++
+				started = true
+			} else if (char === "}") {
+				depth--
+				if (depth < 0) {
+					return "invalid"
+				}
+				if (depth === 0 && started) {
+					closedAt = i
+				}
+			}
+		}
+
+		return closedAt !== -1 ? "balanced" : "incomplete"
+	}
+
+	/**
+	 * Decide whether buffered plain-text output could still become a complete, recognizable
+	 * tool-call-shaped blob (bare JSON or an XML-ish tag) if more text arrives, has already
+	 * become one, or can never become one. Dispatches on the buffer's leading character to the
+	 * shape-specific checker; used by providers to know whether to keep buffering, attempt
+	 * detection now (via detectToolCallAttempt), or give up and flush as plain text.
+	 */
+	public static getBufferStatus(text: string): "incomplete" | "balanced" | "invalid" {
+		const trimmed = text.trimStart()
+
+		if (trimmed.length === 0) {
+			return "incomplete"
+		}
+
+		if (trimmed[0] === "{") {
+			return this.getJsonObjectBufferStatus(text)
+		}
+
+		if (trimmed[0] === "<") {
+			return this.getXmlTagBufferStatus(text)
+		}
+
+		return "invalid"
+	}
+
+	/**
+	 * Scans a string for a single top-level XML-ish tool-call tag (`<tool_name/>` or
+	 * `<tool_name>...</tool_name>`), used by getBufferStatus to decide whether to keep buffering.
+	 * This only resolves the outer tag boundary; it doesn't care about attributes or children,
+	 * since every XML-shaped pass in detectToolCallAttempt shares the same outer boundary. Mirrors
+	 * getJsonObjectBufferStatus but for angle-bracket tags rather than braces.
+	 */
+	private static getXmlTagBufferStatus(text: string): "incomplete" | "balanced" | "invalid" {
+		const trimmed = text.trimStart()
+		if (!trimmed.startsWith("<")) {
+			return "invalid"
+		}
+
+		const closeBracket = trimmed.indexOf(">")
+		if (closeBracket === -1) {
+			// Still streaming the opening tag itself.
+			return "incomplete"
+		}
+
+		if (trimmed[closeBracket - 1] === "/") {
+			// Self-closing tag: <tool_name/> or <tool_name attr="val"/>
+			const rest = trimmed.slice(closeBracket + 1)
+			return /\S/.test(rest) ? "invalid" : "balanced"
+		}
+
+		const nameMatch = trimmed.match(/^<([a-zA-Z_][\w-]*)/)
+		if (!nameMatch) {
+			return "invalid"
+		}
+
+		const closeTag = `</${nameMatch[1]}>`
+		const closeTagIndex = trimmed.indexOf(closeTag, closeBracket + 1)
+		if (closeTagIndex === -1) {
+			return "incomplete"
+		}
+
+		const rest = trimmed.slice(closeTagIndex + closeTag.length)
+		return /\S/.test(rest) ? "invalid" : "balanced"
+	}
+
+	/**
+	 * Pass 1: bare JSON arguments object, e.g. `{ "result": "..." }`.
+	 * Matching is deliberately strict: the parsed object's keys must satisfy a known native
+	 * tool's required parameters exactly, with no unrecognized extra keys, to avoid mistaking
+	 * arbitrary model-generated JSON for a tool call.
+	 */
+	private static tryBareJson(
+		trimmed: string,
+		availableTools: OpenAI.Chat.ChatCompletionTool[],
+	): { name: string; arguments: string } | null {
+		let parsed: unknown
+
+		try {
+			parsed = JSON.parse(trimmed)
+		} catch {
+			return null
+		}
+
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+			return null
+		}
+
+		const keys = Object.keys(parsed as Record<string, unknown>)
+		if (keys.length === 0) {
+			return null
+		}
+
+		for (const toolDef of availableTools) {
+			if (toolDef.type !== "function") {
+				continue
+			}
+
+			const schema = toolDef.function.parameters as
+				| { required?: string[]; properties?: Record<string, unknown> }
+				| undefined
+			const required = schema?.required
+			if (!required || required.length === 0) {
+				continue
+			}
+
+			const allowedKeys = new Set(schema?.properties ? Object.keys(schema.properties) : [])
+			const hasAllRequired = required.every((key) => keys.includes(key))
+			const noExtraKeys = keys.every((key) => allowedKeys.has(key))
+
+			if (hasAllRequired && noExtraKeys) {
+				return { name: toolDef.function.name, arguments: JSON.stringify(parsed) }
+			}
+		}
+
+		return null
+	}
+
+	/**
+	 * Pass 2: self-closing XML tag, optionally carrying parameters as attributes, e.g.
+	 * `<attempt_completion/>` or `<attempt_completion result="..."/>`. Attribute values are
+	 * assumed not to contain a literal `>` (a full XML parser is out of scope for this heuristic).
+	 */
+	private static trySelfClosingTag(
+		trimmed: string,
+		validNames: Set<string>,
+	): { name: string; arguments: string } | null {
+		const match = trimmed.match(/^<([a-zA-Z_][\w-]*)((?:\s+[^>]*)?)\/>$/)
+		if (!match || !validNames.has(match[1])) {
+			return null
+		}
+
+		const [, name, attrsStr] = match
+		const args: Record<string, string> = {}
+		const attrRegex = /([a-zA-Z_][\w-]*)\s*=\s*"((?:[^"\\]|\\.)*)"/g
+		let attrMatch: RegExpExecArray | null
+
+		while ((attrMatch = attrRegex.exec(attrsStr)) !== null) {
+			args[attrMatch[1]] = attrMatch[2].replace(/\\"/g, '"').replace(/\\\\/g, "\\")
+		}
+
+		return { name, arguments: JSON.stringify(args) }
+	}
+
+	/**
+	 * Pass 3: wrapped tag containing a bare JSON args object, e.g.
+	 * `<attempt_completion>{ "result": "..." }</attempt_completion>`, or an empty/whitespace-only
+	 * body, e.g. `<attempt_completion></attempt_completion>`.
+	 */
+	private static tryWrappedJson(
+		trimmed: string,
+		validNames: Set<string>,
+	): { name: string; arguments: string } | null {
+		const match = trimmed.match(/^<([a-zA-Z_][\w-]*)>([\s\S]*)<\/\1>$/)
+		if (!match || !validNames.has(match[1])) {
+			return null
+		}
+
+		const [, name, innerRaw] = match
+		const inner = innerRaw.trim()
+
+		if (inner.length === 0) {
+			return { name, arguments: "{}" }
+		}
+
+		try {
+			JSON.parse(inner)
+			return { name, arguments: inner }
+		} catch {
+			return null
+		}
+	}
+
+	/**
+	 * Pass 4: wrapped tag using the legacy Cline/Roo Code XML tool-call format, where each
+	 * parameter is its own child element, e.g.
+	 * `<read_file><path>a.ts</path><mode>slice</mode></read_file>`. Only matches when every
+	 * immediate child is itself a simple `<name>value</name>` element (no nested tags), since
+	 * anything more complex isn't this format.
+	 */
+	private static tryWrappedChildParams(
+		trimmed: string,
+		validNames: Set<string>,
+	): { name: string; arguments: string } | null {
+		const match = trimmed.match(/^<([a-zA-Z_][\w-]*)>([\s\S]*)<\/\1>$/)
+		if (!match || !validNames.has(match[1])) {
+			return null
+		}
+
+		const [, name, innerRaw] = match
+		const inner = innerRaw.trim()
+		if (inner.length === 0) {
+			return null
+		}
+
+		const childRegex = /<([a-zA-Z_][\w-]*)>([\s\S]*?)<\/\1>/g
+		const args: Record<string, string> = {}
+		let consumed = 0
+		let childMatch: RegExpExecArray | null
+
+		while ((childMatch = childRegex.exec(inner)) !== null) {
+			// Reject non-whitespace content between/before children - not this format.
+			if (/\S/.test(inner.slice(consumed, childMatch.index))) {
+				return null
+			}
+			args[childMatch[1]] = childMatch[2].trim()
+			consumed = childMatch.index + childMatch[0].length
+		}
+
+		if (Object.keys(args).length === 0 || /\S/.test(inner.slice(consumed))) {
+			return null
+		}
+
+		return { name, arguments: JSON.stringify(args) }
+	}
+
+	/**
+	 * Some local/non-native-tool-calling models (notably weaker models served via LM Studio)
+	 * don't reliably emit real function-call payloads. Instead they write a recognized tool's
+	 * arguments as plain assistant text, in one of several formats picked up from training data
+	 * (bare JSON, a self-closing XML tag, an XML tag wrapping JSON, or the legacy multi-child-tag
+	 * XML format) - sometimes copying a tool description's example verbatim.
+	 *
+	 * Runs each format as an independent pass, in order, returning the first match. Detect this
+	 * case so providers can route it through the normal tool execution pipeline instead of just
+	 * displaying the raw text - even a call with missing arguments lets the model receive an
+	 * actionable "missing required parameter" error instead of the turn silently producing no
+	 * assistant content.
+	 *
+	 * Only tag/object shapes that resolve to a real, offered tool name are converted;
+	 * unrecognized names (e.g. a hallucinated API the model was never offered) are left as plain
+	 * text since there is no tool call to recover.
+	 *
+	 * @param availableTools - The tool defs actually offered to the model for this request
+	 * (e.g. `metadata.tools`). Defaults to the full native tool registry, but callers should
+	 * pass the request-scoped list when available: matching against tools the model wasn't
+	 * even offered (e.g. in a restricted/explain-only mode) risks mistaking an illustrative
+	 * example for a real call attempt.
+	 */
+	public static detectToolCallAttempt(
+		text: string,
+		availableTools: OpenAI.Chat.ChatCompletionTool[] = getNativeTools(),
+	): { name: string; arguments: string } | null {
+		const trimmed = text.trim()
+		if (trimmed.length === 0) {
+			return null
+		}
+
+		const validNames = new Set(
+			availableTools.filter((toolDef) => toolDef.type === "function").map((toolDef) => toolDef.function.name),
+		)
+
+		const passes = [
+			() => this.tryBareJson(trimmed, availableTools),
+			() => this.trySelfClosingTag(trimmed, validNames),
+			() => this.tryWrappedJson(trimmed, validNames),
+			() => this.tryWrappedChildParams(trimmed, validNames),
+		]
+
+		for (const pass of passes) {
+			const result = pass()
+			if (result) {
+				return result
+			}
+		}
+
+		return null
 	}
 }

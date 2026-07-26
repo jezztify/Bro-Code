@@ -1,9 +1,46 @@
 import { NativeToolCallParser } from "../NativeToolCallParser"
+import type { ToolParamName } from "../../../shared/tools"
 
 describe("NativeToolCallParser", () => {
 	beforeEach(() => {
 		NativeToolCallParser.clearAllStreamingToolCalls()
 		NativeToolCallParser.clearRawChunkState()
+	})
+
+	describe("diagnoseParams", () => {
+		it("should suggest the correct required param for a near-miss unrecognized key", () => {
+			// edit_file requires file_path/old_string/new_string; "filepath" (missing the
+			// underscore) is a realistic near-miss a model produces instead of retrying exactly.
+			const result = NativeToolCallParser.diagnoseParams("edit_file", {
+				filepath: "src/foo.ts",
+				old_string: "a",
+				new_string: "b",
+			} as unknown as Partial<Record<ToolParamName, string>>)
+
+			expect(result.missing).toEqual(["file_path"])
+			expect(result.unrecognized).toEqual(["filepath"])
+			expect(result.suggestions).toEqual({ filepath: "file_path" })
+		})
+
+		it("should not suggest anything when the unrecognized key isn't close to any valid param", () => {
+			const result = NativeToolCallParser.diagnoseParams("edit_file", {
+				file_path: "src/foo.ts",
+				old_string: "a",
+				new_string: "b",
+				zzz_completely_unrelated: "x",
+			} as unknown as Partial<Record<ToolParamName, string>>)
+
+			expect(result.missing).toEqual([])
+			expect(result.unrecognized).toEqual(["zzz_completely_unrelated"])
+			expect(result.suggestions).toEqual({})
+		})
+
+		it("should return empty diagnostics for an unknown tool name", () => {
+			const result = NativeToolCallParser.diagnoseParams("not_a_real_tool", { foo: "bar" } as unknown as Partial<
+				Record<ToolParamName, string>
+			>)
+			expect(result).toEqual({ missing: [], unrecognized: [], suggestions: {} })
+		})
 	})
 
 	describe("parseToolCall", () => {
