@@ -1051,7 +1051,7 @@
 	},
 	"core/tools/__tests__/useMcpToolTool.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 21
+			"count": 23
 		}
 	},
 	"core/tools/__tests__/validateToolUse.spec.ts": {

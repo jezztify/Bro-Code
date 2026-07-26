@@ -4,10 +4,11 @@ import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
 import { t } from "../../i18n"
 import type { ToolUse } from "../../shared/tools"
-import { toolNamesMatch } from "../../utils/mcp-name"
+import { toolNamesMatch, findClosestToolName } from "../../utils/mcp-name"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { ensureMcpServerAllowed } from "./mcpServerRestriction"
+import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 
 interface UseMcpToolParams {
 	server_name: string
@@ -219,6 +220,31 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 			if (!tool) {
 				// Tool not found - provide list of available tools
 				const availableToolNames = server.tools.map((tool) => tool.name)
+
+				// Experimental: for weak/local models that truncate or slightly misspell tool
+				// names instead of retrying with the exact name from available_tools, try to
+				// resolve to the single unambiguous near-miss instead of erroring.
+				const state = await provider?.getState?.()
+				if (experiments.isEnabled(state?.experiments ?? {}, EXPERIMENT_IDS.FUZZY_MCP_TOOL_MATCHING)) {
+					const enabledToolNames = server.tools.filter((t) => t.enabledForPrompt !== false).map((t) => t.name)
+					const fuzzyMatchName = findClosestToolName(toolName, enabledToolNames)
+
+					if (fuzzyMatchName) {
+						await task.say(
+							"text",
+							t("mcp:info.toolFuzzyMatched", {
+								requestedName: toolName,
+								matchedName: fuzzyMatchName,
+								serverName,
+							}),
+						)
+						return {
+							isValid: true,
+							availableTools: availableToolNames,
+							resolvedToolName: fuzzyMatchName,
+						}
+					}
+				}
 
 				task.consecutiveMistakeCount++
 				task.recordToolError("use_mcp_tool")

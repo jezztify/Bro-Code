@@ -22,6 +22,7 @@ describe("experiments", () => {
 				runSlashCommand: false,
 				customTools: false,
 				parallelToolExecution: false,
+				fuzzyMcpToolMatching: false,
 			}
 			expect(Experiments.isEnabled(experiments, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)).toBe(false)
 		})
@@ -33,6 +34,7 @@ describe("experiments", () => {
 				runSlashCommand: false,
 				customTools: false,
 				parallelToolExecution: false,
+				fuzzyMcpToolMatching: false,
 			}
 			expect(Experiments.isEnabled(experiments, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)).toBe(true)
 		})
@@ -44,6 +46,7 @@ describe("experiments", () => {
 				runSlashCommand: false,
 				customTools: false,
 				parallelToolExecution: false,
+				fuzzyMcpToolMatching: false,
 			}
 			expect(Experiments.isEnabled(experiments, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)).toBe(false)
 		})
@@ -64,6 +67,23 @@ describe("experiments", () => {
 
 		it("returns true when enabled", () => {
 			expect(Experiments.isEnabled({ parallelToolExecution: true }, "parallelToolExecution")).toBe(true)
+		})
+	})
+
+	describe("FUZZY_MCP_TOOL_MATCHING", () => {
+		it("is configured correctly", () => {
+			expect(EXPERIMENT_IDS.FUZZY_MCP_TOOL_MATCHING).toBe("fuzzyMcpToolMatching")
+			expect(experimentConfigsMap.FUZZY_MCP_TOOL_MATCHING).toMatchObject({
+				enabled: false,
+			})
+		})
+
+		it("returns false by default", () => {
+			expect(Experiments.isEnabled({}, "fuzzyMcpToolMatching")).toBe(false)
+		})
+
+		it("returns true when enabled", () => {
+			expect(Experiments.isEnabled({ fuzzyMcpToolMatching: true }, "fuzzyMcpToolMatching")).toBe(true)
 		})
 	})
 })

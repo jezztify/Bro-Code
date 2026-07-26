@@ -1013,6 +1013,10 @@
 			"refreshSuccess": "Tools refreshed successfully",
 			"refreshError": "Failed to refresh tools",
 			"toolParameters": "Parameters"
+		},
+		"FUZZY_MCP_TOOL_MATCHING": {
+			"name": "Fuzzy MCP tool name matching",
+			"description": "When enabled, if a model calls an MCP tool name that doesn't exist but is very close to exactly one available tool (e.g. a truncated or slightly misspelled name), Zoo will use that tool instead of erroring. Useful for weaker local models that struggle to reproduce exact tool names. When disabled (default), an unrecognized tool name always errors."
 		}
 	},
 	"promptCaching": {

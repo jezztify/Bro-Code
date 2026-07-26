@@ -6,6 +6,7 @@ import {
 	normalizeForComparison,
 	toolNamesMatch,
 	isMcpTool,
+	findClosestToolName,
 	MCP_TOOL_SEPARATOR,
 	MCP_TOOL_PREFIX,
 } from "../mcp-name"
@@ -54,6 +55,42 @@ describe("mcp-name utilities", () => {
 
 		it("should not match different names", () => {
 			expect(toolNamesMatch("get_user", "get_profile")).toBe(false)
+		})
+	})
+
+	describe("findClosestToolName", () => {
+		it("should resolve a truncated tool name to its single close match", () => {
+			expect(findClosestToolName("list_console_mes", ["list_console_messages", "get_network_request"])).toBe(
+				"list_console_messages",
+			)
+		})
+
+		it("should resolve a slightly misspelled tool name", () => {
+			expect(findClosestToolName("list_console_message", ["list_console_messages", "navigate_page"])).toBe(
+				"list_console_messages",
+			)
+		})
+
+		it("should return the exact match when the requested name already matches", () => {
+			expect(findClosestToolName("navigate_page", ["navigate_page", "list_console_messages"])).toBe(
+				"navigate_page",
+			)
+		})
+
+		it("should return null when no candidate is close enough", () => {
+			expect(findClosestToolName("frobnicate_widget", ["list_console_messages", "navigate_page"])).toBeNull()
+		})
+
+		it("should return null when two candidates are equally close (ambiguous)", () => {
+			expect(findClosestToolName("get_pag", ["get_page", "get_bag"])).toBeNull()
+		})
+
+		it("should return null for very short requested names to avoid false positives", () => {
+			expect(findClosestToolName("go", ["get_page", "get_pages"])).toBeNull()
+		})
+
+		it("should return null when the candidate list is empty", () => {
+			expect(findClosestToolName("list_console_mes", [])).toBeNull()
 		})
 	})
 
