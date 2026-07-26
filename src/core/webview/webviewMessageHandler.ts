@@ -1886,6 +1886,120 @@ export const webviewMessageHandler = async (
 			break
 		}
 
+		case "createConfigurationSet":
+			if (message.text) {
+				try {
+					const newSet = await provider.providerSettingsManager.createConfigurationSet(message.text, {
+						seedFromId: message.values?.seedFromId,
+						seedEmpty: message.values?.seedEmpty,
+					})
+					await provider.context.workspaceState.update("activeConfigurationSetId", newSet.id)
+					await provider.postStateToWebview()
+				} catch (error) {
+					provider.log(
+						`Error create configuration set: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
+					)
+					vscode.window.showErrorMessage(t("common:errors.create_configuration_set"))
+				}
+			}
+			break
+
+		case "renameConfigurationSet":
+			if (message.values?.id && message.values?.newName) {
+				try {
+					await provider.providerSettingsManager.renameConfigurationSet(
+						message.values.id,
+						message.values.newName,
+					)
+					await provider.postStateToWebview()
+				} catch (error) {
+					provider.log(
+						`Error rename configuration set: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
+					)
+					vscode.window.showErrorMessage(t("common:errors.rename_configuration_set"))
+				}
+			}
+			break
+
+		case "deleteConfigurationSet":
+			if (message.text) {
+				try {
+					const { newCurrentConfigurationSetId } =
+						await provider.providerSettingsManager.deleteConfigurationSet(message.text)
+
+					const workspaceActiveId = provider.context.workspaceState.get<string>("activeConfigurationSetId")
+
+					if (workspaceActiveId === message.text) {
+						await provider.context.workspaceState.update(
+							"activeConfigurationSetId",
+							newCurrentConfigurationSetId,
+						)
+					}
+
+					await provider.postStateToWebview()
+				} catch (error) {
+					provider.log(
+						`Error delete configuration set: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
+					)
+					vscode.window.showErrorMessage(t("common:errors.delete_configuration_set"))
+				}
+			}
+			break
+
+		case "switchConfigurationSet":
+			if (message.text) {
+				try {
+					await provider.context.workspaceState.update("activeConfigurationSetId", message.text)
+
+					const lockApiConfigAcrossModes = provider.context.workspaceState.get(
+						"lockApiConfigAcrossModes",
+						false,
+					)
+
+					if (!lockApiConfigAcrossModes) {
+						const { mode } = await provider.getState()
+						await provider.applyModeApiConfig(mode, message.text)
+					}
+
+					await provider.postStateToWebview()
+				} catch (error) {
+					provider.log(
+						`Error switch configuration set: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
+					)
+					vscode.window.showErrorMessage(t("common:errors.switch_configuration_set"))
+				}
+			}
+			break
+
+		case "assignModeConfig":
+			if (message.mode && message.values?.configId) {
+				try {
+					const activeConfigurationSetId =
+						provider.context.workspaceState.get<string>("activeConfigurationSetId")
+					const effectiveConfigurationSetId =
+						await provider.providerSettingsManager.resolveEffectiveConfigurationSetId(
+							activeConfigurationSetId,
+						)
+
+					if (!effectiveConfigurationSetId) {
+						throw new Error("No active configuration set")
+					}
+
+					await provider.providerSettingsManager.assignModeConfig(
+						message.mode as Mode,
+						message.values.configId,
+						effectiveConfigurationSetId,
+					)
+					await provider.activateProviderProfile({ id: message.values.configId })
+				} catch (error) {
+					provider.log(
+						`Error assign mode config: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
+					)
+					vscode.window.showErrorMessage(t("common:errors.assign_mode_config"))
+				}
+			}
+			break
+
 		case "toggleApiConfigPin":
 			if (message.text) {
 				const currentPinned = getGlobalState("pinnedApiConfigs") ?? {}

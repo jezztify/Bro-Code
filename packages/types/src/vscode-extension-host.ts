@@ -307,6 +307,8 @@ export type ExtensionState = Pick<
 	| "autoCloseZooOpenedNewFiles"
 	| "language"
 	| "modeApiConfigs"
+	| "tierApiConfigs"
+	| "maxFallbacksPerMode"
 	| "customModePrompts"
 	| "customSupportPrompts"
 	| "enhancementApiConfigId"
@@ -330,6 +332,10 @@ export type ExtensionState = Pick<
 	| "disabledTools"
 > & {
 	lockApiConfigAcrossModes?: boolean
+	/** The active configuration set for the current VS Code workspace (see `ConfigurationSet`). */
+	activeConfigurationSetId?: string
+	/** All globally-defined configuration sets, for the Settings -> Modes switcher. */
+	configurationSets?: Array<{ id: string; name: string }>
 	version: string
 	clineMessages: ClineMessage[]
 	currentTaskId?: string
@@ -544,9 +550,17 @@ export interface WebviewMessage {
 		| "codebaseIndexEnabled"
 		| "telemetrySetting"
 		| "searchFiles"
+		| "tierApiConfigs"
+		| "maxFallbacksPerMode"
+		| "applyTierRecommendations"
 		| "toggleApiConfigPin"
 		| "hasOpenedModeSelector"
 		| "lockApiConfigAcrossModes"
+		| "createConfigurationSet"
+		| "renameConfigurationSet"
+		| "deleteConfigurationSet"
+		| "switchConfigurationSet"
+		| "assignModeConfig"
 		| "clearCloudAuthSkipModel"
 		| "rooCloudSignIn"
 		| "cloudLandingPageSignIn"

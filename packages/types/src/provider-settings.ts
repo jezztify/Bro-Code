@@ -170,6 +170,22 @@ export const providerSettingsEntrySchema = z.object({
 export type ProviderSettingsEntry = z.infer<typeof providerSettingsEntrySchema>
 
 /**
+ * ConfigurationSet
+ *
+ * A named, complete mode -> provider-profile mapping. Users can define multiple
+ * configuration sets (e.g. "Cheap", "Best Quality") and switch between them as a
+ * single action instead of reassigning every mode's profile individually.
+ */
+
+export const configurationSetSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	modeApiConfigs: z.record(z.string(), z.string()),
+})
+
+export type ConfigurationSet = z.infer<typeof configurationSetSchema>
+
+/**
  * ProviderSettings
  */
 

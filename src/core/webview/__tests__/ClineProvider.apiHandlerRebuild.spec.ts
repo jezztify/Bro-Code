@@ -228,6 +228,8 @@ describe("ClineProvider - API Handler Rebuild Guard", () => {
 
 		// Mock providerSettingsManager
 		;(provider as any).providerSettingsManager = {
+			resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+			listConfigurationSets: vi.fn().mockResolvedValue([]),
 			saveConfig: vi.fn().mockResolvedValue("test-id"),
 			listConfig: vi
 				.fn()

@@ -16,6 +16,23 @@
 		"title": "API Configuration",
 		"select": "Select which API configuration to use for this mode"
 	},
+	"configurationSet": {
+		"title": "Configuration Set",
+		"description": "Configuration sets hold a complete mode -> provider profile mapping. Switch between them as a single action instead of reassigning every mode's profile individually. Each workspace remembers its own active set.",
+		"searchPlaceholder": "Search configuration sets",
+		"noMatchFound": "No configuration sets found",
+		"addSet": "New configuration set",
+		"renameSet": "Rename configuration set",
+		"deleteSet": "Delete configuration set",
+		"cannotDeleteOnlySet": "Cannot delete the only configuration set",
+		"newSet": "New Configuration Set",
+		"createSet": "Create",
+		"enterSetName": "Enter a name for the new configuration set",
+		"enterNewSetName": "Enter a new name",
+		"seedFromCurrent": "Copy mode assignments from the current configuration set",
+		"nameEmpty": "Name cannot be empty",
+		"nameExists": "A configuration set with this name already exists"
+	},
 	"tools": {
 		"title": "Available Tools",
 		"builtInModesText": "Tools for built-in modes cannot be modified",

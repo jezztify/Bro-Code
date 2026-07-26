@@ -1217,6 +1217,8 @@ describe("ClineProvider", () => {
 		const profile: ProviderSettingsEntry = { name: "test-config", id: "test-id", apiProvider: "anthropic" }
 
 		;(provider as any).providerSettingsManager = {
+			resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+			listConfigurationSets: vi.fn().mockResolvedValue([]),
 			getModeConfigId: vi.fn().mockResolvedValue("test-id"),
 			listConfig: vi.fn().mockResolvedValue([profile]),
 			activateProfile: vi.fn().mockResolvedValue(profile),
@@ -1228,16 +1230,18 @@ describe("ClineProvider", () => {
 		await messageHandler({ type: "mode", text: "architect" })
 
 		// Should load the saved config for architect mode
-		expect(provider.providerSettingsManager.getModeConfigId).toHaveBeenCalledWith("architect")
+		expect(vi.mocked(provider.providerSettingsManager.getModeConfigId).mock.calls[0][0]).toBe("architect")
 		expect(provider.providerSettingsManager.activateProfile).toHaveBeenCalledWith({ name: "test-config" })
 		expect(mockContext.globalState.update).toHaveBeenCalledWith("currentApiConfigName", "test-config")
 	})
 
-	it("saves current config when switching to mode without config", async () => {
+	it("does not save current config as default when switching to a mode without a saved config", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
 		;(provider as any).providerSettingsManager = {
+			resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+			listConfigurationSets: vi.fn().mockResolvedValue([]),
 			getModeConfigId: vi.fn().mockResolvedValue(undefined),
 			listConfig: vi
 				.fn()
@@ -1250,17 +1254,21 @@ describe("ClineProvider", () => {
 		// Switch to architect mode
 		await messageHandler({ type: "mode", text: "architect" })
 
-		// Should save current config as default for architect mode
-		expect(provider.providerSettingsManager.setModeConfig).toHaveBeenCalledWith("architect", "current-id")
+		// Assigning a profile to a mode is now an explicit action (see "assignModeConfig"
+		// handling) - merely switching to a mode with no saved config must not implicitly
+		// assign one.
+		expect(provider.providerSettingsManager.setModeConfig).not.toHaveBeenCalled()
 	})
 
-	it("saves config as default for current mode when loading config", async () => {
+	it("activates a loaded config without assigning it to the current mode", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
 		const profile: ProviderSettingsEntry = { apiProvider: "anthropic", id: "new-id", name: "new-config" }
 
 		;(provider as any).providerSettingsManager = {
+			resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+			listConfigurationSets: vi.fn().mockResolvedValue([]),
 			activateProfile: vi.fn().mockResolvedValue(profile),
 			listConfig: vi.fn().mockResolvedValue([profile]),
 			setModeConfig: vi.fn(),
@@ -1273,11 +1281,12 @@ describe("ClineProvider", () => {
 		// Then load the config
 		await messageHandler({ type: "loadApiConfiguration", text: "new-config" })
 
-		// Should save new config as default for architect mode
-		expect(provider.providerSettingsManager.setModeConfig).toHaveBeenCalledWith("architect", "new-id")
+		// Activating/loading a profile no longer implicitly assigns it to the active mode
+		// (see "assignModeConfig" for the explicit path).
+		expect(provider.providerSettingsManager.setModeConfig).not.toHaveBeenCalled()
 	})
 
-	it("load API configuration by ID works and updates mode config", async () => {
+	it("load API configuration by ID activates the profile without assigning it to the current mode", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -1288,6 +1297,8 @@ describe("ClineProvider", () => {
 		}
 
 		;(provider as any).providerSettingsManager = {
+			resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+			listConfigurationSets: vi.fn().mockResolvedValue([]),
 			activateProfile: vi.fn().mockResolvedValue(profile),
 			listConfig: vi.fn().mockResolvedValue([profile]),
 			setModeConfig: vi.fn(),
@@ -1300,8 +1311,8 @@ describe("ClineProvider", () => {
 		// Then load the config by ID
 		await messageHandler({ type: "loadApiConfigurationById", text: "config-id-123" })
 
-		// Should save new config as default for architect mode
-		expect(provider.providerSettingsManager.setModeConfig).toHaveBeenCalledWith("architect", "config-id-123")
+		// Activating/loading a profile by ID no longer implicitly assigns it to the active mode.
+		expect(provider.providerSettingsManager.setModeConfig).not.toHaveBeenCalled()
 
 		// Ensure the `activateProfile` method was called with the correct ID
 		expect(provider.providerSettingsManager.activateProfile).toHaveBeenCalledWith({ id: "config-id-123" })
@@ -1433,7 +1444,7 @@ describe("ClineProvider", () => {
 		})
 	})
 
-	it("saves mode config when updating API configuration", async () => {
+	it("does not assign mode config when updating API configuration", async () => {
 		// Setup mock context with mode and config name
 		mockContext = {
 			...mockContext,
@@ -1458,6 +1469,8 @@ describe("ClineProvider", () => {
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
 		;(provider as any).providerSettingsManager = {
+			resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+			listConfigurationSets: vi.fn().mockResolvedValue([]),
 			listConfig: vi.fn().mockResolvedValue([{ name: "test-config", id: "test-id", apiProvider: "anthropic" }]),
 			saveConfig: vi.fn().mockResolvedValue("test-id"),
 			setModeConfig: vi.fn(),
@@ -1477,8 +1490,8 @@ describe("ClineProvider", () => {
 			apiConfiguration: { apiProvider: "anthropic" },
 		})
 
-		// Should save config as default for current mode
-		expect(provider.providerSettingsManager.setModeConfig).toHaveBeenCalledWith("code", "test-id")
+		// Saving/activating a profile no longer implicitly assigns it to the current mode.
+		expect(provider.providerSettingsManager.setModeConfig).not.toHaveBeenCalled()
 	})
 
 	test("file content includes line numbers", async () => {
@@ -1811,6 +1824,8 @@ describe("ClineProvider", () => {
 			}
 
 			;(provider as any).providerSettingsManager = {
+				resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+				listConfigurationSets: vi.fn().mockResolvedValue([]),
 				getModeConfigId: vi.fn().mockResolvedValue("saved-config-id"),
 				listConfig: vi.fn().mockResolvedValue([profile]),
 				activateProfile: vi.fn().mockResolvedValue(profile),
@@ -1825,7 +1840,7 @@ describe("ClineProvider", () => {
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "architect")
 
 			// Verify saved config was loaded
-			expect(provider.providerSettingsManager.getModeConfigId).toHaveBeenCalledWith("architect")
+			expect(vi.mocked(provider.providerSettingsManager.getModeConfigId).mock.calls[0][0]).toBe("architect")
 			expect(provider.providerSettingsManager.activateProfile).toHaveBeenCalledWith({ name: "saved-config" })
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("currentApiConfigName", "saved-config")
 
@@ -1833,8 +1848,10 @@ describe("ClineProvider", () => {
 			expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "state" }))
 		})
 
-		test("saves current config when switching to mode without config", async () => {
+		test("does not assign a mode's config when switching to a mode without one", async () => {
 			;(provider as any).providerSettingsManager = {
+				resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+				listConfigurationSets: vi.fn().mockResolvedValue([]),
 				getModeConfigId: vi.fn().mockResolvedValue(undefined),
 				listConfig: vi
 					.fn()
@@ -1856,8 +1873,9 @@ describe("ClineProvider", () => {
 			// Verify mode was updated
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "architect")
 
-			// Verify current config was saved as default for new mode
-			expect(provider.providerSettingsManager.setModeConfig).toHaveBeenCalledWith("architect", "current-id")
+			// Assigning a profile to a mode is now an explicit action - switching to a mode
+			// with no saved config must not implicitly assign one.
+			expect(provider.providerSettingsManager.setModeConfig).not.toHaveBeenCalled()
 
 			// Verify state was posted to webview
 			expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "state" }))
@@ -1895,6 +1913,8 @@ describe("ClineProvider", () => {
 
 			// Mock provider settings manager
 			;(provider as any).providerSettingsManager = {
+				resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+				listConfigurationSets: vi.fn().mockResolvedValue([]),
 				getModeConfigId: vi.fn().mockResolvedValue(undefined),
 				listConfig: vi.fn().mockResolvedValue([]),
 			}
@@ -1959,6 +1979,8 @@ describe("ClineProvider", () => {
 
 			// Mock provider settings manager
 			;(provider as any).providerSettingsManager = {
+				resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+				listConfigurationSets: vi.fn().mockResolvedValue([]),
 				getModeConfigId: vi.fn().mockResolvedValue("config-id"),
 				listConfig: vi
 					.fn()
@@ -2019,6 +2041,8 @@ describe("ClineProvider", () => {
 
 			// Mock provider settings manager
 			;(provider as any).providerSettingsManager = {
+				resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+				listConfigurationSets: vi.fn().mockResolvedValue([]),
 				getModeConfigId: vi.fn().mockResolvedValue(undefined),
 				listConfig: vi.fn().mockResolvedValue([]),
 			}
@@ -2050,6 +2074,8 @@ describe("ClineProvider", () => {
 
 			// Mock provider settings manager
 			;(provider as any).providerSettingsManager = {
+				resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+				listConfigurationSets: vi.fn().mockResolvedValue([]),
 				getModeConfigId: vi.fn().mockResolvedValue(undefined),
 				listConfig: vi.fn().mockResolvedValue([]),
 			}
@@ -2094,6 +2120,8 @@ describe("ClineProvider", () => {
 
 			// Mock provider settings manager to throw error
 			;(provider as any).providerSettingsManager = {
+				resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+				listConfigurationSets: vi.fn().mockResolvedValue([]),
 				getModeConfigId: vi.fn().mockResolvedValue("config-id"),
 				listConfig: vi
 					.fn()
@@ -2194,6 +2222,8 @@ describe("ClineProvider", () => {
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
 			;(provider as any).providerSettingsManager = {
+				resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+				listConfigurationSets: vi.fn().mockResolvedValue([]),
 				setModeConfig: vi.fn().mockRejectedValue(new Error("Failed to update mode config")),
 				listConfig: vi
 					.fn()
@@ -2225,6 +2255,8 @@ describe("ClineProvider", () => {
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
 			;(provider as any).providerSettingsManager = {
+				resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+				listConfigurationSets: vi.fn().mockResolvedValue([]),
 				setModeConfig: vi.fn(),
 				saveConfig: vi.fn().mockResolvedValue(undefined),
 				listConfig: vi
@@ -2275,6 +2307,8 @@ describe("ClineProvider", () => {
 				throw new Error("API handler error")
 			})
 			;(provider as any).providerSettingsManager = {
+				resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+				listConfigurationSets: vi.fn().mockResolvedValue([]),
 				setModeConfig: vi.fn(),
 				saveConfig: vi.fn().mockResolvedValue(undefined),
 				listConfig: vi
@@ -2323,6 +2357,8 @@ describe("ClineProvider", () => {
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
 			;(provider as any).providerSettingsManager = {
+				resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+				listConfigurationSets: vi.fn().mockResolvedValue([]),
 				setModeConfig: vi.fn(),
 				saveConfig: vi.fn().mockResolvedValue("other-id"),
 				hasConfig: vi.fn().mockResolvedValue(true),
@@ -2363,6 +2399,8 @@ describe("ClineProvider", () => {
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
 			;(provider as any).providerSettingsManager = {
+				resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+				listConfigurationSets: vi.fn().mockResolvedValue([]),
 				setModeConfig: vi.fn(),
 				saveConfig: vi.fn().mockResolvedValue(undefined),
 				listConfig: vi
@@ -4480,6 +4518,8 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
 				const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
 				;(provider as any).providerSettingsManager = {
+					resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+					listConfigurationSets: vi.fn().mockResolvedValue([]),
 					listConfig: vi.fn().mockResolvedValue([]),
 				}
 
@@ -4511,6 +4551,8 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				const saveConfig = vi.fn().mockResolvedValue(undefined)
 				vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
 				;(provider as any).providerSettingsManager = {
+					resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+					listConfigurationSets: vi.fn().mockResolvedValue([]),
 					listConfig: vi.fn().mockResolvedValue([
 						{ name: "Zoo Gateway", apiProvider: "zoo-gateway" },
 						{ name: "Backup Zoo", apiProvider: "zoo-gateway" },
@@ -4552,6 +4594,8 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				vi.spyOn(provider, "getState").mockRejectedValue(new Error("state unavailable"))
 				vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
 				;(provider as any).providerSettingsManager = {
+					resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+					listConfigurationSets: vi.fn().mockResolvedValue([]),
 					listConfig: vi.fn().mockResolvedValue([]),
 				}
 
@@ -4570,6 +4614,8 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				const handleSpy = vi.spyOn(provider, "handleZooCodeCallback").mockResolvedValue(undefined)
 
 				;(provider as any).providerSettingsManager = {
+					resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+					listConfigurationSets: vi.fn().mockResolvedValue([]),
 					listConfig: vi.fn(),
 				}
 
@@ -4585,6 +4631,8 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
 
 				;(provider as any).providerSettingsManager = {
+					resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+					listConfigurationSets: vi.fn().mockResolvedValue([]),
 					listConfig: vi.fn().mockResolvedValue([{ name: "Zoo Gateway", apiProvider: "zoo-gateway" }]),
 					getProfile: vi.fn().mockResolvedValue({
 						zooSessionToken: "current-token",
@@ -4604,6 +4652,8 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				const handleSpy = vi.spyOn(provider, "handleZooCodeCallback").mockResolvedValue(undefined)
 
 				;(provider as any).providerSettingsManager = {
+					resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+					listConfigurationSets: vi.fn().mockResolvedValue([]),
 					listConfig: vi.fn().mockResolvedValue([{ name: "Zoo Gateway", apiProvider: "zoo-gateway" }]),
 					getProfile: vi.fn().mockResolvedValue({
 						zooSessionToken: "stale-token",
@@ -4622,6 +4672,8 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				const handleSpy = vi.spyOn(provider, "handleZooCodeCallback").mockResolvedValue(undefined)
 
 				;(provider as any).providerSettingsManager = {
+					resolveEffectiveConfigurationSetId: vi.fn().mockResolvedValue(undefined),
+					listConfigurationSets: vi.fn().mockResolvedValue([]),
 					listConfig: vi.fn().mockResolvedValue([{ name: "Zoo Gateway", apiProvider: "zoo-gateway" }]),
 					getProfile: vi.fn().mockResolvedValue({
 						zooSessionToken: "current-token",

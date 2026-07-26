@@ -13,6 +13,8 @@ import {
 	type ProviderName,
 	isProviderName,
 	isRetiredProvider,
+	configurationSetSchema,
+	type ConfigurationSet,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -38,6 +40,12 @@ export const providerProfilesSchema = z.object({
 	apiConfigs: z.record(z.string(), providerSettingsWithIdSchema),
 	modeApiConfigs: z.record(z.string(), z.string()).optional(),
 	cloudProfileIds: z.array(z.string()).optional(),
+	// Named configuration sets: each holds its own complete mode -> provider-profile
+	// mapping. `modeApiConfigs` above mirrors whichever set is currently active (kept
+	// in sync so existing single-map consumers keep working) - `configurationSets` is
+	// the source of truth once it exists.
+	configurationSets: z.record(z.string(), configurationSetSchema).optional(),
+	currentConfigurationSetId: z.string().optional(),
 	migrations: z
 		.object({
 			rateLimitSecondsMigrated: z.boolean().optional(),
@@ -46,6 +54,7 @@ export const providerProfilesSchema = z.object({
 			todoListEnabledMigrated: z.boolean().optional(),
 			claudeCodeLegacySettingsMigrated: z.boolean().optional(),
 			routerProviderMigrated: z.boolean().optional(),
+			configurationSetsMigrated: z.boolean().optional(),
 		})
 		.optional(),
 })
@@ -55,6 +64,7 @@ export type ProviderProfiles = z.infer<typeof providerProfilesSchema>
 export class ProviderSettingsManager {
 	private static readonly SCOPE_PREFIX = "roo_cline_config_"
 	private readonly defaultConfigId = this.generateId()
+	private readonly defaultConfigurationSetId = this.generateId()
 
 	private readonly defaultModeApiConfigs: Record<string, string> = Object.fromEntries(
 		modes.map((mode) => [mode.slug, this.defaultConfigId]),
@@ -64,6 +74,14 @@ export class ProviderSettingsManager {
 		currentApiConfigName: "default",
 		apiConfigs: { default: { id: this.defaultConfigId } },
 		modeApiConfigs: this.defaultModeApiConfigs,
+		configurationSets: {
+			[this.defaultConfigurationSetId]: {
+				id: this.defaultConfigurationSetId,
+				name: "Default",
+				modeApiConfigs: this.defaultModeApiConfigs,
+			},
+		},
+		currentConfigurationSetId: this.defaultConfigurationSetId,
 		migrations: {
 			rateLimitSecondsMigrated: true, // Mark as migrated on fresh installs
 			openAiHeadersMigrated: true, // Mark as migrated on fresh installs
@@ -71,6 +89,7 @@ export class ProviderSettingsManager {
 			todoListEnabledMigrated: true, // Mark as migrated on fresh installs
 			claudeCodeLegacySettingsMigrated: true, // Mark as migrated on fresh installs
 			routerProviderMigrated: true, // Mark as migrated on fresh installs
+			configurationSetsMigrated: true, // Mark as migrated on fresh installs
 		},
 	}
 
@@ -122,6 +141,21 @@ export class ProviderSettingsManager {
 					isDirty = true
 				}
 
+				// Migrate existing installs to have at least one named configuration set,
+				// seeded from whatever the flat modeApiConfigs map already contains.
+				if (!providerProfiles.configurationSets) {
+					const defaultSetId = this.generateId()
+					providerProfiles.configurationSets = {
+						[defaultSetId]: {
+							id: defaultSetId,
+							name: "Default",
+							modeApiConfigs: { ...providerProfiles.modeApiConfigs },
+						},
+					}
+					providerProfiles.currentConfigurationSetId = defaultSetId
+					isDirty = true
+				}
+
 				// Apply model migrations for all providers
 				if (this.applyModelMigrations(providerProfiles)) {
 					isDirty = true
@@ -144,7 +178,13 @@ export class ProviderSettingsManager {
 						todoListEnabledMigrated: false,
 						claudeCodeLegacySettingsMigrated: false,
 						routerProviderMigrated: false,
+						configurationSetsMigrated: false,
 					} // Initialize with default values
+					isDirty = true
+				}
+
+				if (!providerProfiles.migrations.configurationSetsMigrated) {
+					providerProfiles.migrations.configurationSetsMigrated = true
 					isDirty = true
 				}
 
@@ -504,18 +544,33 @@ export class ProviderSettingsManager {
 	}
 
 	/**
-	 * Set the API config for a specific mode.
+	 * Set the API config for a specific mode, within the given configuration set
+	 * (or the global default configuration set if none is specified).
 	 */
-	public async setModeConfig(mode: Mode, configId: string) {
+	public async setModeConfig(mode: Mode, configId: string, configurationSetId?: string) {
 		try {
 			return await this.lock(async () => {
 				const providerProfiles = await this.load()
-				// Ensure the per-mode config map exists
-				if (!providerProfiles.modeApiConfigs) {
-					providerProfiles.modeApiConfigs = {}
+				const setId = configurationSetId ?? providerProfiles.currentConfigurationSetId
+				const set = setId ? providerProfiles.configurationSets?.[setId] : undefined
+
+				if (set) {
+					set.modeApiConfigs[mode] = configId
+
+					if (setId === providerProfiles.currentConfigurationSetId) {
+						providerProfiles.modeApiConfigs = { ...set.modeApiConfigs }
+					}
+				} else {
+					// No configuration set to write into (shouldn't normally happen since
+					// initialize() guarantees at least one set exists) - fall back to the
+					// flat map for backward compatibility.
+					if (!providerProfiles.modeApiConfigs) {
+						providerProfiles.modeApiConfigs = {}
+					}
+
+					providerProfiles.modeApiConfigs[mode] = configId
 				}
-				// Assign the chosen config ID to this mode
-				providerProfiles.modeApiConfigs[mode] = configId
+
 				await this.store(providerProfiles)
 			})
 		} catch (error) {
@@ -524,16 +579,194 @@ export class ProviderSettingsManager {
 	}
 
 	/**
-	 * Get the API config ID for a specific mode.
+	 * Get the API config ID for a specific mode, within the given configuration set
+	 * (or the global default configuration set if none is specified).
 	 */
-	public async getModeConfigId(mode: Mode) {
+	public async getModeConfigId(mode: Mode, configurationSetId?: string) {
 		try {
 			return await this.lock(async () => {
-				const { modeApiConfigs } = await this.load()
-				return modeApiConfigs?.[mode]
+				const providerProfiles = await this.load()
+				const setId = configurationSetId ?? providerProfiles.currentConfigurationSetId
+				const set = setId ? providerProfiles.configurationSets?.[setId] : undefined
+				return set ? set.modeApiConfigs[mode] : providerProfiles.modeApiConfigs?.[mode]
 			})
 		} catch (error) {
 			throw new Error(`Failed to get mode config: ${error}`)
+		}
+	}
+
+	/**
+	 * Explicitly assign the API config for a specific mode within a configuration set.
+	 * This is the only sanctioned way to change a configuration set's mapping - profile
+	 * save/activate flows must not do this implicitly (see `ClineProvider#activateProviderProfile`).
+	 */
+	public async assignModeConfig(mode: Mode, configId: string, configurationSetId: string) {
+		return this.setModeConfig(mode, configId, configurationSetId)
+	}
+
+	/**
+	 * Resolve which configuration set is effectively active, given a workspace's stored
+	 * active-set id. Falls back to the global default set if the workspace's chosen set
+	 * no longer exists (e.g. it was deleted from a different workspace).
+	 */
+	public async resolveEffectiveConfigurationSetId(workspaceActiveId?: string): Promise<string | undefined> {
+		try {
+			return await this.lock(async () => {
+				const providerProfiles = await this.load()
+
+				if (workspaceActiveId && providerProfiles.configurationSets?.[workspaceActiveId]) {
+					return workspaceActiveId
+				}
+
+				return providerProfiles.currentConfigurationSetId
+			})
+		} catch (error) {
+			throw new Error(`Failed to resolve active configuration set: ${error}`)
+		}
+	}
+
+	/**
+	 * Create a new named configuration set. Seeds its mode->profile mapping from an
+	 * existing set (defaulting to the currently active set) unless `seedEmpty` is set.
+	 */
+	public async createConfigurationSet(
+		name: string,
+		options?: { seedFromId?: string; seedEmpty?: boolean },
+	): Promise<ConfigurationSet> {
+		try {
+			return await this.lock(async () => {
+				const providerProfiles = await this.load()
+				const configurationSets = providerProfiles.configurationSets ?? {}
+
+				const nameExists = Object.values(configurationSets).some(
+					(set) => set.name.toLowerCase() === name.toLowerCase(),
+				)
+
+				if (nameExists) {
+					throw new Error(`A configuration set named '${name}' already exists`)
+				}
+
+				let modeApiConfigs: Record<string, string> = {}
+
+				if (!options?.seedEmpty) {
+					const seedFromId = options?.seedFromId ?? providerProfiles.currentConfigurationSetId
+					const seedSet = seedFromId ? configurationSets[seedFromId] : undefined
+					modeApiConfigs = { ...(seedSet?.modeApiConfigs ?? providerProfiles.modeApiConfigs ?? {}) }
+				}
+
+				const id = this.generateId()
+				const newSet: ConfigurationSet = { id, name, modeApiConfigs }
+
+				providerProfiles.configurationSets = { ...configurationSets, [id]: newSet }
+				await this.store(providerProfiles)
+				return newSet
+			})
+		} catch (error) {
+			throw new Error(`Failed to create configuration set: ${error instanceof Error ? error.message : error}`)
+		}
+	}
+
+	public async renameConfigurationSet(id: string, newName: string): Promise<void> {
+		try {
+			return await this.lock(async () => {
+				const providerProfiles = await this.load()
+				const set = providerProfiles.configurationSets?.[id]
+
+				if (!set) {
+					throw new Error(`Configuration set '${id}' not found`)
+				}
+
+				const nameExists = Object.values(providerProfiles.configurationSets ?? {}).some(
+					(other) => other.id !== id && other.name.toLowerCase() === newName.toLowerCase(),
+				)
+
+				if (nameExists) {
+					throw new Error(`A configuration set named '${newName}' already exists`)
+				}
+
+				set.name = newName
+				await this.store(providerProfiles)
+			})
+		} catch (error) {
+			throw new Error(`Failed to rename configuration set: ${error instanceof Error ? error.message : error}`)
+		}
+	}
+
+	public async deleteConfigurationSet(id: string): Promise<{ newCurrentConfigurationSetId: string }> {
+		try {
+			return await this.lock(async () => {
+				const providerProfiles = await this.load()
+				const configurationSets = providerProfiles.configurationSets ?? {}
+
+				if (!configurationSets[id]) {
+					throw new Error(`Configuration set '${id}' not found`)
+				}
+
+				if (Object.keys(configurationSets).length === 1) {
+					throw new Error(`Cannot delete the last remaining configuration set`)
+				}
+
+				const remaining = { ...configurationSets }
+				delete remaining[id]
+				providerProfiles.configurationSets = remaining
+
+				if (providerProfiles.currentConfigurationSetId === id) {
+					const fallbackId = Object.keys(remaining)[0]
+					providerProfiles.currentConfigurationSetId = fallbackId
+					providerProfiles.modeApiConfigs = { ...remaining[fallbackId].modeApiConfigs }
+				}
+
+				await this.store(providerProfiles)
+				return { newCurrentConfigurationSetId: providerProfiles.currentConfigurationSetId! }
+			})
+		} catch (error) {
+			throw new Error(`Failed to delete configuration set: ${error instanceof Error ? error.message : error}`)
+		}
+	}
+
+	public async listConfigurationSets(): Promise<Array<{ id: string; name: string }>> {
+		try {
+			return await this.lock(async () => {
+				const providerProfiles = await this.load()
+				return Object.values(providerProfiles.configurationSets ?? {}).map(({ id, name }) => ({ id, name }))
+			})
+		} catch (error) {
+			throw new Error(`Failed to list configuration sets: ${error}`)
+		}
+	}
+
+	public async getConfigurationSet(id: string): Promise<ConfigurationSet | undefined> {
+		try {
+			return await this.lock(async () => {
+				const providerProfiles = await this.load()
+				return providerProfiles.configurationSets?.[id]
+			})
+		} catch (error) {
+			throw new Error(`Failed to get configuration set: ${error}`)
+		}
+	}
+
+	/**
+	 * Set the global default/fallback configuration set id. This is distinct from a
+	 * workspace's active configuration set id, which lives only in that workspace's
+	 * `context.workspaceState` and is owned by `ClineProvider`.
+	 */
+	public async setActiveConfigurationSetId(id: string): Promise<void> {
+		try {
+			return await this.lock(async () => {
+				const providerProfiles = await this.load()
+				const set = providerProfiles.configurationSets?.[id]
+
+				if (!set) {
+					throw new Error(`Configuration set '${id}' not found`)
+				}
+
+				providerProfiles.currentConfigurationSetId = id
+				providerProfiles.modeApiConfigs = { ...set.modeApiConfigs }
+				await this.store(providerProfiles)
+			})
+		} catch (error) {
+			throw new Error(`Failed to set active configuration set: ${error instanceof Error ? error.message : error}`)
 		}
 	}
 

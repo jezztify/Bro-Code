@@ -92,6 +92,10 @@ describe("ProviderSettingsManager", () => {
 						},
 					},
 					modeApiConfigs: {},
+					configurationSets: {
+						"set-1": { id: "set-1", name: "Default", modeApiConfigs: {} },
+					},
+					currentConfigurationSetId: "set-1",
 					migrations: {
 						rateLimitSecondsMigrated: true,
 						openAiHeadersMigrated: true,
@@ -99,6 +103,7 @@ describe("ProviderSettingsManager", () => {
 						todoListEnabledMigrated: true,
 						claudeCodeLegacySettingsMigrated: true,
 						routerProviderMigrated: true,
+						configurationSetsMigrated: true,
 					},
 				}),
 			)
@@ -1469,6 +1474,223 @@ describe("ProviderSettingsManager", () => {
 			expect(result.hasChanges).toBe(true)
 			expect(result.activeProfileChanged).toBe(false)
 			expect(result.activeProfileId).toBe("local-id")
+		})
+	})
+
+	describe("configuration sets", () => {
+		it("a fresh install (no stored profiles) already has a single 'Default' configuration set", async () => {
+			mockSecrets.get.mockResolvedValue(null)
+
+			const sets = await providerSettingsManager.listConfigurationSets()
+
+			expect(sets).toHaveLength(1)
+			expect(sets[0].name).toBe("Default")
+		})
+
+		it("migrates an existing install's flat modeApiConfigs into a new default set", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { id: "default-id" } },
+					modeApiConfigs: { code: "default-id", architect: "other-id" },
+					migrations: {
+						rateLimitSecondsMigrated: true,
+						openAiHeadersMigrated: true,
+						consecutiveMistakeLimitMigrated: true,
+						todoListEnabledMigrated: true,
+						claudeCodeLegacySettingsMigrated: true,
+						routerProviderMigrated: true,
+					},
+				}),
+			)
+
+			await providerSettingsManager.initialize()
+
+			const storedConfig = JSON.parse(mockSecrets.store.mock.calls[0][1]) as ProviderProfiles
+			const set = storedConfig.configurationSets![storedConfig.currentConfigurationSetId!]
+			expect(set.modeApiConfigs).toEqual({ code: "default-id", architect: "other-id" })
+		})
+
+		it("createConfigurationSet seeds from the currently active set by default", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { id: "default-id" } },
+					modeApiConfigs: { code: "default-id" },
+					configurationSets: {
+						"set-1": { id: "set-1", name: "Default", modeApiConfigs: { code: "default-id" } },
+					},
+					currentConfigurationSetId: "set-1",
+					migrations: {
+						rateLimitSecondsMigrated: true,
+						openAiHeadersMigrated: true,
+						consecutiveMistakeLimitMigrated: true,
+						todoListEnabledMigrated: true,
+						claudeCodeLegacySettingsMigrated: true,
+						routerProviderMigrated: true,
+						configurationSetsMigrated: true,
+					},
+				}),
+			)
+
+			const newSet = await providerSettingsManager.createConfigurationSet("Cheap")
+
+			expect(newSet.name).toBe("Cheap")
+			expect(newSet.modeApiConfigs).toEqual({ code: "default-id" })
+		})
+
+		it("createConfigurationSet supports creating an empty set", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { id: "default-id" } },
+					configurationSets: {
+						"set-1": { id: "set-1", name: "Default", modeApiConfigs: { code: "default-id" } },
+					},
+					currentConfigurationSetId: "set-1",
+				}),
+			)
+
+			const newSet = await providerSettingsManager.createConfigurationSet("Blank", { seedEmpty: true })
+
+			expect(newSet.modeApiConfigs).toEqual({})
+		})
+
+		it("createConfigurationSet rejects a duplicate name (case-insensitive)", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { id: "default-id" } },
+					configurationSets: {
+						"set-1": { id: "set-1", name: "Default", modeApiConfigs: {} },
+					},
+					currentConfigurationSetId: "set-1",
+				}),
+			)
+
+			await expect(providerSettingsManager.createConfigurationSet("default")).rejects.toThrow(/already exists/)
+		})
+
+		it("renameConfigurationSet renames and rejects duplicate names", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { id: "default-id" } },
+					configurationSets: {
+						"set-1": { id: "set-1", name: "Default", modeApiConfigs: {} },
+						"set-2": { id: "set-2", name: "Cheap", modeApiConfigs: {} },
+					},
+					currentConfigurationSetId: "set-1",
+				}),
+			)
+
+			await providerSettingsManager.renameConfigurationSet("set-1", "Best Quality")
+			const storedConfig = JSON.parse(mockSecrets.store.mock.calls[0][1]) as ProviderProfiles
+			expect(storedConfig.configurationSets!["set-1"].name).toBe("Best Quality")
+
+			await expect(providerSettingsManager.renameConfigurationSet("set-1", "Cheap")).rejects.toThrow(
+				/already exists/,
+			)
+		})
+
+		it("deleteConfigurationSet refuses to delete the last remaining set", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { id: "default-id" } },
+					configurationSets: {
+						"set-1": { id: "set-1", name: "Default", modeApiConfigs: {} },
+					},
+					currentConfigurationSetId: "set-1",
+				}),
+			)
+
+			await expect(providerSettingsManager.deleteConfigurationSet("set-1")).rejects.toThrow(/last remaining/)
+		})
+
+		it("deleteConfigurationSet falls back to another set when the active set is deleted", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { id: "default-id" } },
+					configurationSets: {
+						"set-1": { id: "set-1", name: "Default", modeApiConfigs: { code: "a" } },
+						"set-2": { id: "set-2", name: "Cheap", modeApiConfigs: { code: "b" } },
+					},
+					currentConfigurationSetId: "set-1",
+				}),
+			)
+
+			const { newCurrentConfigurationSetId } = await providerSettingsManager.deleteConfigurationSet("set-1")
+
+			expect(newCurrentConfigurationSetId).toBe("set-2")
+			const storedConfig = JSON.parse(mockSecrets.store.mock.calls[0][1]) as ProviderProfiles
+			expect(storedConfig.configurationSets!["set-1"]).toBeUndefined()
+			expect(storedConfig.currentConfigurationSetId).toBe("set-2")
+			expect(storedConfig.modeApiConfigs).toEqual({ code: "b" })
+		})
+
+		it("setModeConfig/getModeConfigId operate within a given configuration set without affecting others", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { id: "default-id" } },
+					configurationSets: {
+						"set-1": { id: "set-1", name: "Default", modeApiConfigs: { code: "a" } },
+						"set-2": { id: "set-2", name: "Cheap", modeApiConfigs: { code: "b" } },
+					},
+					currentConfigurationSetId: "set-1",
+				}),
+			)
+
+			await providerSettingsManager.setModeConfig("code", "new-id", "set-2")
+
+			const storedConfig = JSON.parse(mockSecrets.store.mock.calls[0][1]) as ProviderProfiles
+			expect(storedConfig.configurationSets!["set-2"].modeApiConfigs.code).toBe("new-id")
+			// The other set, and the flat mirror (which tracks the *active* set), are untouched.
+			expect(storedConfig.configurationSets!["set-1"].modeApiConfigs.code).toBe("a")
+
+			mockSecrets.get.mockResolvedValue(JSON.stringify(storedConfig))
+			await expect(providerSettingsManager.getModeConfigId("code", "set-2")).resolves.toBe("new-id")
+			await expect(providerSettingsManager.getModeConfigId("code", "set-1")).resolves.toBe("a")
+		})
+
+		it("resolveEffectiveConfigurationSetId falls back to the global default when the workspace's set no longer exists", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { id: "default-id" } },
+					configurationSets: {
+						"set-1": { id: "set-1", name: "Default", modeApiConfigs: {} },
+					},
+					currentConfigurationSetId: "set-1",
+				}),
+			)
+
+			await expect(providerSettingsManager.resolveEffectiveConfigurationSetId("deleted-set")).resolves.toBe(
+				"set-1",
+			)
+			await expect(providerSettingsManager.resolveEffectiveConfigurationSetId("set-1")).resolves.toBe("set-1")
+		})
+
+		it("setActiveConfigurationSetId switches the global default set and mirrors its map", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { id: "default-id" } },
+					configurationSets: {
+						"set-1": { id: "set-1", name: "Default", modeApiConfigs: { code: "a" } },
+						"set-2": { id: "set-2", name: "Cheap", modeApiConfigs: { code: "b" } },
+					},
+					currentConfigurationSetId: "set-1",
+				}),
+			)
+
+			await providerSettingsManager.setActiveConfigurationSetId("set-2")
+
+			const storedConfig = JSON.parse(mockSecrets.store.mock.calls[0][1]) as ProviderProfiles
+			expect(storedConfig.currentConfigurationSetId).toBe("set-2")
+			expect(storedConfig.modeApiConfigs).toEqual({ code: "b" })
 		})
 	})
 })

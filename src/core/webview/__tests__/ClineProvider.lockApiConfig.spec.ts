@@ -380,7 +380,7 @@ describe("ClineProvider - Lock API Config Across Modes", () => {
 
 			await provider.handleModeSwitch("architect")
 
-			expect(getModeConfigIdSpy).toHaveBeenCalledWith("architect")
+			expect(getModeConfigIdSpy).toHaveBeenCalledWith("architect", expect.anything())
 			expect(activateProviderProfileSpy).toHaveBeenCalledWith({ name: "architect-profile" })
 		})
 	})

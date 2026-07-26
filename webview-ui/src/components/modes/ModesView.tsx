@@ -51,6 +51,7 @@ import {
 import { DeleteModeDialog } from "@src/components/modes/DeleteModeDialog"
 import McpServerRestriction from "@src/components/modes/McpServerRestriction"
 import McpServerChecklist from "@src/components/modes/McpServerChecklist"
+import ConfigurationSetManager from "@src/components/settings/ConfigurationSetManager"
 import { useEscapeKey } from "@src/hooks/useEscapeKey"
 
 // Get all available groups that should show in prompts view
@@ -77,6 +78,8 @@ const ModesView = () => {
 		setCustomInstructions,
 		customModes,
 		mcpServers,
+		activeConfigurationSetId,
+		configurationSets,
 	} = useExtensionState()
 
 	// Use a local state to track the visually active mode
@@ -927,6 +930,33 @@ const ModesView = () => {
 						)}
 					</div>
 
+					{/* Configuration Set switcher - workspace-scoped active set/mode, shared set definitions */}
+					<div className="mb-3">
+						<ConfigurationSetManager
+							activeConfigurationSetId={activeConfigurationSetId}
+							configurationSets={configurationSets}
+							onSelectSet={(id) => {
+								vscode.postMessage({ type: "switchConfigurationSet", text: id })
+							}}
+							onCreateSet={(name, seedFromCurrent) => {
+								vscode.postMessage({
+									type: "createConfigurationSet",
+									text: name,
+									values: seedFromCurrent ? {} : { seedEmpty: true },
+								})
+							}}
+							onRenameSet={(id, newName) => {
+								vscode.postMessage({
+									type: "renameConfigurationSet",
+									values: { id, newName },
+								})
+							}}
+							onDeleteSet={(id) => {
+								vscode.postMessage({ type: "deleteConfigurationSet", text: id })
+							}}
+						/>
+					</div>
+
 					{/* API Configuration - Moved Here */}
 					<div className="mb-3">
 						<div className="font-bold mb-1">{t("prompts:apiConfiguration.title")}</div>
@@ -937,10 +967,19 @@ const ModesView = () => {
 							<Select
 								value={currentApiConfigName}
 								onValueChange={(value) => {
-									vscode.postMessage({
-										type: "loadApiConfiguration",
-										text: value,
-									})
+									// Explicitly assign this profile to the current mode within the
+									// active configuration set (and activate it). Selecting a profile
+									// no longer implicitly reassigns the mode's mapping as a side effect
+									// of merely activating/saving a profile elsewhere.
+									const config = (listApiConfigMeta || []).find((c) => c.name === value)
+
+									if (config?.id) {
+										vscode.postMessage({
+											type: "assignModeConfig",
+											mode: visualMode,
+											values: { configId: config.id },
+										})
+									}
 								}}>
 								<SelectTrigger className="w-full">
 									<SelectValue placeholder={t("settings:common.select")} />
