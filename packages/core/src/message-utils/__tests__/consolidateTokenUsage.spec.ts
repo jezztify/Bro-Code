@@ -98,6 +98,84 @@ describe("consolidateTokenUsage", () => {
 		})
 	})
 
+	describe("profile and model breakdown", () => {
+		const createApiReqMessageWithSource = (
+			ts: number,
+			data: {
+				tokensIn?: number
+				tokensOut?: number
+				cacheWrites?: number
+				cacheReads?: number
+				cost?: number
+				profileName?: string
+				modelId?: string
+			},
+		): ClineMessage => ({
+			ts,
+			type: "say",
+			say: "api_req_started",
+			text: JSON.stringify(data),
+		})
+
+		it("should not populate breakdowns when no requests carry a profileName/modelId", () => {
+			const messages: ClineMessage[] = [createApiReqMessage(1000, { tokensIn: 100, tokensOut: 50, cost: 0.01 })]
+
+			const result = consolidateTokenUsage(messages)
+
+			expect(result.profileBreakdown).toBeUndefined()
+			expect(result.modelBreakdown).toBeUndefined()
+		})
+
+		it("should accumulate per-profile and per-model breakdowns across requests", () => {
+			const messages: ClineMessage[] = [
+				createApiReqMessageWithSource(1000, {
+					tokensIn: 100,
+					tokensOut: 50,
+					cost: 0.01,
+					profileName: "profile-a",
+					modelId: "model-a",
+				}),
+				createApiReqMessageWithSource(1001, {
+					tokensIn: 200,
+					tokensOut: 100,
+					cost: 0.02,
+					profileName: "profile-b",
+					modelId: "model-a",
+				}),
+				createApiReqMessageWithSource(1002, {
+					tokensIn: 50,
+					tokensOut: 25,
+					cost: 0.005,
+					profileName: "profile-a",
+					modelId: "model-b",
+				}),
+			]
+
+			const result = consolidateTokenUsage(messages)
+
+			expect(result.profileBreakdown).toEqual({
+				"profile-a": {
+					tokensIn: 150,
+					tokensOut: 75,
+					cacheWrites: undefined,
+					cacheReads: undefined,
+					cost: 0.015,
+				},
+				"profile-b": {
+					tokensIn: 200,
+					tokensOut: 100,
+					cacheWrites: undefined,
+					cacheReads: undefined,
+					cost: 0.02,
+				},
+			})
+			expect(result.modelBreakdown).toEqual({
+				"model-a": { tokensIn: 300, tokensOut: 150, cacheWrites: undefined, cacheReads: undefined, cost: 0.03 },
+				"model-b": { tokensIn: 50, tokensOut: 25, cacheWrites: undefined, cacheReads: undefined, cost: 0.005 },
+			})
+		})
+	})
+
 	describe("invalid data handling", () => {
 		it("should handle messages with invalid JSON", () => {
 			const messages: ClineMessage[] = [{ ts: 1000, type: "say", say: "api_req_started", text: "invalid json" }]

@@ -5,7 +5,7 @@ import type { ProviderSettings, ProviderSettingsEntry } from "./provider-setting
 import type { HistoryItem } from "./history.js"
 import type { ModeConfig, PromptComponent } from "./mode.js"
 import type { Experiments } from "./experiment.js"
-import type { ClineMessage, QueuedMessage } from "./message.js"
+import type { ClineMessage, QueuedMessage, TokenUsage } from "./message.js"
 import type { MarketplaceItem, MarketplaceInstalledMetadata, InstallMarketplaceItemOptions } from "./marketplace.js"
 import type { TodoItem } from "./todo.js"
 import type { CloudUserInfo, CloudOrganizationMembership, OrganizationAllowList, ShareVisibility } from "./cloud.js"
@@ -199,6 +199,10 @@ export interface ExtensionMessage {
 		totalCost: number
 		ownCost: number
 		childrenCost: number
+		totalTokensIn: number
+		totalTokensOut: number
+		profileBreakdown?: TokenUsage["profileBreakdown"]
+		modelBreakdown?: TokenUsage["modelBreakdown"]
 	}
 	historyItem?: HistoryItem
 	taskHistory?: HistoryItem[] // For taskHistoryUpdated: full sorted task history
@@ -907,6 +911,10 @@ export interface ClineApiReqInfo {
 	cancelReason?: ClineApiReqCancelReason
 	streamingFailedMessage?: string
 	apiProtocol?: "anthropic" | "openai"
+	// The provider profile name active when this request was made.
+	profileName?: string
+	// The model id active when this request was made.
+	modelId?: string
 }
 
 export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled"

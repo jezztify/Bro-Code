@@ -10,7 +10,15 @@ import { appendImages } from "@src/utils/imageUtils"
 import { getCostBreakdownIfNeeded } from "@src/utils/costFormatting"
 import { batchConsecutive } from "@src/utils/batchConsecutive"
 
-import type { ClineAsk, ClineSayTool, ClineMessage, ExtensionMessage, AudioType, SuggestionItem } from "@roo-code/types"
+import type {
+	ClineAsk,
+	ClineSayTool,
+	ClineMessage,
+	ExtensionMessage,
+	AudioType,
+	SuggestionItem,
+	TokenUsage,
+} from "@roo-code/types"
 import { getCompletionCheckpoint, getSuggestionMode, isRetiredProvider } from "@roo-code/types"
 
 import { findLast } from "@roo/array"
@@ -194,6 +202,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				totalCost: number
 				ownCost: number
 				childrenCost: number
+				totalTokensIn: number
+				totalTokensOut: number
+				profileBreakdown?: TokenUsage["profileBreakdown"]
+				modelBreakdown?: TokenUsage["modelBreakdown"]
 			}
 		>
 	>(new Map())
@@ -1644,6 +1656,16 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 								? aggregatedCostsMap.get(currentTaskItem.id)!.totalCost
 								: undefined
 						}
+						aggregatedTokensIn={
+							currentTaskItem?.id && aggregatedCostsMap.has(currentTaskItem.id)
+								? aggregatedCostsMap.get(currentTaskItem.id)!.totalTokensIn
+								: undefined
+						}
+						aggregatedTokensOut={
+							currentTaskItem?.id && aggregatedCostsMap.has(currentTaskItem.id)
+								? aggregatedCostsMap.get(currentTaskItem.id)!.totalTokensOut
+								: undefined
+						}
 						hasSubtasks={
 							!!(
 								currentTaskItem?.id &&
@@ -1659,6 +1681,14 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 										subtasks: t("common:costs.subtasks"),
 									})
 								: undefined
+						}
+						profileBreakdown={
+							currentTaskItem?.id
+								? aggregatedCostsMap.get(currentTaskItem.id)?.profileBreakdown
+								: undefined
+						}
+						modelBreakdown={
+							currentTaskItem?.id ? aggregatedCostsMap.get(currentTaskItem.id)?.modelBreakdown : undefined
 						}
 						contextTokens={apiMetrics.contextTokens}
 						buttonsDisabled={sendingDisabled}

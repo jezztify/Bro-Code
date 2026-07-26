@@ -8,10 +8,11 @@ import {
 	ListChevronsDownUp,
 	ArrowLeft,
 	ArrowRight,
+	Info,
 } from "lucide-react"
 import prettyBytes from "pretty-bytes"
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage, TokenUsage } from "@roo-code/types"
 
 import { getModelMaxOutputTokens } from "@roo/api"
 
@@ -28,6 +29,7 @@ import { ContextWindowProgress } from "./ContextWindowProgress"
 import { Mention } from "./Mention"
 import { TodoListDisplay } from "./TodoListDisplay"
 import { LucideIconButton } from "./LucideIconButton"
+import { TokenBreakdownModal } from "./TokenBreakdownModal"
 
 export interface TaskHeaderProps {
 	task: ClineMessage
@@ -37,9 +39,13 @@ export interface TaskHeaderProps {
 	cacheReads?: number
 	totalCost: number
 	aggregatedCost?: number
+	aggregatedTokensIn?: number
+	aggregatedTokensOut?: number
 	hasSubtasks?: boolean
 	parentTaskId?: string
 	costBreakdown?: string
+	profileBreakdown?: TokenUsage["profileBreakdown"]
+	modelBreakdown?: TokenUsage["modelBreakdown"]
 	contextTokens: number
 	buttonsDisabled: boolean
 	handleCondenseContext: (taskId: string) => void
@@ -54,9 +60,13 @@ const TaskHeader = ({
 	cacheReads,
 	totalCost,
 	aggregatedCost,
+	aggregatedTokensIn,
+	aggregatedTokensOut,
 	hasSubtasks,
 	parentTaskId,
 	costBreakdown,
+	profileBreakdown,
+	modelBreakdown,
 	contextTokens,
 	buttonsDisabled,
 	handleCondenseContext,
@@ -66,6 +76,16 @@ const TaskHeader = ({
 	const { apiConfiguration, currentTaskItem } = useExtensionState()
 	const { id: modelId, info: model } = useSelectedModel(apiConfiguration)
 	const [isTaskExpanded, setIsTaskExpanded] = useState(false)
+	const [isTokenBreakdownOpen, setIsTokenBreakdownOpen] = useState(false)
+	// Only worth surfacing the breakdown modal when the task's requests actually spanned more
+	// than one provider profile or model - a single-entry breakdown has nothing to compare.
+	const hasProfileBreakdown = !!profileBreakdown && Object.keys(profileBreakdown).length > 1
+	const hasModelBreakdown = !!modelBreakdown && Object.keys(modelBreakdown).length > 1
+	const hasTokenBreakdown = hasProfileBreakdown || hasModelBreakdown
+	// For tasks with subtasks, the header's token count should match the aggregated total shown
+	// in the breakdown modal rather than only this task's own requests.
+	const displayedTokensIn = aggregatedTokensIn ?? tokensIn
+	const displayedTokensOut = aggregatedTokensOut ?? tokensOut
 
 	const textContainerRef = useRef<HTMLDivElement>(null)
 	const textRef = useRef<HTMLDivElement>(null)
@@ -368,11 +388,22 @@ const TaskHeader = ({
 										</th>
 										<td className="font-light align-top">
 											<div className="flex items-center gap-1 flex-wrap">
-												{typeof tokensIn === "number" && tokensIn > 0 && (
-													<span>↑ {formatLargeNumber(tokensIn)}</span>
+												{typeof displayedTokensIn === "number" && displayedTokensIn > 0 && (
+													<span>↑ {formatLargeNumber(displayedTokensIn)}</span>
 												)}
-												{typeof tokensOut === "number" && tokensOut > 0 && (
-													<span>↓ {formatLargeNumber(tokensOut)}</span>
+												{typeof displayedTokensOut === "number" && displayedTokensOut > 0 && (
+													<span>↓ {formatLargeNumber(displayedTokensOut)}</span>
+												)}
+												{hasTokenBreakdown && (
+													<LucideIconButton
+														title={t("chat:task.tokenBreakdown")}
+														icon={Info}
+														onClick={(e) => {
+															e.stopPropagation()
+															setIsTokenBreakdownOpen(true)
+														}}
+														className="size-4 p-0 opacity-70"
+													/>
 												)}
 											</div>
 										</td>
@@ -464,6 +495,14 @@ const TaskHeader = ({
 				{/* Todo list - always shown at bottom when todos exist */}
 				{hasTodos && <TodoListDisplay todos={todos ?? (task as any)?.tool?.todos ?? []} />}
 			</div>
+			{hasTokenBreakdown && (
+				<TokenBreakdownModal
+					open={isTokenBreakdownOpen}
+					onOpenChange={setIsTokenBreakdownOpen}
+					profileBreakdown={profileBreakdown}
+					modelBreakdown={modelBreakdown}
+				/>
+			)}
 		</div>
 	)
 }

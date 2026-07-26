@@ -335,4 +335,71 @@ describe("TaskHeader", () => {
 			expect(screen.getByText("25%")).toBeInTheDocument()
 		})
 	})
+
+	describe("Token breakdown", () => {
+		const expandTask = () => fireEvent.click(screen.getByText("Test task"))
+
+		it("does not show the breakdown button when there is no breakdown", () => {
+			renderTaskHeader()
+			expandTask()
+			expect(screen.queryByRole("button", { name: "chat:task.tokenBreakdown" })).not.toBeInTheDocument()
+		})
+
+		it("does not show the breakdown button when only a single profile/model was used", () => {
+			renderTaskHeader({
+				profileBreakdown: { "profile-a": { tokensIn: 100, tokensOut: 50, cost: 0.05 } },
+				modelBreakdown: { "model-a": { tokensIn: 100, tokensOut: 50, cost: 0.05 } },
+			})
+			expandTask()
+			expect(screen.queryByRole("button", { name: "chat:task.tokenBreakdown" })).not.toBeInTheDocument()
+		})
+
+		it("shows the breakdown button when the task spans more than one provider profile", () => {
+			renderTaskHeader({
+				profileBreakdown: {
+					"profile-a": { tokensIn: 100, tokensOut: 50, cost: 0.05 },
+					"profile-b": { tokensIn: 20, tokensOut: 10, cost: 0.01 },
+				},
+			})
+			expandTask()
+			expect(screen.getByRole("button", { name: "chat:task.tokenBreakdown" })).toBeInTheDocument()
+		})
+
+		it("shows the breakdown button when the task spans more than one model", () => {
+			renderTaskHeader({
+				modelBreakdown: {
+					"model-a": { tokensIn: 100, tokensOut: 50, cost: 0.05 },
+					"model-b": { tokensIn: 20, tokensOut: 10, cost: 0.01 },
+				},
+			})
+			expandTask()
+			expect(screen.getByRole("button", { name: "chat:task.tokenBreakdown" })).toBeInTheDocument()
+		})
+
+		it("opens the breakdown modal when the button is clicked", () => {
+			renderTaskHeader({
+				profileBreakdown: {
+					"profile-a": { tokensIn: 100, tokensOut: 50, cost: 0.05 },
+					"profile-b": { tokensIn: 20, tokensOut: 10, cost: 0.01 },
+				},
+			})
+			expandTask()
+			fireEvent.click(screen.getByRole("button", { name: "chat:task.tokenBreakdown" }))
+			expect(screen.getByText("chat:tokenBreakdownModal.titleByProfile")).toBeInTheDocument()
+		})
+
+		it("falls back to the task's own tokens when no aggregated total is provided", () => {
+			renderTaskHeader({ tokensIn: 100, tokensOut: 50, aggregatedTokensIn: undefined })
+			expandTask()
+			expect(screen.getByText("↑ 100")).toBeInTheDocument()
+			expect(screen.getByText("↓ 50")).toBeInTheDocument()
+		})
+
+		it("uses the aggregated tokens for a task with subtasks instead of its own", () => {
+			renderTaskHeader({ tokensIn: 100, tokensOut: 50, aggregatedTokensIn: 300, aggregatedTokensOut: 150 })
+			expandTask()
+			expect(screen.getByText("↑ 300")).toBeInTheDocument()
+			expect(screen.getByText("↓ 150")).toBeInTheDocument()
+		})
+	})
 })

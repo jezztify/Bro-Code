@@ -1,13 +1,49 @@
-import type { HistoryItem } from "@roo-code/types"
+import type { HistoryItem, TokenUsage } from "@roo-code/types"
 
 export interface AggregatedCosts {
 	ownCost: number // This task's own API costs
 	childrenCost: number // Sum of all direct children costs (recursive)
 	totalCost: number // ownCost + childrenCost
+	totalTokensIn: number // This task's own tokensIn + all subtasks' tokensIn (recursive)
+	totalTokensOut: number // This task's own tokensOut + all subtasks' tokensOut (recursive)
 	childBreakdown?: {
 		// Optional detailed breakdown
 		[childId: string]: AggregatedCosts
 	}
+	// Per-provider-profile token breakdown merged across this task and all its subtasks (recursive).
+	profileBreakdown?: NonNullable<TokenUsage["profileBreakdown"]>
+	// Per-model token breakdown merged across this task and all its subtasks (recursive).
+	modelBreakdown?: NonNullable<TokenUsage["modelBreakdown"]>
+}
+
+function mergeBreakdowns(
+	a: NonNullable<TokenUsage["profileBreakdown"]> | undefined,
+	b: NonNullable<TokenUsage["profileBreakdown"]> | undefined,
+): NonNullable<TokenUsage["profileBreakdown"]> | undefined {
+	if (!a && !b) {
+		return undefined
+	}
+
+	const merged: NonNullable<TokenUsage["profileBreakdown"]> = { ...a }
+
+	for (const [key, usage] of Object.entries(b ?? {})) {
+		const existing = merged[key]
+		merged[key] = {
+			tokensIn: (existing?.tokensIn ?? 0) + usage.tokensIn,
+			tokensOut: (existing?.tokensOut ?? 0) + usage.tokensOut,
+			cacheWrites:
+				existing?.cacheWrites !== undefined || usage.cacheWrites !== undefined
+					? (existing?.cacheWrites ?? 0) + (usage.cacheWrites ?? 0)
+					: undefined,
+			cacheReads:
+				existing?.cacheReads !== undefined || usage.cacheReads !== undefined
+					? (existing?.cacheReads ?? 0) + (usage.cacheReads ?? 0)
+					: undefined,
+			cost: (existing?.cost ?? 0) + usage.cost,
+		}
+	}
+
+	return merged
 }
 
 /**
@@ -26,7 +62,7 @@ export async function aggregateTaskCostsRecursive(
 	// Prevent infinite loops
 	if (visited.has(taskId)) {
 		console.warn(`[aggregateTaskCostsRecursive] Circular reference detected: ${taskId}`)
-		return { ownCost: 0, childrenCost: 0, totalCost: 0 }
+		return { ownCost: 0, childrenCost: 0, totalCost: 0, totalTokensIn: 0, totalTokensOut: 0 }
 	}
 	visited.add(taskId)
 
@@ -34,12 +70,16 @@ export async function aggregateTaskCostsRecursive(
 	const history = await getTaskHistory(taskId)
 	if (!history) {
 		console.warn(`[aggregateTaskCostsRecursive] Task ${taskId} not found`)
-		return { ownCost: 0, childrenCost: 0, totalCost: 0 }
+		return { ownCost: 0, childrenCost: 0, totalCost: 0, totalTokensIn: 0, totalTokensOut: 0 }
 	}
 
 	const ownCost = history.totalCost || 0
+	let totalTokensIn = history.tokensIn || 0
+	let totalTokensOut = history.tokensOut || 0
 	let childrenCost = 0
 	const childBreakdown: { [childId: string]: AggregatedCosts } = {}
+	let profileBreakdown = history.profileBreakdown
+	let modelBreakdown = history.modelBreakdown
 
 	// Recursively aggregate child costs
 	if (history.childIds && history.childIds.length > 0) {
@@ -50,14 +90,22 @@ export async function aggregateTaskCostsRecursive(
 				new Set(visited), // Create new Set to allow sibling traversal
 			)
 			childrenCost += childAggregated.totalCost
+			totalTokensIn += childAggregated.totalTokensIn
+			totalTokensOut += childAggregated.totalTokensOut
 			childBreakdown[childId] = childAggregated
+			profileBreakdown = mergeBreakdowns(profileBreakdown, childAggregated.profileBreakdown)
+			modelBreakdown = mergeBreakdowns(modelBreakdown, childAggregated.modelBreakdown)
 		}
 	}
 
 	const result: AggregatedCosts = {
 		ownCost,
 		childrenCost,
+		profileBreakdown,
+		modelBreakdown,
 		totalCost: ownCost + childrenCost,
+		totalTokensIn,
+		totalTokensOut,
 		childBreakdown,
 	}
 
