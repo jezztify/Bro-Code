@@ -3950,6 +3950,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				metadata,
 				environmentDetails,
 				useAvailableInputForContextPercent,
+				// We're here because the provider already confirmed the request didn't fit
+				// (checkContextWindowExceededError). If condensing itself fails, fall back to
+				// truncation regardless of the locally-estimated token count so the retry
+				// below is guaranteed to send a smaller request, not an unchanged one.
+				forceTruncationOnCondenseFailure: true,
 			})
 
 			if (truncateResult.messages !== this.apiConversationHistory) {

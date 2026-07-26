@@ -846,6 +846,196 @@ describe("Context Management", () => {
 			// Clean up
 			summarizeSpy.mockRestore()
 		})
+
+		it("should force an extra truncation pass when condense succeeds but still overflows", async () => {
+			// Simulate a condense "success" that nonetheless reports a token count
+			// still above the allowed budget (e.g. the LLM's summary was itself large).
+			const mockSummary = "A summary that is somehow still huge"
+			const mockSummarizeResponse: condenseModule.SummarizeResponse = {
+				messages: [
+					{ role: "user", content: "First message" },
+					{ role: "assistant", content: "Second message" },
+					{ role: "user", content: "Third message" },
+					{ role: "assistant", content: "Fourth message" },
+					{ role: "user", content: mockSummary, isSummary: true },
+				],
+				summary: mockSummary,
+				cost: 0.05,
+				// allowedTokens for this model = 100000 * 0.9 - 30000 = 60000
+				newContextTokens: 99999, // Still way over budget despite "successful" condense
+			}
+
+			const summarizeSpy = vi
+				.spyOn(condenseModule, "summarizeConversation")
+				.mockResolvedValue(mockSummarizeResponse)
+
+			const modelInfo = createModelInfo(100000, 30000)
+			const totalTokens = 70001 // Above threshold, triggers condense attempt
+			const messagesWithSmallContent = [
+				...messages.slice(0, -1),
+				{ ...messages[messages.length - 1], content: "" },
+			]
+
+			const result = await manageContext({
+				messages: messagesWithSmallContent,
+				totalTokens,
+				contextWindow: modelInfo.contextWindow,
+				maxTokens: modelInfo.maxTokens,
+				apiHandler: mockApiHandler,
+				autoCondenseContext: true,
+				autoCondenseContextPercent: 100,
+				systemPrompt: "System prompt",
+				taskId,
+				profileThresholds: {},
+				currentProfileId: "default",
+			})
+
+			// The guard should have forced an additional truncation pass on top of
+			// the condense result, since newContextTokens (99999) still exceeds allowedTokens (60000).
+			expect(result.truncationId).toBeDefined()
+			expect(result.newContextTokensAfterTruncation).toBeDefined()
+			expect(result.newContextTokensAfterTruncation!).toBeLessThan(mockSummarizeResponse.newContextTokens!)
+			// The condensed summary/cost should still be surfaced for telemetry/UI purposes.
+			expect(result.summary).toBe(mockSummary)
+			expect(result.cost).toBe(0.05)
+
+			summarizeSpy.mockRestore()
+		})
+
+		it("should not alter a condense result that already fits within the allowed budget", async () => {
+			const mockSummary = "A small summary"
+			const mockSummarizeResponse: condenseModule.SummarizeResponse = {
+				messages: [
+					{ role: "user", content: "First message" },
+					{ role: "user", content: mockSummary, isSummary: true },
+					{ role: "assistant", content: "Last message" },
+				],
+				summary: mockSummary,
+				cost: 0.01,
+				newContextTokens: 100, // Comfortably under allowedTokens (60000)
+			}
+
+			const summarizeSpy = vi
+				.spyOn(condenseModule, "summarizeConversation")
+				.mockResolvedValue(mockSummarizeResponse)
+
+			const modelInfo = createModelInfo(100000, 30000)
+			const totalTokens = 70001
+			const messagesWithSmallContent = [
+				...messages.slice(0, -1),
+				{ ...messages[messages.length - 1], content: "" },
+			]
+
+			const result = await manageContext({
+				messages: messagesWithSmallContent,
+				totalTokens,
+				contextWindow: modelInfo.contextWindow,
+				maxTokens: modelInfo.maxTokens,
+				apiHandler: mockApiHandler,
+				autoCondenseContext: true,
+				autoCondenseContextPercent: 100,
+				systemPrompt: "System prompt",
+				taskId,
+				profileThresholds: {},
+				currentProfileId: "default",
+			})
+
+			// Guard should be a no-op: no extra truncation pass triggered.
+			expect(result.truncationId).toBeUndefined()
+			expect(result.messages).toEqual(mockSummarizeResponse.messages)
+
+			summarizeSpy.mockRestore()
+		})
+
+		it("should force truncation when condense fails and forceTruncationOnCondenseFailure is set, even under the normal buffer", async () => {
+			const mockSummarizeResponse: condenseModule.SummarizeResponse = {
+				messages,
+				summary: "",
+				cost: 0.01,
+				error: "Summarization failed",
+			}
+
+			const summarizeSpy = vi
+				.spyOn(condenseModule, "summarizeConversation")
+				.mockResolvedValue(mockSummarizeResponse)
+
+			const modelInfo = createModelInfo(100000, 30000)
+			// Below allowedTokens (60000) so the normal fallback gate alone would NOT truncate,
+			// but forceTruncationOnCondenseFailure should force it anyway since this simulates
+			// recovery from a confirmed API context-window-exceeded error.
+			const totalTokens = 50000
+			const messagesWithSmallContent = [
+				...messages.slice(0, -1),
+				{ ...messages[messages.length - 1], content: "" },
+			]
+
+			const result = await manageContext({
+				messages: messagesWithSmallContent,
+				totalTokens,
+				contextWindow: modelInfo.contextWindow,
+				maxTokens: modelInfo.maxTokens,
+				apiHandler: mockApiHandler,
+				autoCondenseContext: true,
+				autoCondenseContextPercent: 50, // 50000/100000 = 50% >= 50%, triggers condense attempt
+				systemPrompt: "System prompt",
+				taskId,
+				profileThresholds: {},
+				currentProfileId: "default",
+				forceTruncationOnCondenseFailure: true,
+			})
+
+			expect(summarizeSpy).toHaveBeenCalled()
+			// Without the fix, this would return messages unchanged since
+			// prevContextTokens (50000) <= allowedTokens (60000).
+			expect(result.truncationId).toBeDefined()
+			expect(result.messages).not.toEqual(messagesWithSmallContent)
+
+			summarizeSpy.mockRestore()
+		})
+
+		it("should NOT force truncation on condense failure when forceTruncationOnCondenseFailure is unset (default/proactive path)", async () => {
+			const mockSummarizeResponse: condenseModule.SummarizeResponse = {
+				messages,
+				summary: "",
+				cost: 0.01,
+				error: "Summarization failed",
+			}
+
+			const summarizeSpy = vi
+				.spyOn(condenseModule, "summarizeConversation")
+				.mockResolvedValue(mockSummarizeResponse)
+
+			const modelInfo = createModelInfo(100000, 30000)
+			const totalTokens = 50000 // Below allowedTokens (60000)
+			const messagesWithSmallContent = [
+				...messages.slice(0, -1),
+				{ ...messages[messages.length - 1], content: "" },
+			]
+
+			const result = await manageContext({
+				messages: messagesWithSmallContent,
+				totalTokens,
+				contextWindow: modelInfo.contextWindow,
+				maxTokens: modelInfo.maxTokens,
+				apiHandler: mockApiHandler,
+				autoCondenseContext: true,
+				autoCondenseContextPercent: 50,
+				systemPrompt: "System prompt",
+				taskId,
+				profileThresholds: {},
+				currentProfileId: "default",
+				// forceTruncationOnCondenseFailure intentionally omitted
+			})
+
+			expect(summarizeSpy).toHaveBeenCalled()
+			// Unchanged: condense failed but prevContextTokens is within budget, and this
+			// isn't a confirmed-overflow recovery, so no forced truncation.
+			expect(result.truncationId).toBeUndefined()
+			expect(result.messages).toEqual(messagesWithSmallContent)
+			expect(result.error).toBe("Summarization failed")
+
+			summarizeSpy.mockRestore()
+		})
 	})
 
 	/**

@@ -288,4 +288,70 @@ describe("checkContextWindowExceededError", () => {
 			expect(checkContextWindowExceededError(error2)).toBe(true)
 		})
 	})
+
+	describe("Generic (provider-agnostic) context window errors", () => {
+		it("should detect a Gemini-style overflow message", () => {
+			const error = {
+				status: 400,
+				message: "The input token count exceeds the maximum context length",
+			}
+			expect(checkContextWindowExceededError(error)).toBe(true)
+		})
+
+		it("should detect a Bedrock-style overflow message", () => {
+			const error = {
+				status: 400,
+				message: "Input is too long for requested model.",
+			}
+			expect(checkContextWindowExceededError(error)).toBe(true)
+		})
+
+		it("should detect a 413 with context-length wording", () => {
+			const error = {
+				status: 413,
+				message: "context length exceeded",
+			}
+			expect(checkContextWindowExceededError(error)).toBe(true)
+		})
+
+		it("should detect an error message nested under response.data.error.message", () => {
+			const error = {
+				response: { data: { error: { message: "Request too large for the model's context window" } } },
+			}
+			expect(checkContextWindowExceededError(error)).toBe(true)
+		})
+
+		it("should detect an error message nested under body.error.message", () => {
+			const error = {
+				status: 400,
+				body: { error: { message: "prompt too long: max tokens exceeded" } },
+			}
+			expect(checkContextWindowExceededError(error)).toBe(true)
+		})
+
+		it("should not detect an unrelated 400 error (e.g. invalid API key)", () => {
+			const error = { status: 400, message: "Invalid API key" }
+			expect(checkContextWindowExceededError(error)).toBe(false)
+		})
+
+		it("should not detect an unrelated 400 error (e.g. missing required field)", () => {
+			const error = { status: 400, message: "Missing required field: model" }
+			expect(checkContextWindowExceededError(error)).toBe(false)
+		})
+
+		it("should not match on 5xx server errors even with context-length wording", () => {
+			const error = { status: 500, message: "context length exceeded" }
+			expect(checkContextWindowExceededError(error)).toBe(false)
+		})
+
+		it("should not match a 401 auth error mentioning 'token'", () => {
+			const error = { status: 401, message: "Invalid token" }
+			expect(checkContextWindowExceededError(error)).toBe(false)
+		})
+
+		it("should not match a 429 rate-limit error", () => {
+			const error = { status: 429, message: "Too many requests, please slow down" }
+			expect(checkContextWindowExceededError(error)).toBe(false)
+		})
+	})
 })

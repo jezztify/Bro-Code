@@ -711,7 +711,7 @@
 	},
 	"core/context/context-management/context-error-handling.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 2
+			"count": 3
 		}
 	},
 	"core/diff/stats.ts": {
