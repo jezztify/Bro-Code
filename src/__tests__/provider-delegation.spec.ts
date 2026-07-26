@@ -111,6 +111,80 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		expect(handleModeSwitch).toHaveBeenCalledWith("code")
 	})
 
+	it("optimistically posts state (without taskHistory) right after child creation, before persisting parent metadata", async () => {
+		const parentTask = makeParentTask()
+		const callOrder: string[] = []
+
+		const createTask = vi.fn().mockImplementation(async () => {
+			callOrder.push("createTask")
+			return { taskId: "child-1", start: vi.fn() }
+		})
+		const postStateToWebviewWithoutTaskHistory = vi.fn().mockImplementation(async () => {
+			callOrder.push("postStateToWebviewWithoutTaskHistory")
+		})
+		const taskHistoryStore = makeStoreStub({
+			atomicReadAndUpdate: vi.fn(async (_taskId: string, updater: (h: HistoryItem) => HistoryItem) => {
+				callOrder.push("atomicReadAndUpdate")
+				updater(parentHistoryItem)
+				return []
+			}),
+		})
+
+		const provider = {
+			emit: vi.fn(),
+			getCurrentTask: vi.fn(() => parentTask),
+			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+			createTask,
+			handleModeSwitch: vi.fn().mockResolvedValue(undefined),
+			postStateToWebviewWithoutTaskHistory,
+			log: vi.fn(),
+			isViewLaunched: false,
+			recentTasksCache: undefined,
+			taskHistoryStore,
+		} as unknown as ClineProvider
+
+		await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
+			parentTaskId: "parent-1",
+			message: "Do something",
+			initialTodos: [],
+			mode: "code",
+		})
+
+		// The webview must learn the child is current (so the chat view renders it
+		// immediately instead of briefly falling back to the homepage) before the
+		// slower parent-metadata persistence step, not after.
+		expect(postStateToWebviewWithoutTaskHistory).toHaveBeenCalledTimes(1)
+		expect(callOrder).toEqual(["createTask", "postStateToWebviewWithoutTaskHistory", "atomicReadAndUpdate"])
+	})
+
+	it("does not fail delegation when the optimistic state push throws", async () => {
+		const parentTask = makeParentTask()
+		const childStart = vi.fn()
+
+		const provider = {
+			emit: vi.fn(),
+			getCurrentTask: vi.fn(() => parentTask),
+			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+			createTask: vi.fn().mockResolvedValue({ taskId: "child-1", start: childStart }),
+			handleModeSwitch: vi.fn().mockResolvedValue(undefined),
+			postStateToWebviewWithoutTaskHistory: vi.fn().mockRejectedValue(new Error("boom")),
+			log: vi.fn(),
+			isViewLaunched: false,
+			recentTasksCache: undefined,
+			taskHistoryStore: makeStoreStub(),
+		} as unknown as ClineProvider
+
+		const child = await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
+			parentTaskId: "parent-1",
+			message: "Do something",
+			initialTodos: [],
+			mode: "code",
+		})
+
+		expect(child.taskId).toBe("child-1")
+		expect(childStart).toHaveBeenCalledTimes(1)
+	})
+
 	it("posts taskHistoryItemUpdated to the webview when isViewLaunched is true", async () => {
 		const updatedParent = { ...parentHistoryItem, status: "delegated" } as HistoryItem
 		const postMessageToWebview = vi.fn().mockResolvedValue(undefined)

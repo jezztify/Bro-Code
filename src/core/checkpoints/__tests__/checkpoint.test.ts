@@ -207,6 +207,59 @@ describe("Checkpoint functionality", () => {
 			expect(result).toBeUndefined()
 			expect(mockTask.enableCheckpoints).toBe(false)
 		})
+
+		it("awaits the checkpoint_saved say before resolving, so a subsequent ask can't land before it", async () => {
+			// Force full service (re)initialization so the "checkpoint" event listener
+			// registered in checkGitInstallation actually runs and captures our handler.
+			mockTask.checkpointService = undefined
+			mockTask.checkpointServiceInitializing = false
+
+			let checkpointHandler: ((payload: any) => void) | undefined
+			mockCheckpointService.on = vi.fn((event: string, handler: (payload: any) => void) => {
+				if (event === "checkpoint") {
+					checkpointHandler = handler
+				}
+			})
+
+			let resolveSay: () => void = () => {}
+			const sayPromise = new Promise<void>((resolve) => {
+				resolveSay = resolve
+			})
+			mockTask.say = vi.fn().mockReturnValue(sayPromise)
+
+			mockCheckpointService.saveCheckpoint = vi.fn().mockImplementation(async () => {
+				// Mirrors ShadowCheckpointService.saveCheckpoint: the "checkpoint" event
+				// fires synchronously here, before saveCheckpoint's own promise resolves.
+				checkpointHandler?.({ fromHash: "a", toHash: "b", suppressMessage: false })
+				return { commit: "b" }
+			})
+
+			const order: string[] = []
+			const savePromise = checkpointSave(mockTask, true).then(() => order.push("checkpointSave resolved"))
+
+			// Let the microtask queue advance so saveCheckpoint's synchronous handler runs
+			// and checkpointSave reaches its `await task.pendingCheckpointSay` gate.
+			await Promise.resolve()
+			await Promise.resolve()
+			await Promise.resolve()
+
+			order.push("say still pending")
+			resolveSay()
+
+			await savePromise
+
+			expect(order).toEqual(["say still pending", "checkpointSave resolved"])
+			expect(mockTask.say).toHaveBeenCalledWith(
+				"checkpoint_saved",
+				"b",
+				undefined,
+				undefined,
+				{ from: "a", to: "b", suppressMessage: false },
+				undefined,
+				{ isNonInteractive: true },
+			)
+			expect(mockTask.pendingCheckpointSay).toBeUndefined()
+		})
 	})
 
 	describe("checkpointRestore", () => {

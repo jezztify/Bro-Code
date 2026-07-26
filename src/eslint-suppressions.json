@@ -51,7 +51,7 @@
 	},
 	"__tests__/provider-delegation.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 9
+			"count": 11
 		}
 	},
 	"activate/CodeActionProvider.ts": {
@@ -621,7 +621,7 @@
 	},
 	"core/checkpoints/__tests__/checkpoint.test.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 5
+			"count": 7
 		}
 	},
 	"core/checkpoints/index.ts": {

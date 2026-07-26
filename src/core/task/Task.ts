@@ -327,6 +327,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	checkpointTimeout: number
 	checkpointService?: RepoPerTaskCheckpointService
 	checkpointServiceInitializing = false
+	// Set by the checkpoint service's "checkpoint" event listener (see
+	// core/checkpoints/index.ts) when it kicks off the fire-and-forget
+	// `say("checkpoint_saved", ...)` call. `checkpointSave()` awaits this before
+	// returning so callers (e.g. the tool loop) don't move on to the next ask
+	// until the checkpoint message has actually been posted - otherwise it can
+	// lose the race with a subsequent blocking ask (e.g. a follow-up question)
+	// and land after it, making the pending ask look buried/stuck in the webview.
+	pendingCheckpointSay?: Promise<void>
 
 	// Message Queue Service
 	public readonly messageQueueService: MessageQueueService
