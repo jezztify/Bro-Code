@@ -82,6 +82,8 @@ const ModesView = () => {
 		currentApiConfigName,
 		maxFallbacksPerMode,
 		setMaxFallbacksPerMode,
+		errorRepairApiConfigId,
+		setErrorRepairApiConfigId,
 		mode,
 		customInstructions,
 		setCustomInstructions,
@@ -759,6 +761,33 @@ const ModesView = () => {
 						</div>
 					</div>
 
+					{/* Global helper LLM used to repair malformed tool calls before they reach the main model. */}
+					<div className="mb-3">
+						<label className="block font-bold mb-1">{t("prompts:errorRepairApiConfiguration.title")}</label>
+						<Select
+							value={errorRepairApiConfigId || "-"}
+							onValueChange={(value) => {
+								const newConfigId = value === "-" ? "" : value
+								setErrorRepairApiConfigId(newConfigId)
+								vscode.postMessage({ type: "errorRepairApiConfigId", text: newConfigId })
+							}}>
+							<SelectTrigger data-testid="error-repair-api-config-select" className="w-full">
+								<SelectValue placeholder={t("prompts:errorRepairApiConfiguration.disabled")} />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="-">{t("prompts:errorRepairApiConfiguration.disabled")}</SelectItem>
+								{(listApiConfigMeta || []).map((config) => (
+									<SelectItem key={config.id} value={config.id} data-testid={`${config.id}-option`}>
+										{config.name}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<div className="text-sm text-vscode-descriptionForeground mt-1">
+							{t("prompts:errorRepairApiConfiguration.description")}
+						</div>
+					</div>
+
 					<div className="flex items-center gap-1 mb-3">
 						{isRenamingMode ? (
 							<>
@@ -1360,6 +1389,41 @@ const ModesView = () => {
 						rows={4}
 						data-testid={`${getCurrentMode()?.slug || "code"}-when-to-use-textarea`}
 					/>
+				</div>
+
+				{/* Present to common SYSTEM PROMPT toggle */}
+				<div className="mb-4">
+					<VSCodeCheckbox
+						checked={(() => {
+							const customMode = findModeBySlug(visualMode, customModes)
+							const prompt = customModePrompts?.[visualMode] as PromptComponent
+							return (
+								(customMode?.includeInSystemPrompt ?? prompt?.includeInSystemPrompt ?? true) !== false
+							)
+						})()}
+						onChange={(e) => {
+							const target =
+								(e as CustomEvent)?.detail?.target || ((e as Event).target as HTMLInputElement)
+							const checked = target.checked
+							const customMode = findModeBySlug(visualMode, customModes)
+							if (customMode) {
+								updateCustomMode(visualMode, {
+									...customMode,
+									includeInSystemPrompt: checked,
+									source: customMode.source || "global",
+								})
+							} else {
+								updateAgentPrompt(visualMode, {
+									includeInSystemPrompt: checked,
+								})
+							}
+						}}
+						data-testid={`${getCurrentMode()?.slug || "code"}-include-in-system-prompt-checkbox`}>
+						{t("prompts:includeInSystemPrompt.title")}
+					</VSCodeCheckbox>
+					<div className="text-sm text-vscode-descriptionForeground mt-1">
+						{t("prompts:includeInSystemPrompt.description")}
+					</div>
 				</div>
 
 				{/* Mode settings */}

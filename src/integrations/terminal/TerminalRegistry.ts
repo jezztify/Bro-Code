@@ -313,28 +313,51 @@ export class TerminalRegistry {
 	 * Releases all terminals associated with a task.
 	 *
 	 * @param taskId The task ID
+	 * @param options.close When true, VS Code terminals (not headless Execa ones) are
+	 *   disposed outright instead of just being returned to the reuse pool — used when the
+	 *   task is genuinely finished so its terminal tab doesn't linger as clutter. Callers that
+	 *   are only swapping the in-memory Task instance for the same ongoing task (e.g. rehydrating
+	 *   in place) should omit this so the terminal survives for the replacement instance to reuse.
 	 */
-	public static releaseTerminalsForTask(taskId: string): void {
-		this.terminals.forEach((terminal) => {
-			if (terminal.taskId === taskId) {
-				// #245: If the terminal is still executing a command when its task is torn
-				// down (user pressed cancel ✕, or the task was switched/removed), abort the
-				// process. Otherwise the command keeps running orphaned and the terminal stays
-				// stuck "busy" — the cancel-doesn't-terminate bug. abort() is safe when idle
-				// (Ctrl+C is gated on an active stream; Execa abort is idempotent).
-				if (terminal.busy) {
-					try {
-						terminal.process?.abort()
-					} catch (error) {
-						console.error(
-							`[TerminalRegistry] Error aborting process for terminal ${terminal.id} on release:`,
-							error,
-						)
-					}
+	public static releaseTerminalsForTask(taskId: string, options?: { close?: boolean }): void {
+		const close = options?.close ?? false
+
+		this.terminals = this.terminals.filter((terminal) => {
+			if (terminal.taskId !== taskId) {
+				return true
+			}
+
+			// #245: If the terminal is still executing a command when its task is torn
+			// down (user pressed cancel ✕, or the task was switched/removed), abort the
+			// process. Otherwise the command keeps running orphaned and the terminal stays
+			// stuck "busy" — the cancel-doesn't-terminate bug. abort() is safe when idle
+			// (Ctrl+C is gated on an active stream; Execa abort is idempotent).
+			if (terminal.busy) {
+				try {
+					terminal.process?.abort()
+				} catch (error) {
+					console.error(
+						`[TerminalRegistry] Error aborting process for terminal ${terminal.id} on release:`,
+						error,
+					)
+				}
+			}
+
+			// Execa terminals are headless (no visible tab) and are designed to never
+			// close (see ExecaTerminal#isClosed), so only VS Code terminals get disposed here.
+			if (close && terminal instanceof Terminal) {
+				try {
+					terminal.terminal.dispose()
+				} catch (error) {
+					console.error(`[TerminalRegistry] Error disposing terminal ${terminal.id} on release:`, error)
 				}
 
-				terminal.taskId = undefined
+				ShellIntegrationManager.zshCleanupTmpDir(terminal.id)
+				return false
 			}
+
+			terminal.taskId = undefined
+			return true
 		})
 	}
 

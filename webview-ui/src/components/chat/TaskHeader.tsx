@@ -35,7 +35,7 @@ import { StateInspectorModal } from "./StateInspectorModal"
 
 export interface TaskHeaderProps {
 	task: ClineMessage
-	onBackToHistory?: () => void
+	onGoHome?: () => void
 	tokensIn: number
 	tokensOut: number
 	cacheWrites?: number
@@ -57,7 +57,7 @@ export interface TaskHeaderProps {
 
 const TaskHeader = ({
 	task,
-	onBackToHistory,
+	onGoHome,
 	tokensIn,
 	tokensOut,
 	cacheWrites,
@@ -178,11 +178,7 @@ const TaskHeader = ({
 				<div className="flex justify-between items-center gap-0">
 					<div className="flex items-center select-none grow min-w-0">
 						<div className="shrink-0 -ml-1.5 flex items-center" onClick={(e) => e.stopPropagation()}>
-							<LucideIconButton
-								title={t("chat:task.backToHistory")}
-								icon={ArrowLeft}
-								onClick={onBackToHistory}
-							/>
+							<LucideIconButton title={t("chat:task.goHome")} icon={ArrowLeft} onClick={onGoHome} />
 							<LucideIconButton
 								title={t("chat:task.viewState")}
 								icon={Database}

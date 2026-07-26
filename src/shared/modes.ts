@@ -168,6 +168,7 @@ export async function getAllModesWithPrompts(context: vscode.ExtensionContext): 
 		roleDefinition: customModePrompts[mode.slug]?.roleDefinition ?? mode.roleDefinition,
 		whenToUse: customModePrompts[mode.slug]?.whenToUse ?? mode.whenToUse,
 		customInstructions: customModePrompts[mode.slug]?.customInstructions ?? mode.customInstructions,
+		includeInSystemPrompt: customModePrompts[mode.slug]?.includeInSystemPrompt ?? mode.includeInSystemPrompt,
 		// description is not overridable via customModePrompts, so we keep the original
 	}))
 }
@@ -213,6 +214,7 @@ export async function getFullModeDetails(
 		whenToUse: baseWhenToUse,
 		description: baseDescription,
 		customInstructions: fullCustomInstructions,
+		includeInSystemPrompt: promptComponent?.includeInSystemPrompt ?? baseMode.includeInSystemPrompt,
 	}
 }
 
@@ -244,6 +246,16 @@ export function getWhenToUse(modeSlug: string, customModes?: ModeConfig[]): stri
 		return ""
 	}
 	return mode.whenToUse ?? ""
+}
+
+// Helper function to safely get whether a mode is included in the system prompt (defaults to true)
+export function getIncludeInSystemPrompt(modeSlug: string, customModes?: ModeConfig[]): boolean {
+	const mode = getModeBySlug(modeSlug, customModes)
+	if (!mode) {
+		console.warn(`No mode found for slug: ${modeSlug}`)
+		return true
+	}
+	return mode.includeInSystemPrompt ?? true
 }
 
 // Helper function to safely get custom instructions

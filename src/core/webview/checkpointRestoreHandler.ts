@@ -31,7 +31,9 @@ export async function handleCheckpointRestoreOperation(config: CheckpointRestore
 		// This prevents "Current ask promise was ignored" errors
 		// For edit operations, we don't abort because the checkpoint restore will handle it
 		if (operation === "delete" && currentCline && !currentCline.abort) {
-			currentCline.abortTask()
+			// The task is reinitialized in-place further down via createTaskWithHistoryItem()
+			// with the same taskId, so keep its terminal alive for the new instance to reuse.
+			currentCline.abortTask(false, { closeTerminals: false })
 			// Wait a bit for the abort to complete
 			await pWaitFor(() => currentCline.abort === true, {
 				timeout: 1000,

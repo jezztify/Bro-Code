@@ -238,6 +238,8 @@ export const globalSettingsSchema = z.object({
 	customSupportPrompts: customSupportPromptsSchema.optional(),
 	enhancementApiConfigId: z.string().optional(),
 	condensingApiConfigId: z.string().optional(),
+	/** API config profile used as a helper LLM to repair malformed tool calls. Unset disables the feature. */
+	errorRepairApiConfigId: z.string().optional(),
 	includeTaskHistoryInEnhance: z.boolean().optional(),
 	historyPreviewCollapsed: z.boolean().optional(),
 	reasoningBlockCollapsed: z.boolean().optional(),

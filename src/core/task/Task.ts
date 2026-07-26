@@ -1630,6 +1630,42 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
+	 * Resolves the API handler to use as the error-repair helper LLM. If a dedicated
+	 * `errorRepairApiConfigId` profile is configured (and still exists), builds a one-off
+	 * handler from it; otherwise returns `undefined`, meaning the feature is disabled.
+	 * Unlike {@link getCondensingApiHandler}, there is no fallback to the main handler —
+	 * an unconfigured helper must be a complete no-op.
+	 */
+	public async getErrorRepairApiHandler(
+		state: Awaited<ReturnType<ClineProvider["getState"]>> | undefined,
+	): Promise<ApiHandler | undefined> {
+		const provider = this.providerRef.deref()
+		const errorRepairApiConfigId = state?.errorRepairApiConfigId
+
+		if (
+			!provider ||
+			!errorRepairApiConfigId ||
+			!state?.listApiConfigMeta?.some((config) => config.id === errorRepairApiConfigId)
+		) {
+			return undefined
+		}
+
+		try {
+			const { name: _name, ...providerSettings } = await provider.providerSettingsManager.getProfile({
+				id: errorRepairApiConfigId,
+			})
+
+			if (providerSettings.apiProvider) {
+				return buildApiHandler(providerSettings)
+			}
+		} catch (error) {
+			console.error("[Task] Failed to build error-repair API handler:", error)
+		}
+
+		return undefined
+	}
+
+	/**
 	 * Attempts to fail over to the next untried fallback API profile configured on
 	 * the current mode. On success, rebuilds `this.api` from the fallback profile,
 	 * records it as attempted, announces the switch, and returns true. Returns false
@@ -2351,7 +2387,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.debouncedEmitTokenUsage.flush()
 	}
 
-	public async abortTask(isAbandoned = false) {
+	public async abortTask(isAbandoned = false, options?: { closeTerminals?: boolean }) {
 		// Aborting task
 
 		// Will stop any autonomously running promises.
@@ -2371,7 +2407,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.emit(BroCodeEventName.TaskAborted)
 
 		try {
-			this.dispose() // Call the centralized dispose method
+			this.dispose(options) // Call the centralized dispose method
 		} catch (error) {
 			console.error(`Error during task ${this.taskId}.${this.instanceId} disposal:`, error)
 			// Don't rethrow - we want abort to always succeed
@@ -2385,7 +2421,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 	}
 
-	public dispose(): void {
+	public dispose(options?: { closeTerminals?: boolean }): void {
 		console.log(`[Task#dispose] disposing task ${this.taskId}.${this.instanceId}`)
 
 		// Cancel any in-progress HTTP request
@@ -2427,10 +2463,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			console.error("Error removing event listeners:", error)
 		}
 
-		// Release any terminals associated with this task.
+		// Release any terminals associated with this task. Closing the underlying VS Code
+		// terminal (rather than just returning it to the reuse pool) is the default, since
+		// dispose() normally means Bro-Code is truly done with this task; callers that are only
+		// swapping the in-memory Task instance for the same ongoing task (e.g. rehydrating in
+		// place) pass closeTerminals: false so the terminal survives for reuse.
 		try {
-			// Release any terminals associated with this task.
-			TerminalRegistry.releaseTerminalsForTask(this.taskId)
+			TerminalRegistry.releaseTerminalsForTask(this.taskId, { close: options?.closeTerminals ?? true })
 		} catch (error) {
 			console.error("Error releasing terminals:", error)
 		}

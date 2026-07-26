@@ -115,6 +115,65 @@ describe("PromptsView", () => {
 		})
 	})
 
+	it("persists disabling 'Present to common SYSTEM PROMPT' for a built-in mode", async () => {
+		renderPromptsView({ mode: "code" })
+
+		const checkbox = await waitFor(() => screen.getByTestId("code-include-in-system-prompt-checkbox"))
+		// Defaults to included (checked) when no override is present.
+		expect(checkbox).toBeChecked()
+
+		fireEvent.click(checkbox)
+
+		expect(vscode.postMessage).toHaveBeenCalledWith({
+			type: "updatePrompt",
+			promptMode: "code",
+			customPrompt: { includeInSystemPrompt: false },
+		})
+	})
+
+	it("persists disabling 'Present to common SYSTEM PROMPT' for a custom mode", async () => {
+		const customMode = {
+			slug: "custom-mode",
+			name: "Custom Mode",
+			roleDefinition: "Custom role",
+			groups: [],
+			source: "global",
+		}
+
+		renderPromptsView({ mode: "custom-mode", customModes: [customMode] })
+
+		const checkbox = await waitFor(() => screen.getByTestId("custom-mode-include-in-system-prompt-checkbox"))
+		expect(checkbox).toBeChecked()
+
+		fireEvent.click(checkbox)
+
+		expect(vscode.postMessage).toHaveBeenCalledWith({
+			type: "updateCustomMode",
+			slug: "custom-mode",
+			modeConfig: expect.objectContaining({
+				slug: "custom-mode",
+				includeInSystemPrompt: false,
+				source: "global",
+			}),
+		})
+	})
+
+	it("reflects a persisted disabled state as unchecked on render", async () => {
+		const customMode = {
+			slug: "custom-mode",
+			name: "Custom Mode",
+			roleDefinition: "Custom role",
+			groups: [],
+			source: "global",
+			includeInSystemPrompt: false,
+		}
+
+		renderPromptsView({ mode: "custom-mode", customModes: [customMode] })
+
+		const checkbox = await waitFor(() => screen.getByTestId("custom-mode-include-in-system-prompt-checkbox"))
+		expect(checkbox).not.toBeChecked()
+	})
+
 	it("resets role definition only for built-in modes", async () => {
 		const customMode = {
 			slug: "custom-mode",

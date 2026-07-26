@@ -1,5 +1,12 @@
 # Bro Code Changelog
 
+## [1.1.5]
+
+### Minor Changes
+
+- Add an experimental "Fuzzy MCP tool name matching" toggle (Settings → Experimental, off by default). When enabled, if a model calls an MCP tool name that doesn't exist but is close enough to exactly one available tool (e.g. a truncated or slightly misspelled name — common with weaker local models that don't retry with the exact name from the error's `available_tools` list), Bro Code resolves it to that tool instead of erroring. The match is deliberately conservative: it only fires when exactly one candidate is close enough and no other candidate ties or beats it, so a wrong tool is never silently invoked in place of the requested one.
+- Change the task view's back arrow to start a new task ("Back to home") instead of returning to the task history list. Task history remains one click away via the History icon in the top toolbar.
+
 ## [1.1.4]
 
 ### Minor Changes

@@ -50,6 +50,11 @@
 		"capReached": "You've reached the maximum number of fallbacks for a mode.",
 		"noProfilesLeft": "All available provider profiles are already in this chain."
 	},
+	"errorRepairApiConfiguration": {
+		"title": "Error-Repair Helper LLM",
+		"description": "When the main model produces a malformed tool call, this profile is used to silently repair and execute just that call before it's reported back as an error.",
+		"disabled": "Disabled (use default error handling)"
+	},
 	"tools": {
 		"title": "Available Tools",
 		"builtInModesText": "Tools for built-in modes cannot be modified",
@@ -78,6 +83,10 @@
 		"title": "When to Use (optional)",
 		"description": "Guidance for Bro for when this mode should be used. This helps the Orchestrator choose the right mode for a task.",
 		"resetToDefault": "Reset to default 'When to Use' description"
+	},
+	"includeInSystemPrompt": {
+		"title": "Present to common SYSTEM PROMPT",
+		"description": "When enabled, this mode is listed in the MODES section of the system prompt so other modes (like Orchestrator) know it exists. Disable this to keep the mode usable while hiding it from that list."
 	},
 	"customInstructions": {
 		"title": "Mode-specific Custom Instructions (optional)",

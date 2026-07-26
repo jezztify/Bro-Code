@@ -170,13 +170,23 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 			await task.ask("tool", JSON.stringify(sharedMessageProps), false).catch(() => {})
 		}
 
-		const recordFailureForPathAndMaybeEscalate = async (relPath: string, formattedError: string): Promise<void> => {
+		// Returns the (possibly escalated) error message; callers must use the returned value.
+		const recordFailureForPathAndMaybeEscalate = async (
+			relPath: string,
+			formattedError: string,
+		): Promise<string> => {
 			const currentCount = (task.consecutiveMistakeCountForEditFile.get(relPath) || 0) + 1
 			task.consecutiveMistakeCountForEditFile.set(relPath, currentCount)
 
 			if (currentCount >= 2) {
 				await task.say("diff_error", formattedError)
+				return (
+					formattedError +
+					`\n\n<error_details>\nThis is failed attempt number ${currentCount} to edit_file on this file. The old_string likely no longer matches — re-read the file to get its exact current content before trying again, or switch to write_to_file to replace the whole file instead of continuing to retry edit_file.\n</error_details>`
+				)
 			}
+
+			return formattedError
 		}
 
 		try {
@@ -239,9 +249,9 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 					task.consecutiveMistakeCount++
 					task.didToolFailInCurrentTurn = true
 					const errorDetails = error instanceof Error ? error.message : String(error)
-					const formattedError = `Failed to read file: ${absolutePath}\n\n<error_details>\nRead error: ${errorDetails}\n\nRecovery suggestions:\n1. Verify the file exists and is readable\n2. Check file permissions\n3. If the file may have changed, use read_file to confirm its current contents\n</error_details>`
+					let formattedError = `Failed to read file: ${absolutePath}\n\n<error_details>\nRead error: ${errorDetails}\n\nRecovery suggestions:\n1. Verify the file exists and is readable\n2. Check file permissions\n3. If the file may have changed, use read_file to confirm its current contents\n</error_details>`
 					await finalizePartialToolAskIfNeeded(relPath)
-					await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
+					formattedError = await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
 					task.recordToolError("edit_file", formattedError)
 					pushToolResult(formattedError)
 					return
@@ -251,9 +261,9 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 				if (old_string === "") {
 					task.consecutiveMistakeCount++
 					task.didToolFailInCurrentTurn = true
-					const formattedError = `File already exists: ${absolutePath}\n\n<error_details>\nYou provided an empty old_string, which indicates file creation, but the target file already exists.\n\nRecovery suggestions:\n1. To modify an existing file, provide a non-empty old_string that matches the current file contents\n2. Use read_file to confirm the exact text to match\n3. If you intended to overwrite the entire file, use write_to_file instead\n</error_details>`
+					let formattedError = `File already exists: ${absolutePath}\n\n<error_details>\nYou provided an empty old_string, which indicates file creation, but the target file already exists.\n\nRecovery suggestions:\n1. To modify an existing file, provide a non-empty old_string that matches the current file contents\n2. Use read_file to confirm the exact text to match\n3. If you intended to overwrite the entire file, use write_to_file instead\n</error_details>`
 					await finalizePartialToolAskIfNeeded(relPath)
-					await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
+					formattedError = await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
 					task.recordToolError("edit_file", formattedError)
 					pushToolResult(formattedError)
 					return
@@ -267,11 +277,11 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 					// Trying to replace in non-existent file
 					task.consecutiveMistakeCount++
 					task.didToolFailInCurrentTurn = true
-					const formattedError = `File does not exist at path: ${absolutePath}\n\n<error_details>\nThe specified file could not be found, so the replacement could not be performed.\n\nRecovery suggestions:\n1. Verify the file path is correct\n2. If you intended to create a new file, set old_string to an empty string\n3. Use list_files or read_file to confirm the correct path\n</error_details>`
+					let formattedError = `File does not exist at path: ${absolutePath}\n\n<error_details>\nThe specified file could not be found, so the replacement could not be performed.\n\nRecovery suggestions:\n1. Verify the file path is correct\n2. If you intended to create a new file, set old_string to an empty string\n3. Use list_files or read_file to confirm the correct path\n</error_details>`
 					// Match apply_diff behavior: surface missing file via the generic error channel.
 					await finalizePartialToolAskIfNeeded(relPath)
 					await task.say("error", formattedError)
-					await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
+					formattedError = await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
 					task.recordToolError("edit_file", formattedError)
 					pushToolResult(formattedError)
 					return
@@ -288,9 +298,9 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 				if (oldLF === newLF) {
 					task.consecutiveMistakeCount++
 					task.didToolFailInCurrentTurn = true
-					const formattedError = `No changes to apply for file: ${absolutePath}\n\n<error_details>\nThe provided old_string and new_string are identical (after normalizing line endings), so there is nothing to change.\n\nRecovery suggestions:\n1. Update new_string to the intended replacement text\n2. If you intended to verify file state only, use read_file instead\n</error_details>`
+					let formattedError = `No changes to apply for file: ${absolutePath}\n\n<error_details>\nThe provided old_string and new_string are identical (after normalizing line endings), so there is nothing to change.\n\nRecovery suggestions:\n1. Update new_string to the intended replacement text\n2. If you intended to verify file state only, use read_file instead\n</error_details>`
 					await finalizePartialToolAskIfNeeded(relPath)
-					await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
+					formattedError = await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
 					task.recordToolError("edit_file", formattedError)
 					pushToolResult(formattedError)
 					return
@@ -320,9 +330,9 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 							if (!anyMatches) {
 								task.consecutiveMistakeCount++
 								task.didToolFailInCurrentTurn = true
-								const formattedError = `No match found in file: ${absolutePath}\n\n<error_details>\nThe provided old_string could not be found using exact, whitespace-tolerant, or token-based matching.\n\nRecovery suggestions:\n1. Use read_file to confirm the file's current contents\n2. Ensure old_string matches exactly (including whitespace/indentation and line endings)\n3. Provide more surrounding context in old_string to make the match unique\n4. If the file has changed since you constructed old_string, re-read and retry\n</error_details>`
+								let formattedError = `No match found in file: ${absolutePath}\n\n<error_details>\nThe provided old_string could not be found using exact, whitespace-tolerant, or token-based matching.\n\nRecovery suggestions:\n1. Use read_file to confirm the file's current contents\n2. Ensure old_string matches exactly (including whitespace/indentation and line endings)\n3. Provide more surrounding context in old_string to make the match unique\n4. If the file has changed since you constructed old_string, re-read and retry\n</error_details>`
 								await finalizePartialToolAskIfNeeded(relPath)
-								await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
+								formattedError = await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
 								task.recordToolError("edit_file", formattedError)
 								pushToolResult(formattedError)
 								return
@@ -332,9 +342,9 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 							if (exactOccurrences > 0) {
 								task.consecutiveMistakeCount++
 								task.didToolFailInCurrentTurn = true
-								const formattedError = `Occurrence count mismatch in file: ${absolutePath}\n\n<error_details>\nExpected ${expectedReplacements} occurrence(s) but found ${exactOccurrences} exact match(es).\n\nRecovery suggestions:\n1. Provide a more specific old_string so it matches exactly once\n2. If you intend to replace all occurrences, set expected_replacements to ${exactOccurrences}\n3. Use read_file to confirm the exact text and counts\n</error_details>`
+								let formattedError = `Occurrence count mismatch in file: ${absolutePath}\n\n<error_details>\nExpected ${expectedReplacements} occurrence(s) but found ${exactOccurrences} exact match(es).\n\nRecovery suggestions:\n1. Provide a more specific old_string so it matches exactly once\n2. If you intend to replace all occurrences, set expected_replacements to ${exactOccurrences}\n3. Use read_file to confirm the exact text and counts\n</error_details>`
 								await finalizePartialToolAskIfNeeded(relPath)
-								await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
+								formattedError = await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
 								task.recordToolError("edit_file", formattedError)
 								pushToolResult(formattedError)
 								return
@@ -342,9 +352,9 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 
 							task.consecutiveMistakeCount++
 							task.didToolFailInCurrentTurn = true
-							const formattedError = `Occurrence count mismatch in file: ${absolutePath}\n\n<error_details>\nExpected ${expectedReplacements} occurrence(s), but matching found ${wsOccurrences} (whitespace-tolerant) and ${tokenOccurrences} (token-based).\n\nRecovery suggestions:\n1. Provide more surrounding context in old_string to make the match unique\n2. If multiple replacements are intended, adjust expected_replacements to the intended count\n3. Use read_file to confirm the current file contents and refine the match\n</error_details>`
+							let formattedError = `Occurrence count mismatch in file: ${absolutePath}\n\n<error_details>\nExpected ${expectedReplacements} occurrence(s), but matching found ${wsOccurrences} (whitespace-tolerant) and ${tokenOccurrences} (token-based).\n\nRecovery suggestions:\n1. Provide more surrounding context in old_string to make the match unique\n2. If multiple replacements are intended, adjust expected_replacements to the intended count\n3. Use read_file to confirm the current file contents and refine the match\n</error_details>`
 							await finalizePartialToolAskIfNeeded(relPath)
-							await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
+							formattedError = await recordFailureForPathAndMaybeEscalate(relPath, formattedError)
 							task.recordToolError("edit_file", formattedError)
 							pushToolResult(formattedError)
 							return

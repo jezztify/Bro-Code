@@ -3,6 +3,8 @@
  * API function name requirements across all providers.
  */
 
+import { findClosestMatch } from "./text-similarity"
+
 /**
  * Separator used between MCP prefix, server name, and tool name.
  * We use "--" (double hyphen) because:
@@ -187,4 +189,19 @@ export function parseMcpToolName(mcpToolName: string): { serverName: string; too
  */
 export function toolNamesMatch(name1: string, name2: string): boolean {
 	return normalizeForComparison(name1) === normalizeForComparison(name2)
+}
+
+/**
+ * Find the single unambiguous near-miss for a requested tool name among a server's available
+ * tools, for weak/local models that truncate or slightly misspell tool names (e.g.
+ * "list_console_mes" instead of "list_console_messages") instead of retrying with the exact
+ * name from the error's `available_tools` list.
+ *
+ * @param requestedName - The (unmatched) tool name the model called
+ * @param availableNames - The server's actual tool names
+ * @returns The single closest available name, or null if there's no confident, unambiguous match
+ */
+export function findClosestToolName(requestedName: string, availableNames: string[]): string | null {
+	const normalizedRequested = normalizeForComparison(requestedName).toLowerCase()
+	return findClosestMatch(normalizedRequested, availableNames, (name) => normalizeForComparison(name).toLowerCase())
 }

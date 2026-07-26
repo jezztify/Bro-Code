@@ -445,6 +445,8 @@ describe("editFileTool", () => {
 				"edit_file",
 				expect.stringContaining("No match found"),
 			)
+			// No escalation guidance yet on the first failure.
+			expect(mockPushToolResult).toHaveBeenCalledWith(expect.not.stringContaining("write_to_file"))
 		})
 
 		it("shows diff_error to user on second consecutive no_match failure", async () => {
@@ -456,6 +458,11 @@ describe("editFileTool", () => {
 
 			expect(mockTask.consecutiveMistakeCountForEditFile.get(testFilePath)).toBe(2)
 			expect(mockTask.say).toHaveBeenCalledWith("diff_error", expect.stringContaining("No match found"))
+			// Escalation guidance is appended to the pushed tool result once we've failed twice in a row.
+			expect(mockPushToolResult).toHaveBeenCalledWith(
+				expect.stringContaining("failed attempt number 2 to edit_file"),
+			)
+			expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("write_to_file"))
 		})
 
 		it("does NOT show diff_error to user on first occurrence_mismatch failure", async () => {

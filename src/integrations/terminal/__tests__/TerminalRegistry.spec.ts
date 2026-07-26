@@ -347,5 +347,42 @@ describe("TerminalRegistry", () => {
 			expect(() => TerminalRegistry.releaseTerminalsForTask("task-throw")).not.toThrow()
 			expect(terminal.taskId).toBeUndefined()
 		})
+
+		it("disposes the VS Code terminal and removes it from the registry when close is true", () => {
+			const terminal = TerminalRegistry.createTerminal("/test/path", "vscode") as Terminal
+			terminal.taskId = "task-close"
+			terminal.busy = false
+
+			TerminalRegistry.releaseTerminalsForTask("task-close", { close: true })
+
+			expect(terminal.terminal.dispose).toHaveBeenCalledTimes(1)
+			expect(TerminalRegistry.getTerminals(false, "task-close")).toHaveLength(0)
+			expect(TerminalRegistry["terminals"]).not.toContain(terminal)
+		})
+
+		it("aborts a still-busy process before disposing when close is true", () => {
+			const terminal = TerminalRegistry.createTerminal("/test/path", "vscode") as Terminal
+			const abort = vi.fn()
+			terminal.taskId = "task-close-busy"
+			terminal.busy = true
+			terminal.process = { abort } as any
+
+			TerminalRegistry.releaseTerminalsForTask("task-close-busy", { close: true })
+
+			expect(abort).toHaveBeenCalledTimes(1)
+			expect(terminal.terminal.dispose).toHaveBeenCalledTimes(1)
+			expect(TerminalRegistry["terminals"]).not.toContain(terminal)
+		})
+
+		it("never closes headless Execa terminals even when close is true", () => {
+			const terminal = TerminalRegistry.createTerminal("/test/path", "execa")
+			terminal.taskId = "task-execa"
+			terminal.busy = false
+
+			TerminalRegistry.releaseTerminalsForTask("task-execa", { close: true })
+
+			expect(terminal.taskId).toBeUndefined()
+			expect(TerminalRegistry["terminals"]).toContain(terminal)
+		})
 	})
 })

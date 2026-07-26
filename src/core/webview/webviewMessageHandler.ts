@@ -2031,6 +2031,10 @@ export const webviewMessageHandler = async (
 			await updateGlobalState("condensingApiConfigId", message.text)
 			await provider.postStateToWebview()
 			break
+		case "errorRepairApiConfigId":
+			await updateGlobalState("errorRepairApiConfigId", message.text)
+			await provider.postStateToWebview()
+			break
 		case "tierApiConfigs":
 			await updateGlobalState("tierApiConfigs", message.tierApiConfigs ?? {})
 			await provider.postStateToWebview()

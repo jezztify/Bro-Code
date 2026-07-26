@@ -3,6 +3,7 @@
 import { useMcpToolTool } from "../UseMcpToolTool"
 import { Task } from "../../task/Task"
 import { ToolUse, AskApproval, HandleError, PushToolResult } from "../../../shared/tools"
+import { EXPERIMENT_IDS } from "../../../shared/experiments"
 
 // Mock dependencies
 vi.mock("../../prompts/responses", () => ({
@@ -438,6 +439,109 @@ describe("useMcpToolTool", () => {
 			// Check that the error message contains available tools
 			expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("existing-tool-1"))
 			expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("existing-tool-2"))
+		})
+
+		it("should resolve a near-miss tool name when the fuzzy matching experiment is enabled", async () => {
+			mockTask.consecutiveMistakeCount = 0
+
+			const callToolMock = vi.fn().mockResolvedValue({
+				content: [{ type: "text", text: "[]" }],
+				isError: false,
+			})
+
+			const mockServers = [
+				{
+					name: "test-server",
+					tools: [{ name: "list_console_messages", description: "List console messages" }],
+				},
+			]
+
+			mockProviderRef.deref.mockReturnValue({
+				getMcpHub: () => ({
+					getAllServers: vi.fn().mockReturnValue(mockServers),
+					callTool: callToolMock,
+				}),
+				getState: vi.fn().mockResolvedValue({
+					experiments: { [EXPERIMENT_IDS.FUZZY_MCP_TOOL_MATCHING]: true },
+				}),
+				postMessageToWebview: vi.fn(),
+			})
+
+			mockAskApproval.mockResolvedValue(true)
+
+			const block: ToolUse = {
+				type: "tool_use",
+				name: "use_mcp_tool",
+				params: {
+					server_name: "test-server",
+					tool_name: "list_console_mes",
+					arguments: "{}",
+				},
+				nativeArgs: {
+					server_name: "test-server",
+					tool_name: "list_console_mes",
+					arguments: {},
+				},
+				partial: false,
+			}
+
+			await useMcpToolTool.handle(mockTask as Task, block as any, {
+				askApproval: mockAskApproval,
+				handleError: mockHandleError,
+				pushToolResult: mockPushToolResult,
+			})
+
+			expect(mockTask.consecutiveMistakeCount).toBe(0)
+			expect(mockTask.recordToolError).not.toHaveBeenCalled()
+			expect(callToolMock).toHaveBeenCalledWith("test-server", "list_console_messages", {})
+		})
+
+		it("should not resolve a near-miss tool name when the fuzzy matching experiment is disabled", async () => {
+			mockTask.consecutiveMistakeCount = 0
+
+			const mockServers = [
+				{
+					name: "test-server",
+					tools: [{ name: "list_console_messages", description: "List console messages" }],
+				},
+			]
+
+			mockProviderRef.deref.mockReturnValue({
+				getMcpHub: () => ({
+					getAllServers: vi.fn().mockReturnValue(mockServers),
+					callTool: vi.fn(),
+				}),
+				getState: vi.fn().mockResolvedValue({
+					experiments: { [EXPERIMENT_IDS.FUZZY_MCP_TOOL_MATCHING]: false },
+				}),
+				postMessageToWebview: vi.fn(),
+			})
+
+			const block: ToolUse = {
+				type: "tool_use",
+				name: "use_mcp_tool",
+				params: {
+					server_name: "test-server",
+					tool_name: "list_console_mes",
+					arguments: "{}",
+				},
+				nativeArgs: {
+					server_name: "test-server",
+					tool_name: "list_console_mes",
+					arguments: {},
+				},
+				partial: false,
+			}
+
+			await useMcpToolTool.handle(mockTask as Task, block as any, {
+				askApproval: mockAskApproval,
+				handleError: mockHandleError,
+				pushToolResult: mockPushToolResult,
+			})
+
+			expect(mockTask.consecutiveMistakeCount).toBe(1)
+			expect(mockTask.recordToolError).toHaveBeenCalledWith("use_mcp_tool")
+			expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("list_console_messages"))
 		})
 
 		it("should handle server with no tools", async () => {

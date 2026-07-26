@@ -19,6 +19,7 @@ import type {
 	ApiStreamToolCallEndChunk,
 } from "../../api/transform/stream"
 import { MCP_TOOL_PREFIX, MCP_TOOL_SEPARATOR, parseMcpToolName, normalizeMcpToolName } from "../../utils/mcp-name"
+import { findClosestMatch } from "../../utils/text-similarity"
 
 /**
  * Helper type to extract properly typed native arguments for a given tool.
@@ -1163,14 +1164,19 @@ export class NativeToolCallParser {
 	 * params are missing, and which supplied params aren't recognized for this tool (e.g. a model
 	 * sending `file_path` to `read_file`, which expects `path`). Used to give the model an
 	 * actionable error instead of a generic "missing nativeArgs" message it can't act on.
+	 *
+	 * For each unrecognized param, also suggests the likely intended param name when it's an
+	 * unambiguous near-miss of a valid one — tool schemas aren't consistent about naming (e.g.
+	 * `file_path` vs `path` across different edit tools), so this is a common, recoverable mistake
+	 * rather than a hallucinated field.
 	 */
 	public static diagnoseParams(
 		name: string,
 		params: Partial<Record<ToolParamName, string>>,
-	): { missing: string[]; unrecognized: string[] } {
+	): { missing: string[]; unrecognized: string[]; suggestions: Record<string, string> } {
 		const toolDef = getNativeTools().find((t) => t.type === "function" && t.function.name === name)
 		if (!toolDef || toolDef.type !== "function") {
-			return { missing: [], unrecognized: [] }
+			return { missing: [], unrecognized: [], suggestions: {} }
 		}
 
 		const schema = toolDef.function.parameters as
@@ -1182,7 +1188,22 @@ export class NativeToolCallParser {
 		const missing = required.filter((key) => params[key as ToolParamName] === undefined)
 		const unrecognized = Object.keys(params).filter((key) => !allowedKeys.has(key))
 
-		return { missing, unrecognized }
+		// Prefer matching against still-missing required params (most actionable), falling back
+		// to any allowed param not already supplied.
+		const suppliedKeys = new Set(Object.keys(params))
+		const fallbackCandidates = [...allowedKeys].filter((key) => !suppliedKeys.has(key))
+
+		const suggestions: Record<string, string> = {}
+		for (const key of unrecognized) {
+			const suggestion =
+				findClosestMatch(key.toLowerCase(), missing, (candidate) => candidate.toLowerCase()) ??
+				findClosestMatch(key.toLowerCase(), fallbackCandidates, (candidate) => candidate.toLowerCase())
+			if (suggestion) {
+				suggestions[key] = suggestion
+			}
+		}
+
+		return { missing, unrecognized, suggestions }
 	}
 
 	/**

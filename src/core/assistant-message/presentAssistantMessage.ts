@@ -43,6 +43,7 @@ import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
 import { formatResponse } from "../prompts/responses"
 import { sanitizeToolUseId } from "../../utils/tool-id"
 import { NativeToolCallParser } from "./NativeToolCallParser"
+import { attemptToolCallRepair } from "./repairToolCall"
 
 /**
  * Processes and presents assistant message content to the user interface.
@@ -432,14 +433,20 @@ export async function presentAssistantMessage(cline: Task) {
 				const customTool = stateExperiments?.customTools ? customToolRegistry.get(block.name) : undefined
 				const isKnownTool = isValidToolName(String(block.name), stateExperiments)
 				if (isKnownTool && !block.nativeArgs && !customTool) {
-					const { missing, unrecognized } = NativeToolCallParser.diagnoseParams(block.name, block.params)
+					const { missing, unrecognized, suggestions } = NativeToolCallParser.diagnoseParams(
+						block.name,
+						block.params,
+					)
+					const unrecognizedList = unrecognized
+						.map((key) => (suggestions[key] ? `${key} (did you mean '${suggestions[key]}'?)` : key))
+						.join(", ")
 					const errorMessage =
 						missing.length > 0 || unrecognized.length > 0
 							? [
 									`Invalid tool call for '${block.name}':`,
 									missing.length > 0 ? `missing required parameter(s): ${missing.join(", ")}.` : "",
 									unrecognized.length > 0
-										? `unrecognized parameter(s): ${unrecognized.join(", ")} (not valid for this tool).`
+										? `unrecognized parameter(s): ${unrecognizedList} (not valid for this tool).`
 										: "",
 									"Retry the tool call with the correct parameter names and all required parameters included.",
 								]
@@ -448,23 +455,38 @@ export async function presentAssistantMessage(cline: Task) {
 							: `Invalid tool call for '${block.name}': missing nativeArgs. ` +
 								`This usually means the model streamed invalid or incomplete arguments and the call could not be finalized.`
 
-					cline.consecutiveMistakeCount++
-					try {
-						cline.recordToolError(block.name as ToolName, errorMessage)
-					} catch {
-						// Best-effort only
-					}
-
-					// Push tool_result directly without setting didAlreadyUseTool so streaming can
-					// continue gracefully.
-					cline.pushToolResultToUserContent({
-						type: "tool_result",
-						tool_use_id: sanitizeToolUseId(toolCallId),
-						content: formatResponse.toolError(errorMessage),
-						is_error: true,
+					const repaired = await attemptToolCallRepair(cline, {
+						toolName: block.name as ToolName,
+						toolCallId,
+						rawParams: block.params,
+						errorMessage,
+						state,
 					})
 
-					break
+					if (repaired) {
+						// Silently continue with the corrected call — falls through into the
+						// unmodified approval/validation/dispatch flow below, exactly as if
+						// the model's original call had been valid.
+						block = repaired
+					} else {
+						cline.consecutiveMistakeCount++
+						try {
+							cline.recordToolError(block.name as ToolName, errorMessage)
+						} catch {
+							// Best-effort only
+						}
+
+						// Push tool_result directly without setting didAlreadyUseTool so streaming can
+						// continue gracefully.
+						cline.pushToolResultToUserContent({
+							type: "tool_result",
+							tool_use_id: sanitizeToolUseId(toolCallId),
+							content: formatResponse.toolError(errorMessage),
+							is_error: true,
+						})
+
+						break
+					}
 				}
 			}
 

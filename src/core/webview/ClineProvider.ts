@@ -1215,9 +1215,11 @@ export class ClineProvider
 			// Properly dispose of the old task to ensure garbage collection
 			const oldTask = this.clineStack[stackIndex]
 
-			// Abort the old task to stop running processes and mark as abandoned
+			// Abort the old task to stop running processes and mark as abandoned. This is the
+			// same ongoing task being swapped in-place (not truly finished), so keep its
+			// terminal alive for the replacement instance to reuse instead of closing it.
 			try {
-				await oldTask.abortTask(true)
+				await oldTask.abortTask(true, { closeTerminals: false })
 			} catch (e) {
 				this.log(
 					`[createTaskWithHistoryItem] abortTask() failed for old task ${oldTask.taskId}.${oldTask.instanceId}: ${e.message}`,
@@ -2397,6 +2399,7 @@ export class ClineProvider
 			maxFallbacksPerMode,
 			enhancementApiConfigId,
 			condensingApiConfigId,
+			errorRepairApiConfigId,
 			autoApprovalEnabled,
 			customModes,
 			experiments,
@@ -2486,9 +2489,8 @@ export class ClineProvider
 		}
 
 		try {
-			const { isBroCodeAuthenticated, getCachedBroCodeUserInfo, getBroCodeBaseUrl } = await import(
-				"../../services/bro-code-auth"
-			)
+			const { isBroCodeAuthenticated, getCachedBroCodeUserInfo, getBroCodeBaseUrl } =
+				await import("../../services/bro-code-auth")
 			const userInfo = getCachedBroCodeUserInfo()
 			broCodeState = {
 				broCodeIsAuthenticated: await isBroCodeAuthenticated(),
@@ -2558,6 +2560,7 @@ export class ClineProvider
 			maxFallbacksPerMode: maxFallbacksPerMode ?? DEFAULT_MAX_FALLBACKS_PER_MODE,
 			enhancementApiConfigId,
 			condensingApiConfigId,
+			errorRepairApiConfigId,
 			autoApprovalEnabled: autoApprovalEnabled ?? false,
 			customModes,
 			experiments: experiments ?? experimentDefault,
@@ -2782,6 +2785,7 @@ export class ClineProvider
 			customSupportPrompts: stateValues.customSupportPrompts ?? {},
 			enhancementApiConfigId: stateValues.enhancementApiConfigId,
 			condensingApiConfigId: stateValues.condensingApiConfigId,
+			errorRepairApiConfigId: stateValues.errorRepairApiConfigId,
 			experiments: stateValues.experiments ?? experimentDefault,
 			autoApprovalEnabled: stateValues.autoApprovalEnabled ?? false,
 			customModes,
@@ -3339,7 +3343,10 @@ export class ClineProvider
 		// happen asynchronously). We capture the promise so we can await its completion below —
 		// this ensures task.initialStatus ("active") cannot overwrite "interrupted" after we
 		// persist it (issue #560).
-		const abortPromise = task.abortTask()
+		// closeTerminals: false — this function unconditionally rehydrates the same taskId via
+		// createTaskWithHistoryItem() below (line ~3444), so the task isn't actually finished;
+		// keep its terminal alive for the rehydrated instance to reuse.
+		const abortPromise = task.abortTask(false, { closeTerminals: false })
 
 		// Immediately mark the original instance as abandoned to prevent any residual activity
 		task.abandoned = true

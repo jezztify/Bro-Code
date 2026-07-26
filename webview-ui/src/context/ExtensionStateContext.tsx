@@ -114,6 +114,8 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setEnhancementApiConfigId: (value: string) => void
 	condensingApiConfigId?: string
 	setCondensingApiConfigId: (value: string) => void
+	errorRepairApiConfigId?: string
+	setErrorRepairApiConfigId: (value: string) => void
 	setExperimentEnabled: (id: ExperimentId, enabled: boolean) => void
 	setAutoApprovalEnabled: (value: boolean) => void
 	customModes: ModeConfig[]
@@ -233,6 +235,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		maxFallbacksPerMode: DEFAULT_MAX_FALLBACKS_PER_MODE,
 		enhancementApiConfigId: "",
 		condensingApiConfigId: "",
+		errorRepairApiConfigId: "",
 		hasOpenedModeSelector: false, // Default to false (not opened yet)
 		autoApprovalEnabled: false,
 		customModes: [],
@@ -599,6 +602,8 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setEnhancementApiConfigId: (value) =>
 			setState((prevState) => ({ ...prevState, enhancementApiConfigId: value })),
 		setCondensingApiConfigId: (value) => setState((prevState) => ({ ...prevState, condensingApiConfigId: value })),
+		setErrorRepairApiConfigId: (value) =>
+			setState((prevState) => ({ ...prevState, errorRepairApiConfigId: value })),
 		setAutoApprovalEnabled: (value) => setState((prevState) => ({ ...prevState, autoApprovalEnabled: value })),
 		setCustomModes: (value) => setState((prevState) => ({ ...prevState, customModes: value })),
 		setMaxOpenTabsContext: (value) => setState((prevState) => ({ ...prevState, maxOpenTabsContext: value })),

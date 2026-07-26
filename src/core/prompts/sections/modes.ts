@@ -12,12 +12,15 @@ export async function getModesSection(context: vscode.ExtensionContext): Promise
 	// Get all modes with their overrides from extension state
 	const allModes = await getAllModesWithPrompts(context)
 
+	// Exclude modes explicitly opted out of the system prompt (defaults to included)
+	const visibleModes = allModes.filter((mode) => mode.includeInSystemPrompt !== false)
+
 	const modesContent = `====
 
 MODES
 
 - These are the currently available modes:
-${allModes
+${visibleModes
 	.map((mode: ModeConfig) => {
 		let description: string
 		if (mode.whenToUse && mode.whenToUse.trim() !== "") {

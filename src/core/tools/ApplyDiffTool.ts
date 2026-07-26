@@ -109,6 +109,7 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 
 				if (currentCount >= 2) {
 					await task.say("diff_error", formattedError)
+					formattedError += `\n\n<error_details>\nThis is failed attempt number ${currentCount} to apply_diff on this file. The search content likely no longer matches — re-read the file to get its exact current content before trying again, or switch to write_to_file to replace the whole file instead of continuing to retry apply_diff.\n</error_details>`
 				}
 
 				task.recordToolError("apply_diff", formattedError)

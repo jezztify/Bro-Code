@@ -27,17 +27,10 @@
 You can find a quick guide for migrating from Bro Code to Bro Code in the [Bro→Bro migration guide](https://docs.brocode.dev/bro-to-bro-migration). We plan to try and help users as they transition over, we have our [Reddit](https://www.reddit.com/r/BroCode) and [Discord](https://discord.gg/VxfP4Vx3gX)
 for this exact support, so if you are having problems or if you have question, jump on and ask.
 
-## What's New in v1.1.4
+## What's New in v1.1.5
 
-- **Configuration sets** — save a whole mode → provider mapping under a name (e.g. "Cheap", "Best Quality") in Settings → Modes, and switch every mode's provider at once instead of reassigning them one by one. Each VS Code window tracks its own active set and mode, so switching in one workspace never affects another
-- **Settings fixes** — browsing provider profiles in Settings no longer activates them immediately, and saving a non-active profile no longer reassigns your active mode's provider; Save now only activates the profile you're actually saving
-- **Context condensing overflow fix** — oversized condense results are caught and further truncated automatically, recovering from a confirmed context-window error always shrinks the conversation even if condensing fails, and the safety net now recognizes overflow errors from more providers
-- **Rebased onto upstream Zoo Code v3.66.0** — Bro Code now includes all upstream improvements through 3.66.0, including:
-    - Claude Sonnet 5 support across Anthropic, Bedrock, and Vertex providers
-    - Rules management UI — a new Rules tab in Settings to create, delete, and open global and workspace rules
-    - Completion change review actions — "See New Changes" and "Restore Changes" buttons after task completion
-    - LM Studio proxy and timeout improvements for slow local models
-    - Numerous delegation, condensing, and provider stability fixes (see [CHANGELOG](CHANGELOG.md))
+- **Fuzzy MCP tool name matching (experimental)** — enable it in Settings → Experimental to have Bro Code resolve an unrecognized MCP tool call to the single closest available tool name (e.g. a truncated or misspelled call from a weaker local model) instead of erroring out. Off by default, and only matches when there's exactly one unambiguous close candidate
+- **Task header back arrow now goes home** — the back arrow in the task view starts a new task instead of returning to the task history list; use the History icon in the top toolbar to browse past tasks
 
 <details>
   <summary>🌐 Available languages</summary>
@@ -61,7 +54,7 @@ for this exact support, so if you are having problems or if you have question, j
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
 - ...
-  </details>
+    </details>
 
 ---
 
