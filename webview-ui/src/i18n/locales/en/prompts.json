@@ -16,6 +16,21 @@
 		"title": "API Configuration",
 		"select": "Select which API configuration to use for this mode"
 	},
+	"fallbackApiConfiguration": {
+		"maxLabel": "Max fallback providers per mode",
+		"maxDescription": "Global cap on how many fallback API providers any single mode's failover chain may use.",
+		"title": "Fallback API Providers",
+		"description": "When this mode's primary provider keeps hitting transient errors (rate limits, timeouts, server/network failures), it fails over to these providers in order, once each, before giving up.",
+		"builtInHint": "Fallback providers can only be configured for custom modes.",
+		"empty": "No fallback providers configured.",
+		"counter": "{{count}}/{{max}}",
+		"add": "Add fallback",
+		"moveUp": "Move up",
+		"moveDown": "Move down",
+		"remove": "Remove",
+		"capReached": "Maximum number of fallback providers reached",
+		"noProfilesLeft": "No more configuration profiles available to add"
+	},
 	"configurationSet": {
 		"title": "Configuration Set",
 		"description": "Configuration sets hold a complete mode -> provider profile mapping. Switch between them as a single action instead of reassigning every mode's profile individually. Each workspace remembers its own active set.",

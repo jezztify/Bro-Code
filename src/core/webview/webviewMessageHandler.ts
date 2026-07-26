@@ -2020,6 +2020,15 @@ export const webviewMessageHandler = async (
 			await provider.postStateToWebview()
 			break
 
+		case "maxFallbacksPerMode": {
+			// Clamp to a non-negative integer; undefined/invalid resets to the default.
+			const raw = message.maxFallbacksPerMode
+			const next = typeof raw === "number" && Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : undefined
+			await updateGlobalState("maxFallbacksPerMode", next)
+			await provider.postStateToWebview()
+			break
+		}
+
 		case "autoApprovalEnabled":
 			await updateGlobalState("autoApprovalEnabled", message.bool ?? false)
 			await provider.postStateToWebview()

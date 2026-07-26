@@ -51,6 +51,7 @@ import {
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	MAX_CHECKPOINT_TIMEOUT_SECONDS,
 	MIN_CHECKPOINT_TIMEOUT_SECONDS,
+	DEFAULT_MAX_FALLBACKS_PER_MODE,
 	ConsecutiveMistakeError,
 	MAX_MCP_TOOLS_THRESHOLD,
 	countEnabledMcpTools,
@@ -118,7 +119,10 @@ import {
 	taskMetadata,
 } from "../task-persistence"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
-import { checkContextWindowExceededError } from "../context/context-management/context-error-handling"
+import {
+	checkContextWindowExceededError,
+	isRetriableViaFallbackError,
+} from "../context/context-management/context-error-handling"
 import {
 	type CheckpointDiffOptions,
 	type CheckpointRestoreOptions,
@@ -140,6 +144,9 @@ const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
 const FORCED_CONTEXT_REDUCTION_PERCENT = 75 // Keep 75% of context (remove 25%) on context window errors
 const MAX_CONTEXT_WINDOW_RETRIES = 3 // Maximum retries for context window errors
+// Number of same-profile retries to exhaust (via the normal backoff/ask-retry paths)
+// before failing over to the mode's next configured fallback API profile.
+const MAX_SAME_PROFILE_RETRIES = 2
 
 export interface TaskOptions extends CreateTaskOptions {
 	provider: ClineProvider
@@ -290,6 +297,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	api: ApiHandler
 	private rateLimitClock: RateLimitClock
 	private autoApprovalHandler: AutoApprovalHandler
+
+	/**
+	 * Fallback API config profile IDs already tried (successfully activated or not)
+	 * during the current logical request's failover chain. Cleared once a request
+	 * reaches its first streamed chunk, so each new logical request gets a fresh
+	 * failover budget - including any profile it may have failed over to.
+	 */
+	private attemptedFallbackApiConfigIds: Set<string> = new Set()
 
 	toolRepetitionDetector: ToolRepetitionDetector
 	rooIgnoreController?: RooIgnoreController
@@ -4385,6 +4400,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const firstChunk = await Promise.race([firstChunkPromise, abortPromise])
 			yield firstChunk.value
 			this.isWaitingForFirstChunk = false
+			// Request reached the first chunk successfully: clear the per-request
+			// fallback attempt tracking so the next logical request starts with a
+			// fresh failover budget (including any profile we failed over to).
+			this.attemptedFallbackApiConfigIds.clear()
 		} catch (error) {
 			this.isWaitingForFirstChunk = false
 			const isContextWindowExceededError = checkContextWindowExceededError(error)
@@ -4404,6 +4423,35 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// Retry the request after handling the context window error
 				yield* this.attemptApiRequest(retryAttempt + 1)
 				return
+			}
+
+			// Fallback profile failover: once same-profile backoff retries are exhausted
+			// for a transient error (429/5xx/network), fail over to the mode's next
+			// configured fallback API profile and retry with a fresh retry budget.
+			// Each fallback is tried at most once per logical request (tracked in
+			// attemptedFallbackApiConfigIds), so the chain terminates and eventually
+			// falls through to the normal fail-loud paths below. Hard errors
+			// (401/403/400/422) never reach here (isRetriableViaFallbackError is false).
+			if (
+				!isContextWindowExceededError &&
+				retryAttempt >= MAX_SAME_PROFILE_RETRIES &&
+				isRetriableViaFallbackError(error)
+			) {
+				const switched = await this.tryFailoverToNextProfile(state)
+
+				if (switched) {
+					if (this.abort) {
+						throw new Error(
+							`[Task#attemptApiRequest] task ${this.taskId}.${this.instanceId} aborted before fallback retry`,
+						)
+					}
+
+					// Reset the retry counter so the fallback profile gets its own
+					// same-profile backoff budget before escalating further.
+					yield* this.attemptApiRequest(0)
+					return
+				}
+				// No fallback available/remaining: fall through to fail-loud handling.
 			}
 
 			// note that this api_req_failed ask is unique in that we only present this option if the api hasn't streamed any content yet (ie it fails on the first chunk due), as it would allow them to hit a retry button. However if the api failed mid-stream, it could be in any arbitrary state where some tools may have executed, so that error is handled differently and requires cancelling the task entirely.
@@ -4437,7 +4485,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					throw new Error("API request failed")
 				}
 
-				await this.say("api_req_retried")
+				// On a transient error, prefer failing over to the mode's next fallback
+				// profile for this manual retry rather than re-hitting the same failing
+				// provider. tryFailoverToNextProfile emits its own descriptive message, so
+				// only fall back to the generic "retrying" marker when no failover occurs.
+				const failedOver = isRetriableViaFallbackError(error)
+					? await this.tryFailoverToNextProfile(state)
+					: false
+
+				if (!failedOver) {
+					await this.say("api_req_retried")
+				}
 
 				// Delegate generator output from the recursive call.
 				yield* this.attemptApiRequest()
@@ -4454,6 +4512,108 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// effectively passes along all subsequent chunks from the original
 		// stream.
 		yield* iterator
+	}
+
+	/**
+	 * Attempts to fail over to the next untried fallback API profile configured on
+	 * the current mode. On success, rebuilds `this.api` from the fallback profile,
+	 * records it as attempted, announces the switch, and returns true. Returns false
+	 * when no usable fallback remains (no config, all exhausted, or the profile can't
+	 * be loaded), signalling the caller to fail loud.
+	 *
+	 * Only the caller decides *when* to invoke this (after same-profile retries are
+	 * exhausted and the error is classified as retriable-via-fallback).
+	 */
+	private async tryFailoverToNextProfile(
+		state: Awaited<ReturnType<ClineProvider["getState"]>> | undefined,
+	): Promise<boolean> {
+		const provider = this.providerRef.deref()
+
+		if (!provider) {
+			return false
+		}
+
+		const mode = state?.mode
+
+		if (!mode) {
+			return false
+		}
+
+		const modeConfig = getModeBySlug(mode, state?.customModes)
+		// Honor the user-configured per-mode cap even if the persisted config (e.g.
+		// hand-edited YAML) lists more, so runtime can't exceed the documented limit.
+		const maxFallbacks = state?.maxFallbacksPerMode ?? DEFAULT_MAX_FALLBACKS_PER_MODE
+		const fallbackIds = (modeConfig?.fallbackApiConfigIds ?? []).slice(0, Math.max(0, maxFallbacks))
+
+		if (fallbackIds.length === 0) {
+			return false
+		}
+
+		const availableConfigs = state?.listApiConfigMeta ?? []
+
+		// Name of the profile we're failing over *from*, for the user-facing message.
+		const fromProfileName = this.taskApiConfigName ?? state?.currentApiConfigName ?? "the current provider"
+
+		for (const fallbackId of fallbackIds) {
+			if (this.attemptedFallbackApiConfigIds.has(fallbackId)) {
+				continue
+			}
+
+			// Skip ids that no longer reference an existing profile.
+			if (!availableConfigs.some((config) => config.id === fallbackId)) {
+				this.attemptedFallbackApiConfigIds.add(fallbackId)
+				continue
+			}
+
+			// Record as attempted up-front so a failure loading/using it doesn't cause
+			// the same fallback to be retried on the next pass.
+			this.attemptedFallbackApiConfigIds.add(fallbackId)
+
+			try {
+				const profile = await provider.providerSettingsManager.getProfile({ id: fallbackId })
+				const { name: profileName, ...providerSettings } = profile
+
+				if (!providerSettings.apiProvider) {
+					continue
+				}
+
+				// Activate the fallback profile for this task: this sets
+				// `currentApiConfigName` (so the chatbox provider indicator follows),
+				// refreshes `listApiConfigMeta`, rebuilds the task's API handler, and
+				// posts state to the webview. Activating a profile never reassigns a
+				// mode's configured primary profile (that's always an explicit,
+				// separate action - see `assignModeConfig`), so the switch naturally
+				// lasts only for this task.
+				await provider.activateProviderProfile({ id: fallbackId })
+
+				// Keep the in-memory handler in sync (activateProviderProfile rebuilds it
+				// on the provider's current task, which is this one, but be explicit).
+				this.updateApiConfiguration(providerSettings)
+
+				this.providerRef
+					.deref()
+					?.log(
+						`[Task#${this.taskId}.${this.instanceId}] Failing over from "${fromProfileName}" to fallback API profile "${profileName}" (${fallbackId}) for mode "${mode}"`,
+					)
+
+				await this.say(
+					"api_req_retried",
+					`Falling back from "${fromProfileName}" to "${profileName}" because of recent failed attempts.`,
+				)
+
+				return true
+			} catch (error) {
+				this.providerRef
+					.deref()
+					?.log(
+						`[Task#${this.taskId}.${this.instanceId}] Failed to load fallback API profile ${fallbackId}: ${error instanceof Error ? error.message : String(error)}`,
+					)
+				// Already marked attempted; move on to the next candidate.
+				continue
+			}
+		}
+
+		return false
 	}
 
 	// Shared exponential backoff for retries (first-chunk and mid-stream)

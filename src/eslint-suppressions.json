@@ -711,7 +711,7 @@
 	},
 	"core/context/context-management/context-error-handling.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 3
+			"count": 5
 		}
 	},
 	"core/diff/stats.ts": {
@@ -882,6 +882,11 @@
 	"core/task/__tests__/ask-queued-message-drain.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 32
+		}
+	},
+	"core/task/__tests__/fallback-failover.spec.ts": {
+		"@typescript-eslint/no-explicit-any": {
+			"count": 20
 		}
 	},
 	"core/task/__tests__/flushPendingToolResultsToHistory.spec.ts": {

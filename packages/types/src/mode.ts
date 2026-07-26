@@ -108,6 +108,12 @@ export const modeConfigSchema = z.object({
 			"Optional list of MCP server names to include. When omitted, all servers are available. When set, only the listed servers are injected.",
 		)
 		.optional(),
+	fallbackApiConfigIds: z
+		.array(z.string())
+		.describe(
+			"Optional ordered list of API config profile IDs to fail over to (after exhausting same-profile retries) when the mode's primary profile keeps hitting transient errors (429/5xx/network). Tried in order, once each, before failing the request to the user.",
+		)
+		.optional(),
 })
 
 export type ModeConfig = z.infer<typeof modeConfigSchema>

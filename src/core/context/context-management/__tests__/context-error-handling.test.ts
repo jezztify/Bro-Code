@@ -1,6 +1,6 @@
 import { APIError } from "openai"
 
-import { checkContextWindowExceededError } from "../context-error-handling"
+import { checkContextWindowExceededError, isRetriableViaFallbackError } from "../context-error-handling"
 
 describe("checkContextWindowExceededError", () => {
 	describe("OpenAI errors", () => {
@@ -353,5 +353,64 @@ describe("checkContextWindowExceededError", () => {
 			const error = { status: 429, message: "Too many requests, please slow down" }
 			expect(checkContextWindowExceededError(error)).toBe(false)
 		})
+	})
+})
+
+describe("isRetriableViaFallbackError", () => {
+	it("returns true for a 429 rate-limit error", () => {
+		expect(isRetriableViaFallbackError({ status: 429, message: "Too many requests" })).toBe(true)
+	})
+
+	it("returns true for a 408 request timeout", () => {
+		expect(isRetriableViaFallbackError({ status: 408, message: "Request timeout" })).toBe(true)
+	})
+
+	it("returns true for 5xx server errors", () => {
+		expect(isRetriableViaFallbackError({ status: 500, message: "Internal server error" })).toBe(true)
+		expect(isRetriableViaFallbackError({ status: 502, message: "Bad gateway" })).toBe(true)
+		expect(isRetriableViaFallbackError({ status: 503, message: "Service unavailable" })).toBe(true)
+	})
+
+	it("returns false for 401/403 auth errors", () => {
+		expect(isRetriableViaFallbackError({ status: 401, message: "Invalid API key" })).toBe(false)
+		expect(isRetriableViaFallbackError({ status: 403, message: "Forbidden" })).toBe(false)
+	})
+
+	it("returns false for 400/422 request errors", () => {
+		expect(isRetriableViaFallbackError({ status: 400, message: "Bad request" })).toBe(false)
+		expect(isRetriableViaFallbackError({ status: 422, message: "Unprocessable entity" })).toBe(false)
+	})
+
+	it("returns false for a context-window-exceeded error (handled by truncation, not failover)", () => {
+		const error = { status: 400, message: "This model's maximum context length is 4096 tokens" }
+		expect(checkContextWindowExceededError(error)).toBe(true)
+		expect(isRetriableViaFallbackError(error)).toBe(false)
+	})
+
+	it("returns true for network errors with no HTTP status (by error code)", () => {
+		expect(isRetriableViaFallbackError({ code: "ECONNRESET", message: "socket hang up" })).toBe(true)
+		expect(isRetriableViaFallbackError({ code: "ETIMEDOUT", message: "connect ETIMEDOUT" })).toBe(true)
+		expect(isRetriableViaFallbackError({ code: "UND_ERR_CONNECT_TIMEOUT", message: "connect timeout" })).toBe(true)
+	})
+
+	it("returns true for network errors with no HTTP status (by message pattern)", () => {
+		expect(isRetriableViaFallbackError({ message: "fetch failed" })).toBe(true)
+		expect(isRetriableViaFallbackError({ message: "network error" })).toBe(true)
+	})
+
+	it("walks the cause chain for wrapped network errors", () => {
+		const cause = { code: "ECONNRESET", message: "socket hang up" }
+		const wrapped = { message: "request failed", cause }
+		expect(isRetriableViaFallbackError(wrapped)).toBe(true)
+	})
+
+	it("returns false for an unrecognized error with no status and no network signature", () => {
+		expect(isRetriableViaFallbackError({ message: "something odd happened" })).toBe(false)
+	})
+
+	it("returns false for non-object/null input", () => {
+		expect(isRetriableViaFallbackError(null)).toBe(false)
+		expect(isRetriableViaFallbackError(undefined)).toBe(false)
+		expect(isRetriableViaFallbackError("error string")).toBe(false)
 	})
 })

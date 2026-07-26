@@ -10,7 +10,14 @@ import {
 import { Trans } from "react-i18next"
 import { ChevronDown, X, Upload, Download } from "lucide-react"
 
-import { ModeConfig, GroupEntry, PromptComponent, ToolGroup, modeConfigSchema } from "@roo-code/types"
+import {
+	ModeConfig,
+	GroupEntry,
+	PromptComponent,
+	ToolGroup,
+	modeConfigSchema,
+	DEFAULT_MAX_FALLBACKS_PER_MODE,
+} from "@roo-code/types"
 
 import {
 	Mode,
@@ -73,6 +80,7 @@ const ModesView = () => {
 		customModePrompts,
 		listApiConfigMeta,
 		currentApiConfigName,
+		maxFallbacksPerMode,
 		mode,
 		customInstructions,
 		setCustomInstructions,
@@ -725,6 +733,26 @@ const ModesView = () => {
 						</Trans>
 					</div>
 
+					{/* Global cap on how many fallback API providers any single mode may use. */}
+					<div className="mb-3">
+						<label className="block font-bold mb-1">{t("prompts:fallbackApiConfiguration.maxLabel")}</label>
+						<input
+							type="number"
+							min={0}
+							value={maxFallbacksPerMode ?? DEFAULT_MAX_FALLBACKS_PER_MODE}
+							data-testid="max-fallbacks-input"
+							className="w-24 bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded px-2 py-1"
+							onChange={(e) => {
+								const parsed = Number.parseInt(e.target.value, 10)
+								const value = Number.isFinite(parsed) ? Math.max(0, parsed) : 0
+								vscode.postMessage({ type: "maxFallbacksPerMode", maxFallbacksPerMode: value })
+							}}
+						/>
+						<div className="text-sm text-vscode-descriptionForeground mt-1">
+							{t("prompts:fallbackApiConfiguration.maxDescription")}
+						</div>
+					</div>
+
 					<div className="flex items-center gap-1 mb-3">
 						{isRenamingMode ? (
 							<>
@@ -993,6 +1021,176 @@ const ModesView = () => {
 								</SelectContent>
 							</Select>
 						</div>
+
+						{/* Fallback API Providers - per-mode failover chain. */}
+						{(() => {
+							const customMode = findModeBySlug(visualMode, customModes)
+							const maxFallbacks = maxFallbacksPerMode ?? DEFAULT_MAX_FALLBACKS_PER_MODE
+							const fallbackIds = customMode?.fallbackApiConfigIds ?? []
+
+							const persistFallbacks = (nextIds: string[]) => {
+								if (!customMode) return
+								updateCustomMode(visualMode, {
+									...customMode,
+									fallbackApiConfigIds: nextIds,
+									source: customMode.source || "global",
+								})
+							}
+
+							// A profile is offered in a row only if it isn't already chosen in
+							// another row - a chain shouldn't fail over to the same profile twice.
+							const optionsForRow = (rowIndex: number) =>
+								(listApiConfigMeta || []).filter(
+									(config) => !fallbackIds.some((id, i) => i !== rowIndex && id === config.id),
+								)
+
+							const handleAdd = () => {
+								const firstUnused = (listApiConfigMeta || []).find(
+									(config) => !fallbackIds.includes(config.id),
+								)
+								if (!firstUnused) return
+								persistFallbacks([...fallbackIds, firstUnused.id])
+							}
+
+							const handleMove = (rowIndex: number, direction: -1 | 1) => {
+								const target = rowIndex + direction
+								if (target < 0 || target >= fallbackIds.length) return
+								const next = [...fallbackIds]
+								;[next[rowIndex], next[target]] = [next[target], next[rowIndex]]
+								persistFallbacks(next)
+							}
+
+							const reachedCap = fallbackIds.length >= maxFallbacks
+							const noProfilesLeft = fallbackIds.length >= (listApiConfigMeta || []).length
+							const canAdd = !reachedCap && !noProfilesLeft
+
+							return (
+								<div className="mb-3">
+									<div className="flex justify-between items-center mb-1">
+										<div className="font-bold">{t("prompts:fallbackApiConfiguration.title")}</div>
+										{customMode && (
+											<span
+												className="text-sm text-vscode-descriptionForeground"
+												data-testid="fallback-counter">
+												{t("prompts:fallbackApiConfiguration.counter", {
+													count: fallbackIds.length,
+													max: maxFallbacks,
+												})}
+											</span>
+										)}
+									</div>
+									<div className="text-sm text-vscode-descriptionForeground mb-2">
+										{t("prompts:fallbackApiConfiguration.description")}
+									</div>
+
+									{!customMode ? (
+										<div
+											className="text-sm text-vscode-descriptionForeground"
+											data-testid="fallback-builtin-hint">
+											{t("prompts:fallbackApiConfiguration.builtInHint")}
+										</div>
+									) : (
+										<>
+											{fallbackIds.length === 0 && (
+												<div
+													className="text-sm text-vscode-descriptionForeground mb-2"
+													data-testid="fallback-empty">
+													{t("prompts:fallbackApiConfiguration.empty")}
+												</div>
+											)}
+
+											{fallbackIds.map((id, index) => (
+												<div
+													key={index}
+													className="flex items-center gap-1 mb-1"
+													data-testid={`fallback-row-${index}`}>
+													<span className="text-sm text-vscode-descriptionForeground w-6 text-right">
+														{index + 1}.
+													</span>
+													<Select
+														value={id}
+														onValueChange={(value) => {
+															const next = [...fallbackIds]
+															next[index] = value
+															persistFallbacks(next)
+														}}>
+														<SelectTrigger
+															data-testid={`fallback-row-${index}-select`}
+															className="grow">
+															<SelectValue placeholder={t("settings:common.select")} />
+														</SelectTrigger>
+														<SelectContent>
+															{optionsForRow(index).map((config) => (
+																<SelectItem key={config.id} value={config.id}>
+																	{config.name}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+													<StandardTooltip
+														content={t("prompts:fallbackApiConfiguration.moveUp")}>
+														<Button
+															variant="ghost"
+															size="icon"
+															disabled={index === 0}
+															onClick={() => handleMove(index, -1)}
+															data-testid={`fallback-row-${index}-up`}>
+															<span className="codicon codicon-chevron-up" />
+														</Button>
+													</StandardTooltip>
+													<StandardTooltip
+														content={t("prompts:fallbackApiConfiguration.moveDown")}>
+														<Button
+															variant="ghost"
+															size="icon"
+															disabled={index === fallbackIds.length - 1}
+															onClick={() => handleMove(index, 1)}
+															data-testid={`fallback-row-${index}-down`}>
+															<span className="codicon codicon-chevron-down" />
+														</Button>
+													</StandardTooltip>
+													<StandardTooltip
+														content={t("prompts:fallbackApiConfiguration.remove")}>
+														<Button
+															variant="ghost"
+															size="icon"
+															onClick={() =>
+																persistFallbacks(
+																	fallbackIds.filter((_, i) => i !== index),
+																)
+															}
+															data-testid={`fallback-row-${index}-remove`}>
+															<span className="codicon codicon-trash" />
+														</Button>
+													</StandardTooltip>
+												</div>
+											))}
+
+											<StandardTooltip
+												content={
+													reachedCap
+														? t("prompts:fallbackApiConfiguration.capReached")
+														: noProfilesLeft
+															? t("prompts:fallbackApiConfiguration.noProfilesLeft")
+															: undefined
+												}>
+												<span className="inline-block">
+													<Button
+														variant="secondary"
+														size="sm"
+														disabled={!canAdd}
+														onClick={handleAdd}
+														data-testid="fallback-add">
+														<span className="codicon codicon-add mr-1" />
+														{t("prompts:fallbackApiConfiguration.add")}
+													</Button>
+												</span>
+											</StandardTooltip>
+										</>
+									)}
+								</div>
+							)
+						})()}
 					</div>
 				</div>
 

@@ -681,6 +681,8 @@ export interface WebviewMessage {
 	/** Generic payload for webview messages that use `values` */
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	values?: Record<string, any>
+	/** For maxFallbacksPerMode: maximum number of fallback API profiles allowed per mode */
+	maxFallbacksPerMode?: number
 	query?: string
 	setting?: string
 	slug?: string
