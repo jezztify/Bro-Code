@@ -289,7 +289,7 @@ describe("aggregateTaskCostsRecursive", () => {
 		expect(result.totalCost).toBe(4.95) // 2.5 + 2.45
 	})
 
-	it("should handle siblings without cross-contamination", async () => {
+	it("should count a task reachable via two sibling branches only once", async () => {
 		const mockHistory: Record<string, HistoryItem> = {
 			parent: {
 				id: "parent",
@@ -317,11 +317,12 @@ describe("aggregateTaskCostsRecursive", () => {
 
 		const result = await aggregateTaskCostsRecursive("parent", getTaskHistory)
 
-		// Both siblings should independently count nephew
+		// visited is shared by reference across sibling branches, so nephew (reachable from both
+		// sibling-1 and sibling-2) is only counted once, on whichever branch reaches it first.
 		// sibling-1: 0.5 + 0.1 = 0.6
-		// sibling-2: 0.3 + 0.1 = 0.4
-		// Total: 1.0 + 0.6 + 0.4 = 2.0
-		expect(result.totalCost).toBe(2.0)
+		// sibling-2: 0.3 + 0 (nephew already counted) = 0.3
+		// Total: 1.0 + 0.6 + 0.3 = 1.9
+		expect(result.totalCost).toBe(1.9)
 	})
 
 	it("should aggregate tokensIn/tokensOut across subtasks", async () => {

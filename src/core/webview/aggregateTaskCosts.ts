@@ -59,7 +59,9 @@ export async function aggregateTaskCostsRecursive(
 	getTaskHistory: (id: string) => Promise<HistoryItem | undefined>,
 	visited: Set<string> = new Set(),
 ): Promise<AggregatedCosts> {
-	// Prevent infinite loops
+	// Prevent infinite loops, and prevent double-counting a task reachable via more than one
+	// parent/sibling branch (visited is shared by reference across the whole traversal, not
+	// cloned per branch - see the recursive call below).
 	if (visited.has(taskId)) {
 		console.warn(`[aggregateTaskCostsRecursive] Circular reference detected: ${taskId}`)
 		return { ownCost: 0, childrenCost: 0, totalCost: 0, totalTokensIn: 0, totalTokensOut: 0 }
@@ -87,7 +89,10 @@ export async function aggregateTaskCostsRecursive(
 			const childAggregated = await aggregateTaskCostsRecursive(
 				childId,
 				getTaskHistory,
-				new Set(visited), // Create new Set to allow sibling traversal
+				// Pass visited by reference (not a per-sibling clone): a task reachable via two
+				// siblings/parents must only be counted once across the whole traversal, not once
+				// per branch that reaches it.
+				visited,
 			)
 			childrenCost += childAggregated.totalCost
 			totalTokensIn += childAggregated.totalTokensIn

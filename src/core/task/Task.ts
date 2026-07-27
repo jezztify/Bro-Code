@@ -306,6 +306,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 */
 	private attemptedFallbackApiConfigIds: Set<string> = new Set()
 
+	/**
+	 * Name of the provider profile that was globally active before this task's *first*
+	 * fallback failover, if any. Failing over intentionally updates this task's own
+	 * sticky profile (so subsequent requests within the task keep using the fallback),
+	 * but it should not permanently overwrite the user's globally-selected profile once
+	 * this task instance is torn down - see ClineProvider#removeClineFromStack, which
+	 * restores this snapshot.
+	 */
+	preFailoverProfileSnapshot: string | undefined
+
 	toolRepetitionDetector: ToolRepetitionDetector
 	rooIgnoreController?: RooIgnoreController
 	rooProtectedController?: RooProtectedController
@@ -4489,9 +4499,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// profile for this manual retry rather than re-hitting the same failing
 				// provider. tryFailoverToNextProfile emits its own descriptive message, so
 				// only fall back to the generic "retrying" marker when no failover occurs.
-				const failedOver = isRetriableViaFallbackError(error)
-					? await this.tryFailoverToNextProfile(state)
-					: false
+				// Gated behind the same same-profile-retry budget as the auto-approval path
+				// above, so one manual click can't burn a fallback slot before same-profile
+				// retries are exhausted.
+				const failedOver =
+					retryAttempt >= MAX_SAME_PROFILE_RETRIES && isRetriableViaFallbackError(error)
+						? await this.tryFailoverToNextProfile(state)
+						: false
 
 				if (!failedOver) {
 					await this.say("api_req_retried")
@@ -4554,7 +4568,24 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Name of the profile we're failing over *from*, for the user-facing message.
 		const fromProfileName = this.taskApiConfigName ?? state?.currentApiConfigName ?? "the current provider"
 
+		// Snapshot the profile active before this task's *first* failover so it can be
+		// restored (see ClineProvider#removeClineFromStack) once this task instance is
+		// torn down, instead of permanently overwriting the user's globally-selected
+		// profile with a transient fallback.
+		if (this.preFailoverProfileSnapshot === undefined && this.taskApiConfigName) {
+			this.preFailoverProfileSnapshot = this.taskApiConfigName
+		}
+
+		// Id of the profile we're already active on. attemptedFallbackApiConfigIds is
+		// cleared on the first successful chunk (see above), so a later failure restarts
+		// the candidate list from fallbackIds[0] - without this check, that could
+		// re-offer the very profile we just switched to as if it were untried.
+		const activeConfigId = availableConfigs.find((config) => config.name === fromProfileName)?.id
+
 		for (const fallbackId of fallbackIds) {
+			if (fallbackId === activeConfigId) {
+				continue
+			}
 			if (this.attemptedFallbackApiConfigIds.has(fallbackId)) {
 				continue
 			}

@@ -87,6 +87,12 @@ import { getLMStudioModels } from "../../api/providers/fetchers/lmstudio"
 
 const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
 
+// Keep in sync with the "trivial" | "standard" | "hard" difficulty-tier union used across
+// new_task routing (see NewTaskTool.ts, ClineProvider.ts#activateTierProfileIfConfigured).
+// Used to validate pasted-JSON tier names before merging into tierApiConfigs so a malformed
+// or unrelated key can't silently be written into global settings.
+const VALID_DIFFICULTY_TIERS = new Set(["trivial", "standard", "hard"])
+
 import { MarketplaceManager, MarketplaceItemType } from "../../services/marketplace"
 import { setPendingTodoList } from "../tools/UpdateTodoListTool"
 import {
@@ -2045,6 +2051,12 @@ export const webviewMessageHandler = async (
 			const unresolvedTiers: string[] = []
 
 			for (const [tier, profileName] of Object.entries(recommendations)) {
+				// Pasted JSON is user-supplied and unvalidated - only accept known tier names
+				// so an unrelated or malformed key can't be written into tierApiConfigs.
+				if (!VALID_DIFFICULTY_TIERS.has(tier)) {
+					unresolvedTiers.push(tier)
+					continue
+				}
 				const profile = listApiConfig.find((c) => c.name === profileName)
 				if (profile?.id) {
 					next[tier] = profile.id

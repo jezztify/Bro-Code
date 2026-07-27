@@ -33,13 +33,17 @@ export function levenshteinDistance(a: string, b: string): number {
  * (edit distance within 30% of the candidate's comparison key length, floor of 2) and no other
  * candidate ties or beats it, so callers never silently substitute the wrong thing.
  *
+ * A minimum length of 6 is required (rather than a shorter cutoff) because at short lengths an
+ * edit-distance-2 threshold is loose enough to match real-word substitutions, not just typos -
+ * e.g. "get" -> "set" is only distance 1, which would otherwise silently invoke a different tool.
+ *
  * @param requested - The (already normalized/lowercased, as the caller wants to compare) string
  * @param candidates - The pool of valid items to match against
  * @param getKey - Extracts the comparable string from a candidate (also normalized/lowercased consistently with `requested`)
  * @returns The single closest candidate, or null if there's no confident, unambiguous match
  */
 export function findClosestMatch<T>(requested: string, candidates: T[], getKey: (candidate: T) => string): T | null {
-	if (requested.length < 3) {
+	if (requested.length < 6) {
 		return null
 	}
 

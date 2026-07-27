@@ -116,6 +116,11 @@ function recommendByTier(rows: ScorecardRow[]): Partial<Record<DifficultyTier, s
 	const best = new Map<DifficultyTier, ScorecardRow>()
 
 	for (const row of rows) {
+		// A zero average means every call for this model/tier failed (e.g. all 401'd) -
+		// never recommend a model that scored zero across the board.
+		if (row.averageScore <= 0) {
+			continue
+		}
 		const current = best.get(row.tier)
 		if (!current || row.averageScore > current.averageScore) {
 			best.set(row.tier, row)

@@ -99,7 +99,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 
 			let results
 			try {
-				results = await this.client.chat.completions.create(params)
+				results = await this.client.chat.completions.create(params, { signal: metadata?.abortSignal })
 			} catch (error) {
 				throw handleOpenAIError(error, this.providerName)
 			}
@@ -123,6 +123,88 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 			let sawRealToolCall = false
 			let fallbackToolCallId = 0
 
+			// A model illustrating tool-call syntax in prose (e.g. "you'd write { ... }") almost
+			// always does so mid-explanation, not as the very first thing it says - and scoping
+			// detection to offeredTools doesn't help distinguish that case, since the example
+			// syntax typically names a real offered tool. Restricting detection to the first text
+			// chunk of the message keeps the fallback narrowly targeted at models that emit an
+			// actual tool call as their entire plain-text response.
+			let isFirstTextChunk = true
+
+			// Caps how long a buffered fallback candidate can grow before it's force-flushed as
+			// plain text, so a legitimately long, unrelated `{`/`<`-leading block of prose or code
+			// (e.g. inside a fenced code sample) is never withheld from the UI indefinitely.
+			const MAX_FALLBACK_BUFFER_LENGTH = 4000
+
+			// Incremental scan state for the JSON-shaped candidate ("{"-prefixed), so each chunk
+			// only scans the text appended since the previous chunk instead of rescanning the
+			// whole buffer from index 0 every time (which turns a long streamed candidate into
+			// O(n^2) work). Reset alongside fallbackCandidateBuffer via resetFallbackBuffer().
+			let jsonScanState: {
+				depth: number
+				inString: boolean
+				escaped: boolean
+				started: boolean
+				closedAt: number
+			} | null = null
+			let jsonScannedLength = 0
+
+			const resetFallbackBuffer = () => {
+				fallbackCandidateBuffer = null
+				jsonScanState = null
+				jsonScannedLength = 0
+			}
+
+			const scanJsonIncremental = (buffer: string): "incomplete" | "balanced" | "invalid" => {
+				if (!jsonScanState) {
+					jsonScanState = { depth: 0, inString: false, escaped: false, started: false, closedAt: -1 }
+					jsonScannedLength = 0
+				}
+				const state = jsonScanState
+
+				for (let i = jsonScannedLength; i < buffer.length; i++) {
+					const char = buffer[i]
+
+					if (state.closedAt !== -1) {
+						if (!/\s/.test(char)) {
+							jsonScannedLength = buffer.length
+							return "invalid"
+						}
+						continue
+					}
+
+					if (state.inString) {
+						if (state.escaped) {
+							state.escaped = false
+						} else if (char === "\\") {
+							state.escaped = true
+						} else if (char === '"') {
+							state.inString = false
+						}
+						continue
+					}
+
+					if (char === '"') {
+						state.inString = true
+					} else if (char === "{") {
+						state.depth++
+						state.started = true
+					} else if (char === "}") {
+						state.depth--
+						if (state.depth < 0) {
+							jsonScannedLength = buffer.length
+							return "invalid"
+						}
+						if (state.depth === 0 && state.started) {
+							state.closedAt = i
+						}
+					}
+				}
+
+				jsonScannedLength = buffer.length
+				return state.closedAt !== -1 ? "balanced" : "incomplete"
+			}
+
 			// Scope fallback detection to the tools actually offered for this request (and, when
 			// the current mode further restricts which tools can be invoked, to that subset).
 			// Matching against the full tool registry would risk converting a model's illustrative
@@ -140,6 +222,11 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 					return
 				}
 
+				if (!isFirstTextChunk) {
+					yield processedChunk
+					return
+				}
+
 				const buffer = (fallbackCandidateBuffer ?? "") + processedChunk.text
 				const trimmedStart = buffer.replace(/^\s+/, "")
 
@@ -149,19 +236,30 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				}
 
 				if (trimmedStart[0] !== "{" && trimmedStart[0] !== "<") {
-					fallbackCandidateBuffer = null
+					resetFallbackBuffer()
+					isFirstTextChunk = false
 					yield { type: "text", text: buffer } as const
 					return
 				}
 
-				const status = NativeToolCallParser.getBufferStatus(buffer)
+				const status =
+					trimmedStart[0] === "{" ? scanJsonIncremental(buffer) : NativeToolCallParser.getBufferStatus(buffer)
 
 				if (status === "incomplete") {
+					if (buffer.length > MAX_FALLBACK_BUFFER_LENGTH) {
+						// Never held-back forever: a legitimate long block that happens to start
+						// with "{"/"<" gets flushed once it's clearly not closing any time soon.
+						resetFallbackBuffer()
+						isFirstTextChunk = false
+						yield { type: "text", text: buffer } as const
+						return
+					}
 					fallbackCandidateBuffer = buffer
 					return
 				}
 
-				fallbackCandidateBuffer = null
+				resetFallbackBuffer()
+				isFirstTextChunk = false
 
 				if (status === "balanced") {
 					const detected = NativeToolCallParser.detectToolCallAttempt(buffer, offeredTools)
@@ -189,7 +287,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 					if (fallbackCandidateBuffer) {
 						assistantText += fallbackCandidateBuffer
 						yield { type: "text", text: fallbackCandidateBuffer }
-						fallbackCandidateBuffer = null
+						resetFallbackBuffer()
 					}
 				}
 
@@ -300,7 +398,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 
 			let response
 			try {
-				response = await this.client.chat.completions.create(params)
+				response = await this.client.chat.completions.create(params, { signal: options?.abortSignal })
 			} catch (error) {
 				throw handleOpenAIError(error, this.providerName)
 			}

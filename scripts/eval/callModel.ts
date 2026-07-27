@@ -26,6 +26,14 @@ export interface ModelSettings {
 	ollamaApiKey?: string
 	ollamaModelId?: string
 	ollamaBaseUrl?: string
+	/**
+	 * Response token cap, shared across providers. Anthropic requires this field on every
+	 * request (defaults to 1024 if unset); the OpenAI-compatible and Ollama callers only send
+	 * it when explicitly set, leaving the provider's own default otherwise. Configurable per
+	 * model entry in models.json so scores aren't skewed by an inconsistent, hardcoded cap
+	 * across providers - particularly relevant for "freeform" fixtures.
+	 */
+	maxTokens?: number
 }
 
 export async function callModel(settings: ModelSettings, systemPrompt: string, userPrompt: string): Promise<string> {
@@ -53,7 +61,7 @@ async function callAnthropic(settings: ModelSettings, systemPrompt: string, user
 		},
 		body: JSON.stringify({
 			model: settings.apiModelId ?? "claude-3-5-haiku-20241022",
-			max_tokens: 1024,
+			max_tokens: settings.maxTokens ?? 1024,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
 		}),
@@ -89,6 +97,7 @@ async function callOpenAiCompatible(
 				{ role: "system", content: systemPrompt },
 				{ role: "user", content: userPrompt },
 			],
+			...(settings.maxTokens !== undefined ? { max_tokens: settings.maxTokens } : {}),
 		}),
 	})
 
@@ -118,6 +127,7 @@ async function callOllama(settings: ModelSettings, systemPrompt: string, userPro
 				{ role: "system", content: systemPrompt },
 				{ role: "user", content: userPrompt },
 			],
+			...(settings.maxTokens !== undefined ? { options: { num_predict: settings.maxTokens } } : {}),
 		}),
 	})
 

@@ -1,5 +1,14 @@
 import { APIError } from "openai"
 
+/**
+ * Matches Anthropic's parameter-validation error for an out-of-range `max_tokens`
+ * request value, e.g. "max_tokens: 8192 > 4096, which is the maximum allowed".
+ * This is a request-parameter bug, not a context-window overflow, and must never
+ * be routed into truncate-and-retry logic (which would destroy real conversation
+ * history to "fix" an unrelated 400).
+ */
+const MAX_TOKENS_PARAM_VIOLATION_PATTERN = /\bmax_tokens:\s*\d+\s*>\s*\d+/i
+
 export function checkContextWindowExceededError(error: unknown): boolean {
 	return (
 		checkIsOpenAIContextWindowError(error) ||
@@ -27,7 +36,10 @@ function checkIsGenericContextWindowError(error: unknown): boolean {
 
 		const err = error as Record<string, any>
 
-		const status = err.status ?? err.code ?? err.error?.status ?? err.response?.status
+		// Only treat dedicated status fields as an HTTP status - err.code is a
+		// provider-specific error code (e.g. "ENOTFOUND", "context_length_exceeded")
+		// that only coincidentally parses to NaN today; it is not a status.
+		const status = err.status ?? err.error?.status ?? err.response?.status
 		const statusNum = typeof status === "number" ? status : Number.parseInt(String(status ?? ""), 10)
 		if (Number.isFinite(statusNum) && (statusNum < 400 || statusNum >= 500)) {
 			return false
@@ -41,11 +53,19 @@ function checkIsGenericContextWindowError(error: unknown): boolean {
 			typeof err.body === "string" ? err.body : undefined,
 		].filter((msg): msg is string => typeof msg === "string" && msg.length > 0)
 
+		// A max_tokens parameter-bound violation (e.g. Anthropic's
+		// "max_tokens: 8192 > 4096, which is the maximum allowed") is a request
+		// validation error, not context overflow - never truncate history for it.
+		if (candidateMessages.some((msg) => MAX_TOKENS_PARAM_VIOLATION_PATTERN.test(msg))) {
+			return false
+		}
+
 		const GENERIC_CONTEXT_ERROR_PATTERNS = [
 			/\bcontext\s*(?:length|window|size)\b/i,
-			/\bmax(?:imum)?\s*(?:input\s*)?tokens?\b/i,
-			/\btoo\s*many\s*tokens?\b/i,
-			/\btoken\s*limit\b/i,
+			// Requires an overflow verb alongside the token noun so this doesn't match
+			// generic "maximum tokens" mentions in parameter-validation errors, or
+			// Groq's 429 rate-limit body ("...exceeded your token limit").
+			/\b(?:exceed|too\s+(?:many|long|large))\b.*\btokens?\b/i,
 			/\binput\s*(?:is\s*)?too\s*long\b/i,
 			/\bprompt\s*(?:is\s*)?too\s*long\b/i,
 			/\bexceeds?\s*(?:the\s*)?(?:model'?s?\s*)?(?:context|token)\b/i,
@@ -66,7 +86,9 @@ function checkIsOpenRouterContextWindowError(error: unknown): boolean {
 
 		// Use Record<string, any> for proper type narrowing
 		const err = error as Record<string, any>
-		const status = err.status ?? err.code ?? err.error?.status ?? err.response?.status
+		// Only treat dedicated status fields as an HTTP status - err.code is a
+		// provider-specific error code, not a status.
+		const status = err.status ?? err.error?.status ?? err.response?.status
 		const message: string = String(err.message || err.error?.message || "")
 
 		// Known OpenAI/OpenRouter-style signal (code 400 and message includes "context length")
@@ -136,7 +158,9 @@ export function isRetriableViaFallbackError(error: unknown): boolean {
 		}
 
 		const err = error as Record<string, any>
-		const rawStatus = err.status ?? err.code ?? err.error?.status ?? err.response?.status
+		// Only treat dedicated status fields as an HTTP status - err.code is a
+		// provider-specific error code, not a status.
+		const rawStatus = err.status ?? err.error?.status ?? err.response?.status
 		const status = typeof rawStatus === "number" ? rawStatus : Number.parseInt(String(rawStatus ?? ""), 10)
 
 		if (Number.isFinite(status)) {
@@ -168,9 +192,9 @@ export function isRetriableViaFallbackError(error: unknown): boolean {
 		]
 		const NETWORK_ERROR_MESSAGE_PATTERNS = [
 			/fetch failed/i,
-			/network/i,
+			/network\s+(?:error|failure)/i,
 			/socket hang up/i,
-			/timed? ?out/i,
+			/\b(?:request|connection|response|read|socket)\s+timed?\s*out\b/i,
 			/connection (?:reset|refused|closed)/i,
 		]
 
@@ -210,7 +234,19 @@ function checkIsAnthropicContextWindowError(response: unknown): boolean {
 		if (res.error?.error?.type === "invalid_request_error") {
 			const message: string = String(res.error?.error?.message || "")
 
-			// More specific patterns for context window errors
+			// A max_tokens parameter-bound violation (e.g.
+			// "max_tokens: 8192 > 4096, which is the maximum allowed") is also reported
+			// as invalid_request_error - it's a request validation error, not context
+			// overflow, and must never be routed into truncate-and-retry logic.
+			if (MAX_TOKENS_PARAM_VIOLATION_PATTERN.test(message)) {
+				return false
+			}
+
+			// More specific patterns for context window errors. The max_tokens
+			// parameter-bound violation is filtered out above via
+			// MAX_TOKENS_PARAM_VIOLATION_PATTERN (it always includes the literal
+			// "max_tokens: N > M" prefix), so these can stay broad without
+			// reintroducing that false positive.
 			const contextWindowPatterns = [
 				/prompt is too long/i,
 				/maximum.*tokens/i,

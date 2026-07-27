@@ -177,6 +177,12 @@ export class ClineProvider
 	private taskScheduler = new TaskScheduler()
 	private delegationTransitionLocks?: Map<string, Promise<void>>
 	private cancelledDelegationChildIds = new Set<string>()
+	// Keyed by child taskId: the provider profile that was globally active on the parent
+	// right before delegateParentAndOpenChild switched it for the child's difficulty tier
+	// (activateTierProfileIfConfigured). Restored in reopenParentFromDelegation /
+	// abandonSubtask so the parent resumes on its own profile instead of silently
+	// inheriting the child's tier-routed model. See H3 in docs/REVIEW_1.md.
+	private pendingTierProfileRestoreByChildId = new Map<string, string>()
 	private codeIndexStatusSubscription?: vscode.Disposable
 	private codeIndexManager?: CodeIndexManager
 	private _workspaceTracker?: WorkspaceTracker // workSpaceTracker read-only for access outside this class
@@ -526,6 +532,22 @@ export class ClineProvider
 			} catch (e) {
 				this.log(
 					`[ClineProvider#removeClineFromStack] abortTask() failed ${task.taskId}.${task.instanceId}: ${e.message}`,
+				)
+			}
+
+			// If a transient error made this task fail over to a fallback profile, restore
+			// the profile that was globally active before that happened - a fallback should
+			// only last for the task it rescued, not silently become the user's new default.
+			// Skipped if another task has already become current (e.g. delegation already
+			// created its child) to avoid clobbering that task's own profile switch.
+			try {
+				if (task.preFailoverProfileSnapshot && !this.getCurrentTask()) {
+					const snapshotProfileName = task.preFailoverProfileSnapshot
+					await this.activateProviderProfile({ name: snapshotProfileName }, { persistTaskHistory: false })
+				}
+			} catch (e) {
+				this.log(
+					`[ClineProvider#removeClineFromStack] Failed to restore pre-failover profile for task ${task.taskId}: ${e instanceof Error ? e.message : String(e)}`,
 				)
 			}
 
@@ -2825,6 +2847,8 @@ export class ClineProvider
 				this.context.workspaceState.get<string>("activeConfigurationSetId"),
 			),
 			configurationSets: await this.providerSettingsManager.listConfigurationSets(),
+			tierApiConfigs: stateValues.tierApiConfigs ?? {},
+			maxFallbacksPerMode: stateValues.maxFallbacksPerMode,
 			includeDiagnosticMessages: stateValues.includeDiagnosticMessages ?? true,
 			maxDiagnosticMessages: stateValues.maxDiagnosticMessages ?? 50,
 			includeTaskHistoryInEnhance: stateValues.includeTaskHistoryInEnhance ?? true,
@@ -3658,6 +3682,21 @@ export class ClineProvider
 		//     (resolution order: tier's mapped profile -> mode's own profile -> global
 		//     default). This runs as a step on top of the mode-based resolution above,
 		//     not a replacement for it.
+		//
+		//     activateProviderProfile writes the global currentApiConfigName (not
+		//     task-scoped), and the parent has already been disposed at this point (step 3
+		//     above), so nothing records this as the parent's own sticky profile. Snapshot
+		//     it here so reopenParentFromDelegation / abandonSubtask can restore it once the
+		//     child (about to be created below) finishes - otherwise the parent would
+		//     silently resume on the child's tier-routed model. See H3 in docs/REVIEW_1.md.
+		//     Best-effort: if getGlobalState isn't available (unit tests calling this method
+		//     against a minimal provider stub), just skip the snapshot/restore safety net.
+		let preTierSwitchProfileName: string | undefined
+		try {
+			preTierSwitchProfileName = this.getGlobalState("currentApiConfigName")
+		} catch {
+			preTierSwitchProfileName = undefined
+		}
 		try {
 			await this.activateTierProfileIfConfigured(tier)
 		} catch (e) {
@@ -3666,6 +3705,16 @@ export class ClineProvider
 					(e as Error)?.message ?? String(e)
 				}`,
 			)
+		}
+		let tierSwitchedProfile = false
+		try {
+			const postTierSwitchProfileName = this.getGlobalState("currentApiConfigName")
+			tierSwitchedProfile =
+				!!preTierSwitchProfileName &&
+				!!postTierSwitchProfileName &&
+				preTierSwitchProfileName !== postTierSwitchProfileName
+		} catch {
+			tierSwitchedProfile = false
 		}
 
 		// 4) Create child as sole active (parent reference preserved for lineage)
@@ -3684,6 +3733,15 @@ export class ClineProvider
 			initialStatus: "active",
 			startTask: false,
 		})
+
+		if (tierSwitchedProfile && preTierSwitchProfileName) {
+			try {
+				this.pendingTierProfileRestoreByChildId.set(child.taskId, preTierSwitchProfileName)
+			} catch {
+				// Non-fatal: worst case the parent doesn't get its pre-tier-switch profile
+				// restored later. See getGlobalState catch above for why this can be undefined.
+			}
+		}
 
 		// 4b) Optimistically notify the webview that the child is now current, so the chat
 		//     view switches to it immediately instead of briefly falling back to the
@@ -3785,8 +3843,19 @@ export class ClineProvider
 				)
 			}
 			try {
+				this.pendingTierProfileRestoreByChildId.delete(child.taskId)
+			} catch {
+				// Non-fatal - see getGlobalState catch above.
+			}
+			try {
 				const { historyItem: parentHistory } = await this.getTaskWithId(parentTaskId)
 				await this.createTaskWithHistoryItem(parentHistory)
+				if (tierSwitchedProfile && preTierSwitchProfileName) {
+					await this.activateProviderProfile(
+						{ name: preTierSwitchProfileName },
+						{ persistTaskHistory: false },
+					)
+				}
 			} catch (rollbackError) {
 				this.log(
 					`[delegateParentAndOpenChild] Failed to restore parent ${parentTaskId} during rollback: ${
@@ -4035,6 +4104,25 @@ export class ClineProvider
 			//    IMPORTANT: startTask=false to suppress resume-from-history ask scheduling
 			const parentInstance = await this.createTaskWithHistoryItem(updatedHistory, { startTask: false })
 
+			// 7b) If this child's tier routing switched the globally-active profile away from
+			//     the parent's own, restore it now that the parent is current again - otherwise
+			//     the parent would silently resume on the child's tier-routed model. Must run
+			//     after createTaskWithHistoryItem (so activateProviderProfile rebuilds this
+			//     parentInstance's api handler, not a stale/absent current task).
+			try {
+				const restoreProfileName = this.pendingTierProfileRestoreByChildId.get(childTaskId)
+				if (restoreProfileName) {
+					this.pendingTierProfileRestoreByChildId.delete(childTaskId)
+					await this.activateProviderProfile({ name: restoreProfileName }, { persistTaskHistory: false })
+				}
+			} catch (error) {
+				this.log(
+					`[reopenParentFromDelegation] Failed to restore pre-delegation profile for parent ${parentTaskId}: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				)
+			}
+
 			// 8) Inject restored histories into the in-memory instance before resuming
 			if (parentInstance) {
 				try {
@@ -4141,6 +4229,24 @@ export class ClineProvider
 				}),
 			)
 			this.recentTasksCache = undefined
+
+			// This child will never reach reopenParentFromDelegation, so restore any
+			// tier-routing profile switch here instead - otherwise the next task the user
+			// opens (including the reopened parent) would inherit the abandoned child's
+			// tier-routed model as the "current" profile.
+			try {
+				const restoreProfileName = this.pendingTierProfileRestoreByChildId.get(childTaskId)
+				if (restoreProfileName) {
+					this.pendingTierProfileRestoreByChildId.delete(childTaskId)
+					await this.activateProviderProfile({ name: restoreProfileName }, { persistTaskHistory: false })
+				}
+			} catch (error) {
+				this.log(
+					`[abandonSubtask] Failed to restore pre-delegation profile for parent ${parentTaskId}: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				)
+			}
 
 			// Guard against a stale in-flight resume/completion (e.g. a resume that was already
 			// in progress when abandon was clicked) reattaching the child after the link above
