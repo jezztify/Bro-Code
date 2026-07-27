@@ -1,0 +1,9 @@
+{
+	"id": "freeform-hard-synthesis",
+	"tier": "hard",
+	"taskType": "freeform",
+	"description": "Open-ended synthesis step needing nuanced judgment - scored by embedding cosine similarity against a reference answer.",
+	"systemPrompt": "You are a senior engineer summarizing a design trade-off for a teammate. Be concise (2-4 sentences).",
+	"userPrompt": "We need to let a mode fail over to backup provider profiles when its primary one keeps hitting rate limits. Option A: retry the same profile forever with exponential backoff. Option B: after a few same-profile retries, fail over once to each of an ordered list of configured backup profiles. Which would you recommend, and why?",
+	"expected": "Option B is the better fit: pure backoff on a single profile does nothing to help when that provider itself is degraded or rate-limited for an extended period, whereas failing over to backup profiles after a bounded number of retries gets the user a working response faster and keeps the primary profile as the default for future requests. It does add complexity (tracking which profiles were already tried, and only failing over on transient errors), but that's manageable and worth it for reliability."
+}

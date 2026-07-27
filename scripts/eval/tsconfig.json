@@ -1,0 +1,13 @@
+{
+	"extends": "../../packages/config-typescript/base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		// scripts/eval intentionally has no local node_modules (see README.md), so
+		// "vitest/globals" type declarations aren't resolvable here for standalone
+		// `tsc` checks - the __tests__/*.spec.ts files still run fine (vitest injects
+		// the real describe/it/expect/vi globals at runtime; see vitest.config.ts).
+		"types": ["node"]
+	},
+	"exclude": ["node_modules", "__tests__"],
+	"include": ["**/*.ts"]
+}

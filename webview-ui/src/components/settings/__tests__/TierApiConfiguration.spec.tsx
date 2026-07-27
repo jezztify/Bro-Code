@@ -1,6 +1,6 @@
 // npx vitest run src/components/settings/__tests__/TierApiConfiguration.spec.tsx
 
-import { render, screen } from "@/utils/test-utils"
+import { render, screen, fireEvent } from "@/utils/test-utils"
 
 import { vscode } from "@src/utils/vscode"
 
@@ -41,5 +41,59 @@ describe("TierApiConfiguration", () => {
 		render(<TierApiConfiguration tierApiConfigs={{ hard: "best-id" }} listApiConfigMeta={listApiConfigMeta} />)
 
 		expect(vscode.postMessage).not.toHaveBeenCalled()
+	})
+
+	describe("apply recommended mapping (eval harness hook)", () => {
+		it("disables the Apply button until JSON is entered", () => {
+			render(<TierApiConfiguration tierApiConfigs={{}} listApiConfigMeta={listApiConfigMeta} />)
+
+			expect(screen.getByTestId("apply-tier-recommendation-button")).toBeDisabled()
+		})
+
+		it("posts applyTierRecommendations with the parsed tier -> profile-name map", () => {
+			render(<TierApiConfiguration tierApiConfigs={{}} listApiConfigMeta={listApiConfigMeta} />)
+
+			fireEvent.change(screen.getByTestId("tier-recommendation-input"), {
+				target: { value: '{"trivial": "Cheap Model", "hard": "Best Model"}' },
+			})
+			fireEvent.click(screen.getByTestId("apply-tier-recommendation-button"))
+
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "applyTierRecommendations",
+				tierRecommendations: { trivial: "Cheap Model", hard: "Best Model" },
+			})
+		})
+
+		it("shows an error and does not post when the pasted text isn't valid JSON", () => {
+			render(<TierApiConfiguration tierApiConfigs={{}} listApiConfigMeta={listApiConfigMeta} />)
+
+			fireEvent.change(screen.getByTestId("tier-recommendation-input"), {
+				target: { value: "not json" },
+			})
+			fireEvent.click(screen.getByTestId("apply-tier-recommendation-button"))
+
+			expect(vscode.postMessage).not.toHaveBeenCalled()
+			expect(screen.getByTestId("apply-recommendation-error")).toBeInTheDocument()
+		})
+
+		it("shows an error when the pasted JSON isn't an object", () => {
+			render(<TierApiConfiguration tierApiConfigs={{}} listApiConfigMeta={listApiConfigMeta} />)
+
+			fireEvent.change(screen.getByTestId("tier-recommendation-input"), {
+				target: { value: '["trivial", "hard"]' },
+			})
+			fireEvent.click(screen.getByTestId("apply-tier-recommendation-button"))
+
+			expect(vscode.postMessage).not.toHaveBeenCalled()
+			expect(screen.getByTestId("apply-recommendation-error")).toBeInTheDocument()
+		})
+
+		it("surfaces unresolved tiers reported back by the extension host", async () => {
+			render(<TierApiConfiguration tierApiConfigs={{}} listApiConfigMeta={listApiConfigMeta} />)
+
+			window.postMessage({ type: "applyTierRecommendationsResult", unresolvedTiers: ["hard"] }, "*")
+
+			expect(await screen.findByTestId("unresolved-tiers")).toBeInTheDocument()
+		})
 	})
 })

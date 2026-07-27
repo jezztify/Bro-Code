@@ -439,6 +439,13 @@
 				"trivial": "Trivial",
 				"standard": "Standard",
 				"hard": "Hard"
+			},
+			"applyRecommendation": {
+				"label": "Apply recommended mapping",
+				"description": "Paste the \"recommendation\" JSON printed by the eval harness (scripts/eval/) - tier name to profile name - to resolve and merge it into the mapping above in one step.",
+				"apply": "Apply",
+				"invalidShape": "Expected a JSON object of tier -> profile name",
+				"unresolved": "No configured profile matches the recommended name for: {{tiers}}"
 			}
 		},
 		"providerDocumentation": "{{provider}} documentation",

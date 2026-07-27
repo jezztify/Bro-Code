@@ -1,0 +1,9 @@
+{
+	"id": "classification-trivial-yesno",
+	"tier": "trivial",
+	"taskType": "classification",
+	"description": "Binary yes/no classification - the kind of trivial step where a cheap/fast model should score as well as a large one.",
+	"systemPrompt": "You are a strict binary classifier. Respond with exactly one word: \"yes\" or \"no\". Do not explain.",
+	"userPrompt": "Does this commit message follow Conventional Commits format? Message: \"fix: correct off-by-one error in pagination\"",
+	"expected": "yes"
+}

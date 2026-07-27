@@ -1,0 +1,26 @@
+[
+	{
+		"label": "claude-haiku",
+		"settings": {
+			"apiProvider": "anthropic",
+			"apiKey": "REPLACE_ME",
+			"apiModelId": "claude-3-5-haiku-20241022"
+		}
+	},
+	{
+		"label": "claude-sonnet",
+		"settings": {
+			"apiProvider": "anthropic",
+			"apiKey": "REPLACE_ME",
+			"apiModelId": "claude-sonnet-4-6"
+		}
+	},
+	{
+		"label": "local-ollama",
+		"settings": {
+			"apiProvider": "ollama",
+			"ollamaBaseUrl": "http://localhost:11434",
+			"ollamaModelId": "llama3.1"
+		}
+	}
+]
