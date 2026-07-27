@@ -1026,7 +1026,7 @@
 	},
 	"core/tools/__tests__/newTaskTool.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 31
+			"count": 35
 		}
 	},
 	"core/tools/__tests__/readFileTool.spec.ts": {
@@ -1107,6 +1107,11 @@
 	"core/webview/__tests__/ClineProvider.taskHistory.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 12
+		}
+	},
+	"core/webview/__tests__/ClineProvider.tierApiConfig.spec.ts": {
+		"@typescript-eslint/no-explicit-any": {
+			"count": 2
 		}
 	},
 	"core/webview/__tests__/checkpointRestoreHandler.spec.ts": {

@@ -2029,6 +2029,36 @@ export const webviewMessageHandler = async (
 			break
 		}
 
+		case "tierApiConfigs":
+			await updateGlobalState("tierApiConfigs", message.tierApiConfigs ?? {})
+			await provider.postStateToWebview()
+			break
+
+		case "applyTierRecommendations": {
+			// The eval harness (scripts/eval/) exports a recommendation keyed by profile
+			// NAME (the scorecard's model label). Resolve each to its profile id and merge
+			// into tierApiConfigs in one step rather than replacing it wholesale.
+			const recommendations = message.tierRecommendations ?? {}
+			const listApiConfig = await provider.providerSettingsManager.listConfig()
+			const existing = getGlobalState("tierApiConfigs") ?? {}
+			const next = { ...existing }
+			const unresolvedTiers: string[] = []
+
+			for (const [tier, profileName] of Object.entries(recommendations)) {
+				const profile = listApiConfig.find((c) => c.name === profileName)
+				if (profile?.id) {
+					next[tier] = profile.id
+				} else {
+					unresolvedTiers.push(tier)
+				}
+			}
+
+			await updateGlobalState("tierApiConfigs", next)
+			await provider.postStateToWebview()
+			await provider.postMessageToWebview({ type: "applyTierRecommendationsResult", unresolvedTiers })
+			break
+		}
+
 		case "autoApprovalEnabled":
 			await updateGlobalState("autoApprovalEnabled", message.bool ?? false)
 			await provider.postStateToWebview()

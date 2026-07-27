@@ -328,6 +328,50 @@ describe("NativeToolCallParser", () => {
 				})
 			})
 		})
+
+		describe("new_task tool", () => {
+			it("should parse the optional tier param", () => {
+				const toolCall = {
+					id: "toolu_123",
+					name: "new_task" as const,
+					arguments: JSON.stringify({
+						mode: "code",
+						message: "Implement the thing",
+						todos: null,
+						tier: "hard",
+					}),
+				}
+
+				const result = NativeToolCallParser.parseToolCall(toolCall)
+
+				expect(result).not.toBeNull()
+				if (result?.type === "tool_use") {
+					const nativeArgs = result.nativeArgs as { mode: string; tier?: string }
+					expect(nativeArgs.mode).toBe("code")
+					expect(nativeArgs.tier).toBe("hard")
+				}
+			})
+
+			it("should leave tier undefined when omitted", () => {
+				const toolCall = {
+					id: "toolu_124",
+					name: "new_task" as const,
+					arguments: JSON.stringify({
+						mode: "code",
+						message: "Implement the thing",
+						todos: null,
+					}),
+				}
+
+				const result = NativeToolCallParser.parseToolCall(toolCall)
+
+				expect(result).not.toBeNull()
+				if (result?.type === "tool_use") {
+					const nativeArgs = result.nativeArgs as { mode: string; tier?: string }
+					expect(nativeArgs.tier).toBeUndefined()
+				}
+			})
+		})
 	})
 
 	describe("processStreamingChunk", () => {
@@ -377,6 +421,46 @@ describe("NativeToolCallParser", () => {
 					expect(nativeArgs.offset).toBe(1)
 					expect(nativeArgs.limit).toBe(10)
 				}
+			})
+		})
+
+		describe("new_task tool", () => {
+			it("should include tier on finalize when provided", () => {
+				const id = "toolu_finalize_tier"
+				NativeToolCallParser.startStreamingToolCall(id, "new_task")
+
+				NativeToolCallParser.processStreamingChunk(
+					id,
+					JSON.stringify({
+						mode: "code",
+						message: "Do the thing",
+						todos: null,
+						tier: "trivial",
+					}),
+				)
+
+				const result = NativeToolCallParser.finalizeStreamingToolCall(id)
+
+				expect(result).not.toBeNull()
+				if (result?.type === "tool_use") {
+					const nativeArgs = result.nativeArgs as { mode: string; tier?: string }
+					expect(nativeArgs.mode).toBe("code")
+					expect(nativeArgs.tier).toBe("trivial")
+				}
+			})
+
+			it("should emit tier from a partial chunk mid-stream", () => {
+				const id = "toolu_partial_tier"
+				NativeToolCallParser.startStreamingToolCall(id, "new_task")
+
+				const result = NativeToolCallParser.processStreamingChunk(
+					id,
+					JSON.stringify({ mode: "code", message: "partial message", tier: "standard" }),
+				)
+
+				expect(result).not.toBeNull()
+				const nativeArgs = result?.nativeArgs as { mode?: string; tier?: string }
+				expect(nativeArgs.tier).toBe("standard")
 			})
 		})
 	})

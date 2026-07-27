@@ -104,6 +104,7 @@ export interface ExtensionMessage {
 		| "rules"
 		| "fileContent"
 		| "rooHistoryImportProgress"
+		| "applyTierRecommendationsResult"
 	text?: string
 	/** For fileContent: { path, content, error? } */
 	fileContent?: { path: string; content: string | null; error?: string }
@@ -157,6 +158,8 @@ export interface ExtensionMessage {
 	results?:
 		| { path: string; type: "file" | "folder"; label?: string }[]
 		| { name: string; description?: string; argumentHint?: string; source: "global" | "project" | "built-in" }[]
+	/** For applyTierRecommendationsResult: tiers whose recommended profile name didn't match any configured profile */
+	unresolvedTiers?: string[]
 	error?: string
 	setting?: string
 	value?: any // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -683,6 +686,10 @@ export interface WebviewMessage {
 	values?: Record<string, any>
 	/** For maxFallbacksPerMode: maximum number of fallback API profiles allowed per mode */
 	maxFallbacksPerMode?: number
+	/** For tierApiConfigs: full replacement map of difficulty tier -> API config profile id */
+	tierApiConfigs?: Record<string, string>
+	/** For applyTierRecommendations: difficulty tier -> API config profile NAME (eval harness export) */
+	tierRecommendations?: Record<string, string>
 	query?: string
 	setting?: string
 	slug?: string

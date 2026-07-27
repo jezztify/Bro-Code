@@ -120,6 +120,7 @@ const withNativeArgs = (block: ToolUse<"new_task">): ToolUse<"new_task"> => ({
 		mode: block.params.mode,
 		message: block.params.message,
 		todos: block.params.todos,
+		tier: block.params.tier,
 	} as unknown as NativeToolArgs["new_task"],
 })
 
@@ -677,5 +678,105 @@ describe("newTaskTool delegation flow", () => {
 
 		// Assert: tool result reflects delegation
 		expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("Delegated to child task child-1"))
+	})
+
+	it("passes an optional tier through to delegateParentAndOpenChild", async () => {
+		const providerSpy = {
+			getState: vi.fn().mockResolvedValue({
+				mode: "ask",
+				experiments: {},
+			}),
+			delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-2" }),
+			handleModeSwitch: vi.fn(),
+		} as any
+
+		const localCline = {
+			ask: vi.fn(),
+			sayAndCreateMissingParamError: mockSayAndCreateMissingParamError,
+			emit: vi.fn(),
+			recordToolError: mockRecordToolError,
+			consecutiveMistakeCount: 0,
+			isPaused: false,
+			pausedModeSlug: "ask",
+			taskId: "mock-parent-task-id",
+			enableCheckpoints: false,
+			checkpointSave: mockCheckpointSave,
+			startSubtask: vi.fn(),
+			providerRef: {
+				deref: vi.fn(() => providerSpy),
+			},
+		}
+
+		const block: ToolUse<"new_task"> = {
+			type: "tool_use",
+			name: "new_task",
+			params: {
+				mode: "code",
+				message: "Do something hard",
+				tier: "hard",
+			},
+			partial: false,
+		}
+
+		await newTaskTool.handle(localCline as any, withNativeArgs(block), {
+			askApproval: mockAskApproval,
+			handleError: mockHandleError,
+			pushToolResult: mockPushToolResult,
+		})
+
+		expect(providerSpy.delegateParentAndOpenChild).toHaveBeenCalledWith({
+			parentTaskId: "mock-parent-task-id",
+			message: "Do something hard",
+			initialTodos: [],
+			mode: "code",
+			tier: "hard",
+		})
+	})
+
+	it("omits tier from delegateParentAndOpenChild when not provided", async () => {
+		const providerSpy = {
+			getState: vi.fn().mockResolvedValue({
+				mode: "ask",
+				experiments: {},
+			}),
+			delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-3" }),
+			handleModeSwitch: vi.fn(),
+		} as any
+
+		const localCline = {
+			ask: vi.fn(),
+			sayAndCreateMissingParamError: mockSayAndCreateMissingParamError,
+			emit: vi.fn(),
+			recordToolError: mockRecordToolError,
+			consecutiveMistakeCount: 0,
+			isPaused: false,
+			pausedModeSlug: "ask",
+			taskId: "mock-parent-task-id",
+			enableCheckpoints: false,
+			checkpointSave: mockCheckpointSave,
+			startSubtask: vi.fn(),
+			providerRef: {
+				deref: vi.fn(() => providerSpy),
+			},
+		}
+
+		const block: ToolUse<"new_task"> = {
+			type: "tool_use",
+			name: "new_task",
+			params: {
+				mode: "code",
+				message: "Do something ordinary",
+			},
+			partial: false,
+		}
+
+		await newTaskTool.handle(localCline as any, withNativeArgs(block), {
+			askApproval: mockAskApproval,
+			handleError: mockHandleError,
+			pushToolResult: mockPushToolResult,
+		})
+
+		const call = providerSpy.delegateParentAndOpenChild.mock.calls[0][0]
+		expect(call.tier).toBeUndefined()
 	})
 })

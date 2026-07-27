@@ -1603,6 +1603,44 @@ export class ClineProvider
 		// Otherwise the task will continue with the current/default configuration.
 	}
 
+	/**
+	 * Resolve a difficulty tier (e.g. "trivial" | "standard" | "hard") to a configured provider
+	 * profile and activate it, if the user has mapped that tier to a profile in settings.
+	 *
+	 * Tier mapping takes priority over the mode's own sticky API config. If no tier is given,
+	 * or no mapping/profile is configured for it, this is a no-op and the caller's existing
+	 * mode-based resolution (already applied) stands - giving the resolution order
+	 * tier -> mode's own configured profile -> global default.
+	 */
+	public async activateTierProfileIfConfigured(tier?: string) {
+		if (!tier) {
+			return
+		}
+
+		const tierApiConfigs = this.getGlobalState("tierApiConfigs") ?? {}
+		const configId = tierApiConfigs[tier]
+
+		if (!configId) {
+			return
+		}
+
+		const listApiConfig = await this.providerSettingsManager.listConfig()
+		const profile = listApiConfig.find(({ id }) => id === configId)
+
+		if (!profile?.name) {
+			return
+		}
+
+		const fullProfile = await this.providerSettingsManager.getProfile({ name: profile.name })
+
+		if (!fullProfile.apiProvider) {
+			// Unconfigured/empty profile; leave the current configuration in place.
+			return
+		}
+
+		await this.activateProviderProfile({ name: profile.name })
+	}
+
 	// Provider Profile Management
 
 	/**
@@ -3537,8 +3575,9 @@ export class ClineProvider
 		message: string
 		initialTodos: TodoItem[]
 		mode: string
+		tier?: "trivial" | "standard" | "hard"
 	}): Promise<Task> {
-		const { parentTaskId, message, initialTodos, mode } = params
+		const { parentTaskId, message, initialTodos, mode, tier } = params
 
 		// Metadata-driven delegation is always enabled
 
@@ -3609,6 +3648,21 @@ export class ClineProvider
 		} catch (e) {
 			this.log(
 				`[delegateParentAndOpenChild] handleModeSwitch failed for mode '${mode}': ${
+					(e as Error)?.message ?? String(e)
+				}`,
+			)
+		}
+
+		// 3b) If the subtask declared a difficulty tier and the user has mapped it to a
+		//     provider profile, that mapping wins over the mode's own sticky config
+		//     (resolution order: tier's mapped profile -> mode's own profile -> global
+		//     default). This runs as a step on top of the mode-based resolution above,
+		//     not a replacement for it.
+		try {
+			await this.activateTierProfileIfConfigured(tier)
+		} catch (e) {
+			this.log(
+				`[delegateParentAndOpenChild] activateTierProfileIfConfigured failed for tier '${tier}': ${
 					(e as Error)?.message ?? String(e)
 				}`,
 			)

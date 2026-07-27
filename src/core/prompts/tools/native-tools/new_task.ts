@@ -10,6 +10,8 @@ const MESSAGE_PARAMETER_DESCRIPTION = `Initial user instructions or context for 
 
 const TODOS_PARAMETER_DESCRIPTION = `Optional initial todo list written as a markdown checklist; required when the workspace mandates todos`
 
+const TIER_PARAMETER_DESCRIPTION = `Optional difficulty tier for this step ("trivial" | "standard" | "hard"), used to route the subtask to a provider profile configured for that tier (Settings -> Providers). If the tier has no mapped profile, the target mode's own configured profile is used, falling back to the global default.`
+
 export default {
 	type: "function",
 	function: {
@@ -31,8 +33,13 @@ export default {
 					type: ["string", "null"],
 					description: TODOS_PARAMETER_DESCRIPTION,
 				},
+				tier: {
+					type: ["string", "null"],
+					enum: ["trivial", "standard", "hard", null],
+					description: TIER_PARAMETER_DESCRIPTION,
+				},
 			},
-			required: ["mode", "message", "todos"],
+			required: ["mode", "message", "todos", "tier"],
 			additionalProperties: false,
 		},
 	},

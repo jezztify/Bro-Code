@@ -431,6 +431,16 @@
 		"selectOptionsFirst": "Select at least one option below to enable auto-approval"
 	},
 	"providers": {
+		"tierApiConfiguration": {
+			"title": "Difficulty Tier Routing",
+			"description": "Map each new_task difficulty tier to a provider profile. When a subtask is created with a tier, its mapped profile is used; otherwise the target mode's own configured profile (or the global default) applies.",
+			"useModeDefault": "Use mode's default",
+			"tiers": {
+				"trivial": "Trivial",
+				"standard": "Standard",
+				"hard": "Hard"
+			}
+		},
 		"providerDocumentation": "{{provider}} documentation",
 		"configProfile": "Configuration Profile",
 		"description": "Save different API configurations to quickly switch between providers and settings.",
