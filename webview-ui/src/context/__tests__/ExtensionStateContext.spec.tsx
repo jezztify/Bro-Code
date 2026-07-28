@@ -540,5 +540,72 @@ describe("mergeExtensionState", () => {
 			expect(result.clineMessages).toBe(newMessages)
 			expect(result.clineMessagesSeq).toBe(1)
 		})
+
+		// Regression test: when `new_task` delegates to a child task, the extension host posts
+		// two "state" pushes in quick succession - one for the parent (still current at that
+		// point, e.g. carrying an auto-generated "user_edit_todos" message) with seq N, then one
+		// for the child (now current) with seq N+1. `postMessageToWebview` calls are not awaited
+		// by their callers, so if the parent's push is ever delivered to the webview *after* the
+		// child's (out of order), the webview must not let it drag currentTaskId back to the
+		// parent while clineMessages stays on the child - that inconsistent half-applied state is
+		// exactly what made delegated subtasks appear to "bounce back" to the parent, stuck on a
+		// bare user_edit_todos message.
+		it("rejects a stale currentTaskId/currentTaskItem/currentTaskTodos push even when clineMessages is absent from it", () => {
+			const childMessages = [makeMessage(2, "child task started")]
+			const childHistoryItem = { id: "child-1", task: "Child", number: 1 } as ExtensionState["currentTaskItem"]
+
+			const prevState: ExtensionState = {
+				...baseState,
+				clineMessages: childMessages,
+				clineMessagesSeq: 6,
+				currentTaskId: "child-1",
+				currentTaskItem: childHistoryItem,
+				currentTaskTodos: [{ id: "todo-1", content: "do the thing", status: "in_progress" }],
+			}
+
+			// A late-arriving, stale push describing the parent's pre-delegation snapshot
+			// (lower seq, no clineMessages field - e.g. postStateToWebviewWithoutClineMessages).
+			const result = mergeExtensionState(prevState, {
+				clineMessagesSeq: 5,
+				currentTaskId: "parent-1",
+				currentTaskItem: { id: "parent-1", task: "Parent", number: 1 } as ExtensionState["currentTaskItem"],
+				currentTaskTodos: [{ id: "todo-1", content: "do the thing", status: "pending" }],
+			})
+
+			expect(result.currentTaskId).toBe("child-1")
+			expect(result.currentTaskItem).toBe(childHistoryItem)
+			expect(result.currentTaskTodos).toBe(prevState.currentTaskTodos)
+			expect(result.clineMessages).toBe(childMessages)
+			expect(result.clineMessagesSeq).toBe(6)
+		})
+
+		it("applies currentTaskId/currentTaskItem/currentTaskTodos together with clineMessages when seq is strictly greater", () => {
+			const parentMessages = [makeMessage(1, "user_edit_todos")]
+			const childMessages: ClineMessage[] = []
+			const childHistoryItem = { id: "child-1", task: "Child", number: 1 } as ExtensionState["currentTaskItem"]
+
+			const prevState: ExtensionState = {
+				...baseState,
+				clineMessages: parentMessages,
+				clineMessagesSeq: 5,
+				currentTaskId: "parent-1",
+				currentTaskItem: { id: "parent-1", task: "Parent", number: 1 } as ExtensionState["currentTaskItem"],
+			}
+
+			// The optimistic child-state push (delegateParentAndOpenChild step 4b): newer seq,
+			// must fully replace the parent snapshot.
+			const result = mergeExtensionState(prevState, {
+				clineMessages: childMessages,
+				clineMessagesSeq: 6,
+				currentTaskId: "child-1",
+				currentTaskItem: childHistoryItem,
+				currentTaskTodos: [],
+			})
+
+			expect(result.currentTaskId).toBe("child-1")
+			expect(result.currentTaskItem).toBe(childHistoryItem)
+			expect(result.clineMessages).toBe(childMessages)
+			expect(result.clineMessagesSeq).toBe(6)
+		})
 	})
 })

@@ -69,6 +69,7 @@ export const placeholderColor = hardcore.overlay0 // Placeholder text
 export const successColor = hardcore.green // Green for success
 export const errorColor = hardcore.pink // Pink for errors
 export const warningColor = hardcore.yellow // Yellow for warnings
+export const testingColor = hardcore.purple // Purple for testing/in-review status
 
 // Focus indicator colors
 export const focusColor = hardcore.cyan // Focus indicator (cyan accent)

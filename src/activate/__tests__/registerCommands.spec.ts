@@ -1,6 +1,7 @@
 import type { Mock } from "vitest"
 import * as vscode from "vscode"
 import { ClineProvider } from "../../core/webview/ClineProvider"
+import type { MobileServer } from "../../services/mobileServer/MobileServer"
 
 import { getVisibleProviderOrLog, openClineInNewTab, registerCommands, setPanel } from "../registerCommands"
 
@@ -135,6 +136,7 @@ describe("registerCommands handlers", () => {
 	let mockContext: vscode.ExtensionContext
 	let mockVisibleProvider: { postMessageToWebview: Mock }
 	let mockProvider: { postMessageToWebview: Mock }
+	let mockMobileServer: { start: Mock; stop: Mock; regenerateToken: Mock }
 	let handlers: Record<string, (...args: unknown[]) => unknown>
 
 	beforeEach(() => {
@@ -163,6 +165,11 @@ describe("registerCommands handlers", () => {
 		mockProvider = {
 			postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 		}
+		mockMobileServer = {
+			start: vi.fn().mockResolvedValue(undefined),
+			stop: vi.fn().mockResolvedValue(undefined),
+			regenerateToken: vi.fn().mockResolvedValue(undefined),
+		}
 		;(ClineProvider.getVisibleInstance as Mock).mockReturnValue(mockVisibleProvider)
 		;(vscode.commands.registerCommand as Mock).mockImplementation(
 			(id: string, cb: (...args: unknown[]) => unknown) => {
@@ -175,6 +182,7 @@ describe("registerCommands handlers", () => {
 			context: mockContext,
 			outputChannel: mockOutputChannel,
 			provider: mockProvider as unknown as ClineProvider,
+			mobileServer: mockMobileServer as unknown as MobileServer,
 		})
 	})
 
@@ -373,6 +381,35 @@ describe("registerCommands handlers", () => {
 
 		// Should not throw even with no visible provider
 		await handlers["zoo-code.plusButtonClicked"]()
+	})
+
+	it("startMobileServer calls mobileServer.start", async () => {
+		await handlers["zoo-code.startMobileServer"]()
+
+		expect(mockMobileServer.start).toHaveBeenCalledTimes(1)
+	})
+
+	it("stopMobileServer calls mobileServer.stop", async () => {
+		await handlers["zoo-code.stopMobileServer"]()
+
+		expect(mockMobileServer.stop).toHaveBeenCalledTimes(1)
+	})
+
+	it("regenerateMobileServerToken calls mobileServer.regenerateToken", async () => {
+		await handlers["zoo-code.regenerateMobileServerToken"]()
+
+		expect(mockMobileServer.regenerateToken).toHaveBeenCalledTimes(1)
+	})
+
+	it("regenerateMobileServerToken logs to outputChannel when regenerateToken rejects", async () => {
+		const boom = new Error("boom")
+		mockMobileServer.regenerateToken.mockRejectedValueOnce(boom)
+
+		await handlers["zoo-code.regenerateMobileServerToken"]()
+
+		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+			`[regenerateMobileServerToken] failed: ${boom.message}`,
+		)
 	})
 })
 

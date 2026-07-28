@@ -5,7 +5,7 @@ import MarkdownBlock from "../common/MarkdownBlock"
 interface TodoItem {
 	id?: string
 	content: string
-	status?: "completed" | "in_progress" | string
+	status?: "completed" | "in_progress" | "testing" | string
 }
 
 /**
@@ -34,6 +34,13 @@ const STATUS_OPTIONS = [
 		color: "var(--vscode-charts-yellow)",
 		border: "var(--vscode-charts-yellow)",
 		bg: "rgba(255, 221, 51, 0.15)",
+	},
+	{
+		value: "testing",
+		label: "Testing",
+		color: "var(--vscode-charts-purple)",
+		border: "var(--vscode-charts-purple)",
+		bg: "rgba(180, 120, 255, 0.15)",
 	},
 	{
 		value: "completed",
@@ -238,6 +245,21 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 											}}
 										/>
 									)
+								} else if (todo.status === "testing") {
+									icon = (
+										<span
+											style={{
+												display: "inline-block",
+												width: 8,
+												height: 8,
+												borderRadius: "50%",
+												background: "var(--vscode-charts-purple)",
+												marginRight: 6,
+												marginTop: 7,
+												flexShrink: 0,
+											}}
+										/>
+									)
 								} else {
 									icon = (
 										<span
@@ -301,7 +323,9 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 															? "var(--vscode-charts-green)"
 															: todo.status === "in_progress"
 																? "var(--vscode-charts-yellow)"
-																: "var(--vscode-foreground)",
+																: todo.status === "testing"
+																	? "var(--vscode-charts-purple)"
+																	: "var(--vscode-foreground)",
 													fontSize: 13,
 													marginRight: 6,
 													padding: "1px 3px",

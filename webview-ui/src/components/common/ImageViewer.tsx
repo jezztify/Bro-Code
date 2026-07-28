@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react"
 import { useCopyToClipboard } from "@src/utils/clipboard"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { useMobileMode } from "@src/utils/useMobileMode"
 import { vscode } from "@src/utils/vscode"
 import { MermaidActionButtons } from "./MermaidActionButtons"
 import { Modal } from "./Modal"
@@ -36,6 +37,7 @@ export function ImageViewer({
 	const [imageError, setImageError] = useState<string | null>(null)
 	const { copyWithFeedback } = useCopyToClipboard()
 	const { t } = useAppTranslation()
+	const isMobile = useMobileMode()
 
 	/**
 	 * Opens a modal with the image for zooming
@@ -87,6 +89,14 @@ export function ImageViewer({
 	 * Opens the image in VS Code's image viewer
 	 */
 	const handleOpenInEditor = (e: React.MouseEvent) => {
+		// No extension host to open a VS Code editor tab on in mobile mode - reuse
+		// the zoom modal above (already a full-screen, zoomable/pannable viewer)
+		// instead of round-tripping "openImage".
+		if (isMobile) {
+			void handleZoom(e)
+			return
+		}
+
 		e.stopPropagation()
 		// Use openImage for both file paths and data URIs
 		// The backend will handle both cases appropriately

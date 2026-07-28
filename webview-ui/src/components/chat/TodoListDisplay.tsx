@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils"
 import { t } from "i18next"
-import { ArrowRight, Check, ListChecks, SquareDashed } from "lucide-react"
+import { ArrowRight, Check, FlaskConical, ListChecks, SquareDashed } from "lucide-react"
 import { useState, useRef, useMemo, useEffect } from "react"
 
-type TodoStatus = "completed" | "in_progress" | "pending"
+type TodoStatus = "completed" | "in_progress" | "testing" | "pending"
 
 function getTodoIcon(status: TodoStatus | null) {
 	switch (status) {
@@ -11,6 +11,8 @@ function getTodoIcon(status: TodoStatus | null) {
 			return <Check className={`size-3 mt-1 shrink-0`} />
 		case "in_progress":
 			return <ArrowRight className="size-3 mt-1 shrink-0" />
+		case "testing":
+			return <FlaskConical className="size-3 mt-1 shrink-0 text-vscode-charts-purple" />
 		default:
 			return <SquareDashed className="size-3 mt-1 shrink-0" />
 	}
@@ -89,7 +91,11 @@ export function TodoListDisplay({ todos }: { todos: any[] }) {
 								className={cn(
 									"font-light flex flex-row gap-2 items-start min-h-[20px] leading-normal mb-2",
 									todo.status === "in_progress" && "text-vscode-charts-yellow",
-									todo.status !== "in_progress" && todo.status !== "completed" && "opacity-60",
+									todo.status === "testing" && "text-vscode-charts-purple",
+									todo.status !== "in_progress" &&
+										todo.status !== "testing" &&
+										todo.status !== "completed" &&
+										"opacity-60",
 								)}>
 								{icon}
 								<span>{todo.content}</span>

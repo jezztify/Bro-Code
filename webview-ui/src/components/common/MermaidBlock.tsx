@@ -5,6 +5,8 @@ import { useDebounceEffect } from "@src/utils/useDebounceEffect"
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useCopyToClipboard } from "@src/utils/clipboard"
+import { useMobileMode } from "@src/utils/useMobileMode"
+import { MobileImageViewer } from "@src/components/mobile/MobileImageViewer"
 import CodeBlock from "./CodeBlock"
 import { MermaidButton } from "@/components/common/MermaidButton"
 
@@ -92,6 +94,8 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [isErrorExpanded, setIsErrorExpanded] = useState(false)
+	const [lightboxSrc, setLightboxSrc] = useState<string | undefined>(undefined)
+	const isMobile = useMobileMode()
 	const { showCopyFeedback, copyWithFeedback } = useCopyToClipboard()
 	const { t } = useAppTranslation()
 
@@ -142,10 +146,17 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 
 		try {
 			const pngDataUrl = await svgToPng(svgEl)
-			vscode.postMessage({
-				type: "openImage",
-				text: pngDataUrl,
-			})
+
+			// No extension host to open a VS Code editor tab on in mobile mode;
+			// show the in-page lightbox instead (see MobileImageViewer.tsx).
+			if (isMobile) {
+				setLightboxSrc(pngDataUrl)
+			} else {
+				vscode.postMessage({
+					type: "openImage",
+					text: pngDataUrl,
+				})
+			}
 		} catch (err) {
 			console.error("Error converting SVG to PNG:", err)
 		}
@@ -219,6 +230,7 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 					<SvgContainer onClick={handleClick} ref={containerRef} $isLoading={isLoading}></SvgContainer>
 				</MermaidButton>
 			)}
+			{isMobile && <MobileImageViewer src={lightboxSrc} onClose={() => setLightboxSrc(undefined)} />}
 		</MermaidBlockContainer>
 	)
 }

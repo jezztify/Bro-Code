@@ -1,0 +1,15 @@
+<todo_list_after_planning>
+  <rule>
+    Whenever a task involves creating a plan (breaking a request into multiple
+    steps, phases, or a sequence of actions before implementation), immediately
+    provide a todo list reflecting that plan using the todo list tool.
+  </rule>
+  <rule>
+    The todo list must be created before starting implementation of the plan
+    and kept updated as steps are completed.
+  </rule>
+  <rule>
+    This applies across all modes; any plan produced during a session must be
+    accompanied by a corresponding todo list.
+  </rule>
+</todo_list_after_planning>

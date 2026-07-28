@@ -125,6 +125,7 @@ export const taskPropertiesSchema = z.object({
 			total: z.number(),
 			completed: z.number(),
 			inProgress: z.number(),
+			inTesting: z.number(),
 			pending: z.number(),
 		})
 		.optional(),

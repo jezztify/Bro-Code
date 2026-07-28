@@ -13,6 +13,7 @@ import { Icon, type IconName } from "./Icon.js"
 const STATUS_ICON_NAMES: Record<TodoItem["status"], IconName> = {
 	completed: "checkbox-checked",
 	in_progress: "checkbox-progress",
+	testing: "checkbox-testing",
 	pending: "checkbox",
 }
 
@@ -25,6 +26,8 @@ function getStatusColor(status: TodoItem["status"]): string {
 			return theme.successColor
 		case "in_progress":
 			return theme.warningColor
+		case "testing":
+			return theme.testingColor
 		case "pending":
 		default:
 			return theme.dimText
@@ -142,7 +145,9 @@ function TodoDisplay({
 										? "done"
 										: todo.status === "in_progress"
 											? "started"
-											: "reset"}
+											: todo.status === "testing"
+												? "testing"
+												: "reset"}
 									]
 								</Text>
 							)}

@@ -30,12 +30,14 @@ import { ProfileValidator } from "@roo/ProfileValidator"
 import { getLatestTodo } from "@roo/todo"
 
 import { vscode } from "@src/utils/vscode"
+import { useMobileMode } from "@src/utils/useMobileMode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 import RooHero from "@src/components/welcome/RooHero"
 import RooTips from "@src/components/welcome/RooTips"
 import { StandardTooltip, Button } from "@src/components/ui"
+import { MobileImagePicker, type MobileImagePickerRef } from "@src/components/mobile/MobileImagePicker"
 
 import TelemetryBanner from "../common/TelemetryBanner"
 import VersionIndicator from "../common/VersionIndicator"
@@ -896,7 +898,21 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	const { info: model } = useSelectedModel(apiConfiguration)
 
-	const selectImages = useCallback(() => vscode.postMessage({ type: "selectImages" }), [])
+	const isMobile = useMobileMode()
+	const mobileImagePickerRef = useRef<MobileImagePickerRef>(null)
+
+	// In mobile mode there's no extension-host native file dialog to round-trip
+	// to (`webviewMessageHandler.ts`'s "selectImages" case uses VS Code's
+	// `showOpenDialog`), so open the in-page `<input type="file">` picker
+	// instead - it appends straight into `selectedImages` via `onImagesSelected`
+	// below, so no message-type changes are needed either way.
+	const selectImages = useCallback(() => {
+		if (isMobile) {
+			mobileImagePickerRef.current?.open()
+		} else {
+			vscode.postMessage({ type: "selectImages" })
+		}
+	}, [isMobile])
 
 	const shouldDisableImages = !model?.supportsImages || selectedImages.length >= MAX_IMAGES_PER_MESSAGE
 
@@ -1887,6 +1903,14 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			)}
 
 			<div id="roo-portal" />
+			{isMobile && (
+				<MobileImagePicker
+					ref={mobileImagePickerRef}
+					onImagesSelected={(dataUrls) =>
+						setSelectedImages((prevImages) => [...prevImages, ...dataUrls].slice(0, MAX_IMAGES_PER_MESSAGE))
+					}
+				/>
+			)}
 		</div>
 	)
 }

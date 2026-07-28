@@ -8,11 +8,14 @@ import TranslationProvider from "./i18n/TranslationContext"
 import { MarketplaceViewStateManager } from "./components/marketplace/MarketplaceViewStateManager"
 
 import { vscode } from "./utils/vscode"
+import { useMobileMode } from "./utils/useMobileMode"
 import { telemetryClient } from "./utils/TelemetryClient"
 import { initializeSourceMaps, exposeSourceMapsForDebugging } from "./utils/sourceMapInitializer"
 import { ExtensionStateContextProvider, useExtensionState } from "./context/ExtensionStateContext"
+import MobileApp from "./components/mobile/MobileApp"
 import ChatView, { ChatViewRef } from "./components/chat/ChatView"
 import HistoryView from "./components/history/HistoryView"
+import { KanbanBoardView } from "./components/kanban/KanbanBoardView"
 import SettingsView, { SettingsViewRef } from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeViewProvider"
 import { MarketplaceView } from "./components/marketplace/MarketplaceView"
@@ -23,7 +26,7 @@ import { useAddNonInteractiveClickListener } from "./components/ui/hooks/useNonI
 import { TooltipProvider } from "./components/ui/tooltip"
 import { STANDARD_TOOLTIP_DELAY } from "./components/ui/standard-tooltip"
 
-type Tab = "settings" | "history" | "chat" | "marketplace"
+type Tab = "settings" | "history" | "chat" | "marketplace" | "kanban"
 
 interface DeleteMessageDialogState {
 	isOpen: boolean
@@ -62,6 +65,8 @@ const App = () => {
 		renderContext,
 		mdmCompliant,
 	} = useExtensionState()
+
+	const isMobileMode = useMobileMode()
 
 	// Create a persistent state manager
 	const marketplaceStateManager = useMemo(() => new MarketplaceViewStateManager(), [])
@@ -109,6 +114,7 @@ const App = () => {
 
 	const [currentSection, setCurrentSection] = useState<string | undefined>(undefined)
 	const [currentMarketplaceTab, setCurrentMarketplaceTab] = useState<string | undefined>(undefined)
+	const [kanbanRootTaskId, setKanbanRootTaskId] = useState<string | undefined>(undefined)
 
 	const onMessage = useCallback(
 		(e: MessageEvent) => {
@@ -123,6 +129,7 @@ const App = () => {
 					const targetSection = message.values?.section as string | undefined
 					setCurrentSection(targetSection)
 					setCurrentMarketplaceTab(undefined)
+					setKanbanRootTaskId(message.values?.rootTaskId as string | undefined)
 				} else {
 					// Handle other actions using the mapping
 					const newTab = tabsByMessageAction[message.action]
@@ -227,6 +234,16 @@ const App = () => {
 		return null
 	}
 
+	// Mobile mode skips the Settings/History/MCP/Marketplace tab shell entirely
+	// in favor of a dedicated full-screen chat shell - there's no equivalent UI
+	// chrome to switch tabs into on a phone (see the mobile-server plan's Phase
+	// B). Known v1 limitation: this doesn't special-case `showWelcome` the way
+	// the desktop tab shell below does, since the mobile server is aimed at an
+	// already-configured desktop install.
+	if (isMobileMode) {
+		return <MobileApp />
+	}
+
 	// Do not conditionally load ChatView, it's expensive and there's state we
 	// don't want to lose (user input, disableInput, askResponse promise, etc.)
 	const isSetupGatedTab = showWelcome && tab !== "settings" && tab !== "marketplace"
@@ -236,6 +253,7 @@ const App = () => {
 	) : (
 		<>
 			{tab === "history" && <HistoryView onDone={() => switchTab("chat")} />}
+			{tab === "kanban" && <KanbanBoardView rootTaskId={kanbanRootTaskId} onDone={() => switchTab("chat")} />}
 			{tab === "settings" && (
 				<SettingsView ref={settingsRef} onDone={() => setTab("chat")} targetSection={currentSection} />
 			)}

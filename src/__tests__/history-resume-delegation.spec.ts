@@ -1286,4 +1286,167 @@ describe("History resume delegation - parent metadata transitions", () => {
 			expect(eventNames).toContain(RooCodeEventName.TaskDelegationResumed)
 		})
 	})
+
+	describe("Kanban board auto-transition on subtask completion", () => {
+		function makeTodoUiMessage(todos: unknown[], ts: number) {
+			return {
+				type: "say",
+				say: "user_edit_todos",
+				text: JSON.stringify({ tool: "updateTodoList", todos }),
+				ts,
+			}
+		}
+
+		it("auto-moves the linked in_progress item to testing, leaving unrelated items untouched", async () => {
+			const parentItem = {
+				id: "p-kanban",
+				status: "delegated",
+				awaitingChildId: "c-kanban",
+				childIds: [],
+				ts: 100,
+				task: "Parent",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
+			}
+			const taskHistoryStore = makeTaskHistoryStoreStub({ id: "c-kanban", status: "active" }, parentItem)
+			const provider = makeProviderStub({
+				contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
+				getTaskWithId: vi.fn().mockResolvedValue({ historyItem: parentItem }),
+				emit: vi.fn(),
+				getCurrentTask: vi.fn(() => ({ taskId: "c-kanban" })),
+				removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+				createTaskWithHistoryItem: vi.fn().mockResolvedValue({
+					taskId: "p-kanban",
+					rootTaskId: "p-kanban",
+					resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
+					overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
+					overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
+				}),
+				taskHistoryStore,
+			} as any)
+
+			const initialTodos = [
+				{ id: "todo-linked", content: "Implement auth", status: "in_progress", relatedTaskId: "c-kanban" },
+				{ id: "todo-other", content: "Write docs", status: "pending" },
+			]
+			const existingUiMessages = [makeTodoUiMessage(initialTodos, 50)]
+
+			vi.mocked(readTaskMessages).mockResolvedValue(existingUiMessages as any)
+			vi.mocked(readApiMessages).mockResolvedValue([])
+
+			await (ClineProvider.prototype as any).reopenParentFromDelegation.call(provider, {
+				parentTaskId: "p-kanban",
+				childTaskId: "c-kanban",
+				completionResultSummary: "Auth implemented",
+			})
+
+			// A new user_edit_todos message must have been appended (before the subtask_result
+			// message) reflecting the linked item moved to "testing", with the unrelated item
+			// left exactly as it was.
+			const uiCall = vi.mocked(saveTaskMessages).mock.calls[0][0]
+			const todoMessages = uiCall.messages.filter((m: any) => m.say === "user_edit_todos")
+			expect(todoMessages).toHaveLength(2) // original + auto-transition
+			const finalTodos = JSON.parse(todoMessages[1].text!).todos
+			expect(finalTodos).toEqual([
+				{ id: "todo-linked", content: "Implement auth", status: "testing", relatedTaskId: "c-kanban" },
+				{ id: "todo-other", content: "Write docs", status: "pending" },
+			])
+
+			// The auto-transition message must be appended before the subtask_result message.
+			const subtaskResultIdx = uiCall.messages.findIndex((m: any) => m.say === "subtask_result")
+			const autoTransitionIdx = uiCall.messages.indexOf(todoMessages[1])
+			expect(autoTransitionIdx).toBeLessThan(subtaskResultIdx)
+		})
+
+		it("does not touch the todo list when no item is linked to the completing child", async () => {
+			const parentItem = {
+				id: "p-kanban2",
+				status: "delegated",
+				awaitingChildId: "c-kanban2",
+				childIds: [],
+				ts: 100,
+				task: "Parent",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
+			}
+			const taskHistoryStore = makeTaskHistoryStoreStub({ id: "c-kanban2", status: "active" }, parentItem)
+			const provider = makeProviderStub({
+				contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
+				getTaskWithId: vi.fn().mockResolvedValue({ historyItem: parentItem }),
+				emit: vi.fn(),
+				getCurrentTask: vi.fn(() => ({ taskId: "c-kanban2" })),
+				removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+				createTaskWithHistoryItem: vi.fn().mockResolvedValue({
+					taskId: "p-kanban2",
+					resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
+					overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
+					overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
+				}),
+				taskHistoryStore,
+			} as any)
+
+			const initialTodos = [{ id: "todo-unrelated", content: "Something else", status: "pending" }]
+			vi.mocked(readTaskMessages).mockResolvedValue([makeTodoUiMessage(initialTodos, 50)] as any)
+			vi.mocked(readApiMessages).mockResolvedValue([])
+
+			await (ClineProvider.prototype as any).reopenParentFromDelegation.call(provider, {
+				parentTaskId: "p-kanban2",
+				childTaskId: "c-kanban2",
+				completionResultSummary: "Done",
+			})
+
+			const uiCall = vi.mocked(saveTaskMessages).mock.calls[0][0]
+			const todoMessages = uiCall.messages.filter((m: any) => m.say === "user_edit_todos")
+			// Only the original message — no auto-transition message appended.
+			expect(todoMessages).toHaveLength(1)
+		})
+
+		it("does not auto-transition a pending item even if it happens to carry a matching relatedTaskId", async () => {
+			// Guards the transition table: only in_progress -> testing via "auto" is legal.
+			const parentItem = {
+				id: "p-kanban3",
+				status: "delegated",
+				awaitingChildId: "c-kanban3",
+				childIds: [],
+				ts: 100,
+				task: "Parent",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
+			}
+			const taskHistoryStore = makeTaskHistoryStoreStub({ id: "c-kanban3", status: "active" }, parentItem)
+			const provider = makeProviderStub({
+				contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
+				getTaskWithId: vi.fn().mockResolvedValue({ historyItem: parentItem }),
+				emit: vi.fn(),
+				getCurrentTask: vi.fn(() => ({ taskId: "c-kanban3" })),
+				removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+				createTaskWithHistoryItem: vi.fn().mockResolvedValue({
+					taskId: "p-kanban3",
+					resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
+					overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
+					overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
+				}),
+				taskHistoryStore,
+			} as any)
+
+			const initialTodos = [
+				{ id: "todo-weird", content: "Odd state", status: "pending", relatedTaskId: "c-kanban3" },
+			]
+			vi.mocked(readTaskMessages).mockResolvedValue([makeTodoUiMessage(initialTodos, 50)] as any)
+			vi.mocked(readApiMessages).mockResolvedValue([])
+
+			await (ClineProvider.prototype as any).reopenParentFromDelegation.call(provider, {
+				parentTaskId: "p-kanban3",
+				childTaskId: "c-kanban3",
+				completionResultSummary: "Done",
+			})
+
+			const uiCall = vi.mocked(saveTaskMessages).mock.calls[0][0]
+			const todoMessages = uiCall.messages.filter((m: any) => m.say === "user_edit_todos")
+			expect(todoMessages).toHaveLength(1)
+		})
+	})
 })

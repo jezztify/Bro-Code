@@ -289,5 +289,21 @@
 		"fix": "Fix with Zoo Code",
 		"improve": "Improve with Zoo Code",
 		"addToContext": "Add to Zoo Code"
+	},
+	"mobileServer": {
+		"notification": {
+			"running": "Zoo Code mobile server running at {{url}}",
+			"copyLink": "Copy Link"
+		},
+		"statusBar": {
+			"tooltip": "Zoo Code mobile server is running. Click to show the link again."
+		},
+		"errors": {
+			"noLanAddress": "Could not start the Zoo Code mobile server: no LAN network interface was found on this machine.",
+			"startFailed": "Failed to start the Zoo Code mobile server: {{error}}"
+		},
+		"info": {
+			"noActiveTokenToRotate": "The Zoo Code mobile server isn't running and the token mode is dynamic, so there's no active token to rotate."
+		}
 	}
 }

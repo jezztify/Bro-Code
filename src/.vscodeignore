@@ -23,6 +23,12 @@
 !webview-ui/build/assets/fonts/*.woff2
 !webview-ui/build/assets/fonts/*.ttf
 
+# MobileServer serves webview-ui/build/ directly as a standalone SPA (not just the
+# specific asset URIs the desktop webview HTML references above), so every file
+# Vite emits there needs to ship, including index.html and any non-JS/CSS/font
+# asset types (e.g. .wasm/.svg/.json chunks) the finer-grained patterns above miss.
+!webview-ui/build/**
+
 # Include default themes JSON files used in getTheme
 !integrations/theme/default-themes/**
 
@@ -32,3 +38,8 @@
 !assets/icons/**
 !assets/images/**
 !assets/marketplace/**
+
+# Include MobileServer's runtime CSS fallback (see htmlInjection.ts) - kept under
+# src/ rather than webview-ui/playwright/ (a devDependency-only test fixture tree)
+# specifically so it ships in the packaged extension.
+!services/mobileServer/assets/**

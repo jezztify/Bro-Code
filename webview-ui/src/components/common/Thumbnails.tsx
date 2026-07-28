@@ -1,6 +1,8 @@
 import React, { useState, useRef, useLayoutEffect, memo } from "react"
 import { useWindowSize } from "react-use"
 import { vscode } from "@src/utils/vscode"
+import { useMobileMode } from "@src/utils/useMobileMode"
+import { MobileImageViewer } from "@src/components/mobile/MobileImageViewer"
 
 interface ThumbnailsProps {
 	images: string[]
@@ -11,8 +13,10 @@ interface ThumbnailsProps {
 
 const Thumbnails = ({ images, style, setImages, onHeightChange }: ThumbnailsProps) => {
 	const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+	const [lightboxSrc, setLightboxSrc] = useState<string | undefined>(undefined)
 	const containerRef = useRef<HTMLDivElement>(null)
 	const { width } = useWindowSize()
+	const isMobile = useMobileMode()
 
 	useLayoutEffect(() => {
 		if (containerRef.current) {
@@ -33,7 +37,13 @@ const Thumbnails = ({ images, style, setImages, onHeightChange }: ThumbnailsProp
 	const isDeletable = setImages !== undefined
 
 	const handleImageClick = (image: string) => {
-		vscode.postMessage({ type: "openImage", text: image })
+		// No extension host to round-trip "openImage" to in mobile mode; open the
+		// in-page lightbox instead (see MobileImageViewer.tsx).
+		if (isMobile) {
+			setLightboxSrc(image)
+		} else {
+			vscode.postMessage({ type: "openImage", text: image })
+		}
 	}
 
 	return (
@@ -92,6 +102,7 @@ const Thumbnails = ({ images, style, setImages, onHeightChange }: ThumbnailsProp
 					)}
 				</div>
 			))}
+			{isMobile && <MobileImageViewer src={lightboxSrc} onClose={() => setLightboxSrc(undefined)} />}
 		</div>
 	)
 }

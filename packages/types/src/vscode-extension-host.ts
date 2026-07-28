@@ -7,7 +7,7 @@ import type { ModeConfig, PromptComponent } from "./mode.js"
 import type { Experiments } from "./experiment.js"
 import type { ClineMessage, QueuedMessage, TokenUsage } from "./message.js"
 import type { MarketplaceItem, MarketplaceInstalledMetadata, InstallMarketplaceItemOptions } from "./marketplace.js"
-import type { TodoItem } from "./todo.js"
+import type { TodoItem, KanbanBoard } from "./todo.js"
 import type { CloudUserInfo, CloudOrganizationMembership, OrganizationAllowList, ShareVisibility } from "./cloud.js"
 import type { SerializedCustomToolDefinition } from "./custom-tool.js"
 import type { GitCommit } from "./git.js"
@@ -29,6 +29,7 @@ export interface ExtensionMessage {
 		| "state"
 		| "taskHistoryUpdated"
 		| "taskHistoryItemUpdated"
+		| "kanbanBoardUpdated"
 		| "selectedImages"
 		| "theme"
 		| "workspaceUpdated"
@@ -211,6 +212,8 @@ export interface ExtensionMessage {
 	taskHistory?: HistoryItem[] // For taskHistoryUpdated: full sorted task history
 	/** For taskHistoryItemUpdated: single updated/added history item */
 	taskHistoryItem?: HistoryItem
+	/** For kanbanBoardUpdated: the current kanban board read-model for the watched root task */
+	kanbanBoard?: KanbanBoard
 	// Worktree response properties
 	worktrees?: Array<{
 		path: string
@@ -344,6 +347,8 @@ export type ExtensionState = Pick<
 	currentTaskId?: string
 	currentTaskItem?: HistoryItem
 	currentTaskTodos?: TodoItem[] // Initial todos for the current task
+	/** Kanban board read-model for the root task currently being watched by the webview (see kanbanBoardOpened/Closed) */
+	kanbanBoard?: KanbanBoard
 	apiConfiguration: ProviderSettings
 	uriScheme?: string
 	shouldShowAnnouncement: boolean
@@ -487,6 +492,9 @@ export interface WebviewMessage {
 		| "deleteTaskWithId"
 		| "abandonSubtaskWithId"
 		| "exportTaskWithId"
+		| "kanbanBoardOpened"
+		| "kanbanBoardClosed"
+		| "openKanbanBoardInEditor"
 		| "importSettings"
 		| "exportSettings"
 		| "resetState"
@@ -659,7 +667,7 @@ export interface WebviewMessage {
 	text?: string
 	taskId?: string
 	editedMessageContent?: string
-	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"
+	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud" | "kanban"
 	disabled?: boolean
 	context?: string
 	dataUri?: string

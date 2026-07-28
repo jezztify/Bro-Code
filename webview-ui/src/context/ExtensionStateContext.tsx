@@ -169,18 +169,36 @@ export const mergeExtensionState = (prevState: ExtensionState, newState: Partial
 	const experiments = { ...prevExperiments, ...(newExperiments ?? {}) }
 	const rest = { ...prevRest, ...newRest }
 
-	// Protect clineMessages from stale state pushes using sequence numbering.
-	// Multiple async event sources (cloud auth, settings, task streaming) can trigger
-	// concurrent state pushes. If a stale push arrives after a newer one, its clineMessages
-	// would overwrite the newer messages. The sequence number prevents this by only applying
-	// clineMessages when the incoming seq is strictly greater than the last applied seq.
+	// Protect the current-task snapshot from stale/out-of-order state pushes using sequence
+	// numbering. Multiple async event sources (cloud auth, settings, task streaming, task
+	// delegation) can trigger concurrent state pushes, and `postMessageToWebview` is not
+	// awaited by its callers, so delivery order isn't guaranteed to match call order. If a
+	// stale push arrives after a newer one, it must not apply *part* of its snapshot - e.g.
+	// reverting currentTaskId to an old task while clineMessages stays on the new one would
+	// show the wrong task's identity/todos alongside another task's messages. clineMessages,
+	// currentTaskId, currentTaskItem, currentTaskTodos, and messageQueue all describe the same
+	// snapshot-in-time of "the current task", so they must be rejected together whenever the
+	// incoming seq isn't strictly greater than the last applied one.
 	if (
 		newState.clineMessagesSeq !== undefined &&
 		prevState.clineMessagesSeq !== undefined &&
-		newState.clineMessagesSeq <= prevState.clineMessagesSeq &&
-		newState.clineMessages !== undefined
+		newState.clineMessagesSeq <= prevState.clineMessagesSeq
 	) {
-		rest.clineMessages = prevState.clineMessages
+		if (newState.clineMessages !== undefined) {
+			rest.clineMessages = prevState.clineMessages
+		}
+		if (newState.currentTaskId !== undefined) {
+			rest.currentTaskId = prevState.currentTaskId
+		}
+		if (newState.currentTaskItem !== undefined) {
+			rest.currentTaskItem = prevState.currentTaskItem
+		}
+		if (newState.currentTaskTodos !== undefined) {
+			rest.currentTaskTodos = prevState.currentTaskTodos
+		}
+		if (newState.messageQueue !== undefined) {
+			rest.messageQueue = prevState.messageQueue
+		}
 		rest.clineMessagesSeq = prevState.clineMessagesSeq
 	}
 
@@ -474,6 +492,12 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 								prevState.currentTaskItem?.id === item.id ? item : prevState.currentTaskItem,
 						}
 					})
+					break
+				}
+				case "kanbanBoardUpdated": {
+					if (message.kanbanBoard) {
+						setState((prevState) => ({ ...prevState, kanbanBoard: message.kanbanBoard }))
+					}
 					break
 				}
 			}

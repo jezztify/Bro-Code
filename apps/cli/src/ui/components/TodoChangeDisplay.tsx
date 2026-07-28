@@ -11,6 +11,7 @@ import * as theme from "../theme.js"
 const STATUS_ICONS = {
 	completed: "✓",
 	in_progress: "→",
+	testing: "⚗",
 	pending: "○",
 } as const
 
@@ -23,6 +24,8 @@ function getStatusColor(status: TodoItem["status"]): string {
 			return theme.successColor
 		case "in_progress":
 			return theme.warningColor
+		case "testing":
+			return theme.testingColor
 		case "pending":
 		default:
 			return theme.dimText
@@ -73,6 +76,10 @@ function TodoChangeDisplay({ previousTodos, newTodos }: TodoChangeDisplayProps) 
 				const previousTodo = previousTodos.find((p) => p.id === newTodo.id || p.content === newTodo.content)
 				return !previousTodo || previousTodo.status !== "in_progress"
 			}
+			if (newTodo.status === "testing") {
+				const previousTodo = previousTodos.find((p) => p.id === newTodo.id || p.content === newTodo.content)
+				return !previousTodo || previousTodo.status !== "testing"
+			}
 			return false
 		})
 	}
@@ -118,6 +125,8 @@ function TodoChangeDisplay({ previousTodos, newTodos }: TodoChangeDisplayProps) 
 						changeLabel = "done"
 					} else if (todo.status === "in_progress" && previousTodo.status !== "in_progress") {
 						changeLabel = "started"
+					} else if (todo.status === "testing" && previousTodo.status !== "testing") {
+						changeLabel = "testing"
 					}
 
 					return (

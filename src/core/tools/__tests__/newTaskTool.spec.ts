@@ -121,6 +121,7 @@ const withNativeArgs = (block: ToolUse<"new_task">): ToolUse<"new_task"> => ({
 		message: block.params.message,
 		todos: block.params.todos,
 		tier: block.params.tier,
+		todoId: block.params.todoId,
 	} as unknown as NativeToolArgs["new_task"],
 })
 
@@ -778,5 +779,217 @@ describe("newTaskTool delegation flow", () => {
 
 		const call = providerSpy.delegateParentAndOpenChild.mock.calls[0][0]
 		expect(call.tier).toBeUndefined()
+	})
+
+	it("forwards a valid pending todoId through to delegateParentAndOpenChild", async () => {
+		const providerSpy = {
+			getState: vi.fn().mockResolvedValue({
+				mode: "ask",
+				experiments: {},
+			}),
+			delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-4" }),
+			handleModeSwitch: vi.fn(),
+		} as any
+
+		const localCline = {
+			ask: vi.fn(),
+			sayAndCreateMissingParamError: mockSayAndCreateMissingParamError,
+			emit: vi.fn(),
+			recordToolError: mockRecordToolError,
+			consecutiveMistakeCount: 0,
+			isPaused: false,
+			pausedModeSlug: "ask",
+			taskId: "mock-parent-task-id",
+			enableCheckpoints: false,
+			checkpointSave: mockCheckpointSave,
+			startSubtask: vi.fn(),
+			todoList: [{ id: "todo-1", content: "Implement auth", status: "pending" }],
+			providerRef: {
+				deref: vi.fn(() => providerSpy),
+			},
+		}
+
+		const block: ToolUse<"new_task"> = {
+			type: "tool_use",
+			name: "new_task",
+			params: {
+				mode: "code",
+				message: "Implement auth",
+				todoId: "todo-1",
+			},
+			partial: false,
+		}
+
+		await newTaskTool.handle(localCline as any, withNativeArgs(block), {
+			askApproval: mockAskApproval,
+			handleError: mockHandleError,
+			pushToolResult: mockPushToolResult,
+		})
+
+		expect(providerSpy.delegateParentAndOpenChild).toHaveBeenCalledWith(
+			expect.objectContaining({ todoId: "todo-1" }),
+		)
+	})
+
+	it("errors instead of delegating when todoId references a non-existent todo", async () => {
+		const providerSpy = {
+			getState: vi.fn().mockResolvedValue({
+				mode: "ask",
+				experiments: {},
+			}),
+			delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-5" }),
+			handleModeSwitch: vi.fn(),
+		} as any
+
+		const localCline = {
+			ask: vi.fn(),
+			sayAndCreateMissingParamError: mockSayAndCreateMissingParamError,
+			emit: vi.fn(),
+			recordToolError: mockRecordToolError,
+			consecutiveMistakeCount: 0,
+			isPaused: false,
+			pausedModeSlug: "ask",
+			taskId: "mock-parent-task-id",
+			enableCheckpoints: false,
+			checkpointSave: mockCheckpointSave,
+			startSubtask: vi.fn(),
+			todoList: [{ id: "todo-1", content: "Implement auth", status: "pending" }],
+			providerRef: {
+				deref: vi.fn(() => providerSpy),
+			},
+		}
+
+		const block: ToolUse<"new_task"> = {
+			type: "tool_use",
+			name: "new_task",
+			params: {
+				mode: "code",
+				message: "Implement auth",
+				todoId: "does-not-exist",
+			},
+			partial: false,
+		}
+
+		await newTaskTool.handle(localCline as any, withNativeArgs(block), {
+			askApproval: mockAskApproval,
+			handleError: mockHandleError,
+			pushToolResult: mockPushToolResult,
+		})
+
+		expect(providerSpy.delegateParentAndOpenChild).not.toHaveBeenCalled()
+		expect(localCline.recordToolError).toHaveBeenCalledWith("new_task")
+		expect(localCline.consecutiveMistakeCount).toBe(1)
+		expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("Invalid todoId"))
+	})
+
+	it("errors instead of delegating when todoId references a non-pending todo", async () => {
+		const providerSpy = {
+			getState: vi.fn().mockResolvedValue({
+				mode: "ask",
+				experiments: {},
+			}),
+			delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-6" }),
+			handleModeSwitch: vi.fn(),
+		} as any
+
+		const localCline = {
+			ask: vi.fn(),
+			sayAndCreateMissingParamError: mockSayAndCreateMissingParamError,
+			emit: vi.fn(),
+			recordToolError: mockRecordToolError,
+			consecutiveMistakeCount: 0,
+			isPaused: false,
+			pausedModeSlug: "ask",
+			taskId: "mock-parent-task-id",
+			enableCheckpoints: false,
+			checkpointSave: mockCheckpointSave,
+			startSubtask: vi.fn(),
+			todoList: [{ id: "todo-1", content: "Implement auth", status: "in_progress" }],
+			providerRef: {
+				deref: vi.fn(() => providerSpy),
+			},
+		}
+
+		const block: ToolUse<"new_task"> = {
+			type: "tool_use",
+			name: "new_task",
+			params: {
+				mode: "code",
+				message: "Implement auth",
+				todoId: "todo-1",
+			},
+			partial: false,
+		}
+
+		await newTaskTool.handle(localCline as any, withNativeArgs(block), {
+			askApproval: mockAskApproval,
+			handleError: mockHandleError,
+			pushToolResult: mockPushToolResult,
+		})
+
+		expect(providerSpy.delegateParentAndOpenChild).not.toHaveBeenCalled()
+		expect(localCline.recordToolError).toHaveBeenCalledWith("new_task")
+		expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("not pending"))
+	})
+
+	it("discards the dangling partial newTask ask when rejecting an invalid todoId", async () => {
+		// handlePartial already rendered this as an "ask" message while the tool call streamed
+		// in. Rejecting the todoId (before ever reaching askApproval) must not leave it behind -
+		// otherwise ChatRow's newTask-position -> childIds lookup drifts for every later
+		// new_task call in this task, pointing "View task" at the wrong (an earlier) child.
+		const danglingAsk = {
+			ts: 123,
+			type: "ask" as const,
+			ask: "tool" as const,
+			partial: true,
+			text: JSON.stringify({ tool: "newTask", mode: "Code", content: "Implement auth" }),
+		}
+
+		const providerSpy = {
+			getState: vi.fn().mockResolvedValue({ mode: "ask", experiments: {} }),
+			delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-6" }),
+			handleModeSwitch: vi.fn(),
+		} as any
+
+		const overwriteClineMessages = vi.fn()
+
+		const localCline = {
+			ask: vi.fn(),
+			sayAndCreateMissingParamError: mockSayAndCreateMissingParamError,
+			emit: vi.fn(),
+			recordToolError: mockRecordToolError,
+			consecutiveMistakeCount: 0,
+			isPaused: false,
+			pausedModeSlug: "ask",
+			taskId: "mock-parent-task-id",
+			enableCheckpoints: false,
+			checkpointSave: mockCheckpointSave,
+			startSubtask: vi.fn(),
+			todoList: [{ id: "todo-1", content: "Implement auth", status: "in_progress" }],
+			clineMessages: [danglingAsk],
+			overwriteClineMessages,
+			providerRef: {
+				deref: vi.fn(() => providerSpy),
+			},
+		}
+
+		const block: ToolUse<"new_task"> = {
+			type: "tool_use",
+			name: "new_task",
+			params: {
+				mode: "code",
+				message: "Implement auth",
+				todoId: "todo-1",
+			},
+			partial: false,
+		}
+
+		await newTaskTool.handle(localCline as any, withNativeArgs(block), {
+			askApproval: mockAskApproval,
+			handleError: mockHandleError,
+			pushToolResult: mockPushToolResult,
+		})
+
+		expect(overwriteClineMessages).toHaveBeenCalledWith([])
 	})
 })

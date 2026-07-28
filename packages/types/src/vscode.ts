@@ -34,6 +34,7 @@ export const commandIds = [
 	"marketplaceButtonClicked",
 	"popoutButtonClicked",
 	"settingsButtonClicked",
+	"kanbanButtonClicked",
 
 	"openInNewTab",
 
@@ -46,6 +47,10 @@ export const commandIds = [
 	"acceptInput",
 	"focusPanel",
 	"toggleAutoApprove",
+
+	"startMobileServer",
+	"stopMobileServer",
+	"regenerateMobileServerToken",
 
 	"showRipgrepDiagnostic",
 ] as const

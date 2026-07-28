@@ -1,3 +1,13 @@
+/*
+ * Light-theme companion to `vscode-theme-dark.css` (which documents every needed
+ * `--vscode-*` fallback value, just dark-only). Values approximate VS Code's
+ * built-in light themes.
+ *
+ * Scoped to `.vscode-light` rather than `:root`: `index.tsx` imports this
+ * alongside the dark stylesheet, which owns `:root`, so light values only apply
+ * to trees that opt in via the class. Font/metric variables are theme-independent
+ * and are inherited from the dark file's `:root` block.
+ */
 .vscode-light {
 	color-scheme: light;
 	--vscode-foreground: #3b3b3b;
@@ -7,28 +17,64 @@
 	--vscode-focusBorder: #0090f1;
 	--vscode-editor-foreground: #333333;
 	--vscode-editor-background: #ffffff;
+	--vscode-editorGroup-border: #e5e5e5;
+	--vscode-editorWarning-foreground: #bf8803;
+	--vscode-editorWarning-background: #fff8c5;
 	--vscode-button-foreground: #ffffff;
 	--vscode-button-background: #007acc;
 	--vscode-button-hoverBackground: #0062a3;
+	--vscode-button-secondaryForeground: #3b3b3b;
+	--vscode-button-secondaryBackground: #e5e5e5;
 	--vscode-dropdown-foreground: #3b3b3b;
 	--vscode-dropdown-background: #ffffff;
 	--vscode-dropdown-border: #cecece;
 	--vscode-input-foreground: #3b3b3b;
 	--vscode-input-background: #ffffff;
 	--vscode-input-border: #cecece;
+	--vscode-badge-foreground: #ffffff;
+	--vscode-badge-background: #005fb8;
+	--vscode-notifications-foreground: #3b3b3b;
+	--vscode-notifications-background: #ffffff;
+	--vscode-notifications-border: #e5e5e5;
 	--vscode-list-hoverForeground: #3b3b3b;
 	--vscode-list-hoverBackground: #e8e8e8;
 	--vscode-list-focusBackground: #d6ebff;
 	--vscode-list-activeSelectionBackground: #0060c0;
 	--vscode-list-activeSelectionForeground: #ffffff;
 	--vscode-toolbar-hoverBackground: #e8e8e8;
+	--vscode-toolbar-hoverOutline: #00000000;
+	--vscode-panel-border: #e5e5e5;
+	--vscode-progressBar-background: #005fb8;
+	--vscode-sideBar-foreground: #3b3b3b;
+	--vscode-sideBar-background: #f8f8f8;
+	--vscode-sideBar-border: #e5e5e5;
+	--vscode-sideBarSectionHeader-foreground: #3b3b3b;
+	--vscode-sideBarSectionHeader-background: #00000000;
+	--vscode-sideBarSectionHeader-border: #e5e5e5;
+	--vscode-titleBar-activeForeground: #3b3b3b;
+	--vscode-titleBar-inactiveForeground: #8b8b8b;
+	--vscode-charts-blue: #1a85ff;
+	--vscode-charts-green: #388a34;
+	--vscode-charts-orange: #d18616;
+	--vscode-charts-red: #d1291d;
+	--vscode-charts-yellow: #bf8803;
+	--vscode-inputValidation-infoForeground: #3b3b3b;
+	--vscode-inputValidation-infoBackground: #d6ecff;
+	--vscode-inputValidation-infoBorder: #005fb8;
+	--vscode-inputValidation-warningForeground: #3b3b3b;
+	--vscode-inputValidation-warningBackground: #fff8c5;
+	--vscode-inputValidation-warningBorder: #bf8803;
 	--vscode-widget-border: #d4d4d4;
 	--vscode-widget-shadow: #00000029;
+	--vscode-textLink-foreground: #005fb8;
+	--vscode-textCodeBlock-background: #f2f2f2;
 	--vscode-menu-foreground: #3b3b3b;
 	--vscode-menu-background: #ffffff;
 	--vscode-editorHoverWidget-foreground: #3b3b3b;
 	--vscode-editorHoverWidget-background: #f8f8f8;
 	--vscode-editorHoverWidget-border: #c8c8c8;
+	--vscode-banner-background: #d6ecff;
+	--vscode-banner-foreground: #3b3b3b;
 	--vscode-scrollbarSlider-background: #64646466;
 	--vscode-scrollbarSlider-hoverBackground: #64646499;
 	--vscode-scrollbarSlider-activeBackground: #00000099;

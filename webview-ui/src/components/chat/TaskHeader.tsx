@@ -9,6 +9,7 @@ import {
 	ArrowLeft,
 	ArrowRight,
 	Info,
+	LayoutGrid,
 } from "lucide-react"
 import prettyBytes from "pretty-bytes"
 
@@ -120,6 +121,18 @@ const TaskHeader = ({
 	// Determine if this is a subtask (has a parent)
 	const isSubtask = !!parentTaskId
 
+	const handleOpenKanbanBoard = () => {
+		if (!currentTaskItem) {
+			return
+		}
+		// Opens in its own editor tab rather than replacing the current chat view - the board
+		// always shows the root task's plan, even when opened from a subtask's header.
+		vscode.postMessage({
+			type: "openKanbanBoardInEditor",
+			text: currentTaskItem.rootTaskId ?? currentTaskItem.id,
+		})
+	}
+
 	const handleBackToParent = () => {
 		if (parentTaskId) {
 			vscode.postMessage({ type: "showTaskWithId", text: parentTaskId })
@@ -159,6 +172,18 @@ const TaskHeader = ({
 						<span className="codicon codicon-sync text-[11px]" />
 						{t("chat:task.waitingOnSubtask")}
 						<ArrowRight className="size-3" />
+					</Button>
+				</div>
+			)}
+			{currentTaskItem && (
+				<div className="mb-2" onClick={(e) => e.stopPropagation()}>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={handleOpenKanbanBoard}
+						className="flex items-center gap-1.5 text-xs text-vscode-descriptionForeground hover:text-vscode-foreground">
+						<LayoutGrid className="size-3" />
+						{t("chat:task.openKanbanBoard")}
 					</Button>
 				</div>
 			)}

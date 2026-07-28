@@ -36,6 +36,7 @@ import { kimiCodeOAuthManager } from "./integrations/kimi-code/oauth"
 import { McpServerManager } from "./services/mcp/McpServerManager"
 import { CodeIndexManager } from "./services/code-index/manager"
 import { MdmService } from "./services/mdm/MdmService"
+import { MobileServer } from "./services/mobileServer/MobileServer"
 import { migrateSettings } from "./utils/migrateSettings"
 import { autoImportSettings } from "./utils/autoImportSettings"
 import { API } from "./extension/api"
@@ -256,7 +257,23 @@ export async function activate(context: vscode.ExtensionContext) {
 		)
 	}
 
-	registerCommands({ context, outputChannel, provider })
+	// Bound to this exact sidebar `provider` instance (not
+	// `ClineProvider.getVisibleInstance()`, which returns `undefined` whenever the
+	// VS Code window is minimized/backgrounded - exactly when a phone client is
+	// most useful). Constructed before `registerCommands` so the
+	// startMobileServer/stopMobileServer commands can close over it directly.
+	const mobileServer = new MobileServer(provider, outputChannel, context)
+	context.subscriptions.push(mobileServer)
+
+	registerCommands({ context, outputChannel, provider, mobileServer })
+
+	if (vscode.workspace.getConfiguration(Package.name).get<boolean>("mobileServer.autoStart", false)) {
+		void mobileServer.start().catch((error) => {
+			outputChannel.appendLine(
+				`[MobileServer] Auto-start failed: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		})
+	}
 
 	/**
 	 * We use the text document content provider API to show the left side for diff

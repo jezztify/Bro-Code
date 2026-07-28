@@ -83,6 +83,8 @@ export const toolParamNames = [
 	"line_ranges",
 	// new_task parameter for per-step difficulty-tier model routing
 	"tier",
+	// new_task parameter linking a delegated subtask to a kanban board todo item
+	"todoId",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]
@@ -104,7 +106,13 @@ export type NativeToolArgs = {
 	edit_file: { file_path: string; old_string: string; new_string: string; expected_replacements?: number }
 	apply_patch: { patch: string }
 	list_files: { path: string; recursive?: boolean }
-	new_task: { mode: string; message: string; todos?: string; tier?: "trivial" | "standard" | "hard" }
+	new_task: {
+		mode: string
+		message: string
+		todos?: string
+		tier?: "trivial" | "standard" | "hard"
+		todoId?: string
+	}
 	ask_followup_question: {
 		question: string
 		follow_up: Array<{ text: string; mode?: string }>
@@ -242,7 +250,7 @@ export interface SwitchModeToolUse extends ToolUse<"switch_mode"> {
 
 export interface NewTaskToolUse extends ToolUse<"new_task"> {
 	name: "new_task"
-	params: Partial<Pick<Record<ToolParamName, string>, "mode" | "message" | "todos" | "tier">>
+	params: Partial<Pick<Record<ToolParamName, string>, "mode" | "message" | "todos" | "tier" | "todoId">>
 }
 
 export interface RunSlashCommandToolUse extends ToolUse<"run_slash_command"> {

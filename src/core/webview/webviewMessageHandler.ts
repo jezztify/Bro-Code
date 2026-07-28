@@ -838,6 +838,22 @@ export const webviewMessageHandler = async (
 		case "showTaskWithId":
 			await provider.showTaskWithId(message.text!)
 			break
+		case "kanbanBoardOpened":
+			provider.setKanbanWatchedRootTaskId(message.text!)
+			break
+		case "kanbanBoardClosed":
+			provider.setKanbanWatchedRootTaskId(undefined)
+			break
+		case "openKanbanBoardInEditor": {
+			// Dynamic import: registerCommands.ts imports ClineProvider, which would create a
+			// module cycle if this file imported it statically at the top level.
+			const { openKanbanBoardInNewTab } = await import("../../activate/registerCommands")
+			void openKanbanBoardInNewTab(
+				{ context: provider.context, outputChannel: provider.getOutputChannel() },
+				message.text,
+			).catch((error) => provider.log(`[openKanbanBoardInEditor] openKanbanBoardInNewTab failed: ${error}`))
+			break
+		}
 		case "condenseTaskContextRequest":
 			await provider.condenseTaskContext(message.text!)
 			break

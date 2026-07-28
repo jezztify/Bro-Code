@@ -1,10 +1,11 @@
 // npx vitest run __tests__/provider-delegation.spec.ts
 
 import { describe, it, expect, vi } from "vitest"
-import type { HistoryItem } from "@roo-code/types"
+import type { HistoryItem, ClineMessage } from "@roo-code/types"
 import { RooCodeEventName } from "@roo-code/types"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { TaskScheduler } from "../core/task/TaskScheduler"
+import { getLatestTodo } from "../shared/todo"
 
 const parentHistoryItem: HistoryItem = {
 	id: "parent-1",
@@ -109,6 +110,184 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 
 		// Mode switch
 		expect(handleModeSwitch).toHaveBeenCalledWith("code")
+	})
+
+	it("with todoId: flips the linked item to in_progress, links relatedTaskId, and persists via say() before disposal", async () => {
+		const providerEmit = vi.fn()
+		const parentSay = vi.fn().mockResolvedValue(undefined)
+		const parentTask = {
+			...makeParentTask(),
+			todoList: [
+				{ id: "todo-1", content: "Implement auth", status: "pending" },
+				{ id: "todo-2", content: "Write tests", status: "pending" },
+			],
+			say: parentSay,
+		}
+
+		const createTask = vi.fn().mockResolvedValue({ taskId: "child-1", start: vi.fn() })
+		const taskHistoryStore = makeStoreStub()
+
+		const provider = {
+			emit: providerEmit,
+			getCurrentTask: vi.fn(() => parentTask),
+			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+			createTask,
+			handleModeSwitch: vi.fn().mockResolvedValue(undefined),
+			log: vi.fn(),
+			isViewLaunched: false,
+			recentTasksCache: undefined,
+			taskHistoryStore,
+			broadcastKanbanBoardIfWatched: vi.fn().mockResolvedValue(undefined),
+		} as unknown as ClineProvider
+
+		await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
+			parentTaskId: "parent-1",
+			message: "Do something",
+			initialTodos: [],
+			mode: "code",
+			todoId: "todo-1",
+		})
+
+		// The linked item flips to in_progress and gains a relatedTaskId; the unrelated item
+		// is left untouched.
+		expect(parentTask.todoList[0].status).toBe("in_progress")
+		expect(parentTask.todoList[0].relatedTaskId).toBeTruthy()
+		expect(parentTask.todoList[1]).toEqual({ id: "todo-2", content: "Write tests", status: "pending" })
+
+		// Persisted through the same message-log mechanism update_todo_list uses, on the
+		// still-resident parent, BEFORE disposal (removeClineFromStack) is invoked.
+		expect(parentSay).toHaveBeenCalledWith("user_edit_todos", expect.stringContaining('"tool":"updateTodoList"'))
+		const sayCallOrder = parentSay.mock.invocationCallOrder[0]
+		const disposeCallOrder = (provider.removeClineFromStack as any).mock.invocationCallOrder[0]
+		expect(sayCallOrder).toBeLessThan(disposeCallOrder)
+
+		// The child is created with the same pre-generated id that was linked via relatedTaskId
+		// (so the board card's relatedTaskId already points at the real child before it exists).
+		const createTaskCallOptions = createTask.mock.calls[0][3]
+		expect(createTaskCallOptions.taskId).toBe(parentTask.todoList[0].relatedTaskId)
+
+		// Durability: replaying the say() payload through the same message-log mechanism used
+		// on resume (getLatestTodo) reconstructs the in_progress status and relatedTaskId link,
+		// proving the link survives a simulated reload rather than only living in memory.
+		const [sayType, sayText] = parentSay.mock.calls[0]
+		const replayedMessages: ClineMessage[] = [{ type: "say", say: sayType, text: sayText, ts: Date.now() }]
+		const replayedTodos = getLatestTodo(replayedMessages)
+		expect(replayedTodos[0]).toMatchObject({
+			id: "todo-1",
+			status: "in_progress",
+			relatedTaskId: parentTask.todoList[0].relatedTaskId,
+		})
+	})
+
+	it("with todoId: the child ends up as the current task on the stack, with no rollback", async () => {
+		// Regression test for the bug where a todoId-linked delegation created the child but
+		// the webview stayed stuck on the parent's auto-generated "user_edit_todos" message
+		// instead of switching into it. `say()` here mimics the real Task#say ->
+		// addToClineMessages -> provider.postStateToWebviewWithoutTaskHistory() chain: it
+		// mutates the (mocked) provider's notion of "current task" via getCurrentTask, and
+		// records every state push so we can assert the child's push happens, is not clobbered,
+		// and no rollback path (deleteTaskWithId / createTaskWithHistoryItem) ever runs.
+		let current: any
+		const postStateCalls: Array<{ currentTaskId: string | undefined }> = []
+
+		const parentTask = {
+			...makeParentTask(),
+			taskId: "parent-1",
+			todoList: [{ id: "todo-1", content: "Implement auth", status: "pending" }],
+			say: vi.fn(async () => {
+				// Real Task#say posts state while `this` (the parent) is still current.
+				await provider.postStateToWebviewWithoutTaskHistory()
+			}),
+		}
+		current = parentTask
+
+		const deleteTaskWithId = vi.fn()
+		const createTaskWithHistoryItem = vi.fn()
+		const getTaskWithId = vi.fn()
+
+		const createTask = vi.fn().mockImplementation(async (_msg, _images, _parent, options) => {
+			const child = { taskId: options.taskId ?? "child-1", start: vi.fn() }
+			current = child
+			return child
+		})
+
+		const provider = {
+			emit: vi.fn(),
+			getCurrentTask: vi.fn(() => current),
+			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+			createTask,
+			handleModeSwitch: vi.fn().mockResolvedValue(undefined),
+			postStateToWebviewWithoutTaskHistory: vi.fn(async () => {
+				postStateCalls.push({ currentTaskId: current?.taskId })
+			}),
+			log: vi.fn(),
+			isViewLaunched: false,
+			recentTasksCache: undefined,
+			taskHistoryStore: makeStoreStub(),
+			broadcastKanbanBoardIfWatched: vi.fn().mockResolvedValue(undefined),
+			deleteTaskWithId,
+			createTaskWithHistoryItem,
+			getTaskWithId,
+		} as unknown as ClineProvider
+
+		const child = await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
+			parentTaskId: "parent-1",
+			message: "Do something",
+			initialTodos: [],
+			mode: "code",
+			todoId: "todo-1",
+		})
+
+		// The child returned by delegateParentAndOpenChild is the same one left "current".
+		// (todoId delegations pre-generate the child's id via uuidv7, so it won't be "child-1".)
+		expect(child.taskId).toBeTruthy()
+		expect(child.taskId).not.toBe("parent-1")
+		expect(provider.getCurrentTask()).toBe(child)
+
+		// Two state pushes happened: the interim one while the parent was still current (from
+		// say(), step 1b) and the optimistic one once the child became current (step 4b) - and
+		// the LAST push on record reflects the child, not the parent.
+		expect(postStateCalls.length).toBeGreaterThanOrEqual(2)
+		expect(postStateCalls[0].currentTaskId).toBe("parent-1")
+		expect(postStateCalls.at(-1)?.currentTaskId).toBe(child.taskId)
+
+		// No rollback: the parent is closed exactly once (the normal disposal in step 3), and
+		// the child-deletion / parent-restore rollback path never runs.
+		expect(provider.removeClineFromStack).toHaveBeenCalledTimes(1)
+		expect(deleteTaskWithId).not.toHaveBeenCalled()
+		expect(createTaskWithHistoryItem).not.toHaveBeenCalled()
+		expect(getTaskWithId).not.toHaveBeenCalled()
+	})
+
+	it("without todoId: does not touch the todo list or call say()", async () => {
+		const parentSay = vi.fn()
+		const parentTask = {
+			...makeParentTask(),
+			todoList: [{ id: "todo-1", content: "Implement auth", status: "pending" }],
+			say: parentSay,
+		}
+
+		const provider = {
+			emit: vi.fn(),
+			getCurrentTask: vi.fn(() => parentTask),
+			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+			createTask: vi.fn().mockResolvedValue({ taskId: "child-1", start: vi.fn() }),
+			handleModeSwitch: vi.fn().mockResolvedValue(undefined),
+			log: vi.fn(),
+			isViewLaunched: false,
+			recentTasksCache: undefined,
+			taskHistoryStore: makeStoreStub(),
+		} as unknown as ClineProvider
+
+		await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
+			parentTaskId: "parent-1",
+			message: "Do something",
+			initialTodos: [],
+			mode: "code",
+		})
+
+		expect(parentSay).not.toHaveBeenCalled()
+		expect(parentTask.todoList[0].status).toBe("pending")
 	})
 
 	it("optimistically posts state (without taskHistory) right after child creation, before persisting parent metadata", async () => {

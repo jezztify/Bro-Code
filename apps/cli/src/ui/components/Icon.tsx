@@ -26,6 +26,7 @@ export type IconName =
 	| "checkbox"
 	| "checkbox-checked"
 	| "checkbox-progress"
+	| "checkbox-testing"
 	| "todo-list"
 
 /**
@@ -53,6 +54,7 @@ const ICONS: Record<IconName, { nerd: string; fallback: string }> = {
 	checkbox: { nerd: "\uf4aa", fallback: "○" }, // Empty checkbox
 	"checkbox-checked": { nerd: "\uf4a4", fallback: "✓" }, // Checked checkbox
 	"checkbox-progress": { nerd: "\uf4aa", fallback: "→" }, // In progress (dot circle)
+	"checkbox-testing": { nerd: "\uf0c3", fallback: "⚗" }, // Testing (flask)
 	"todo-list": { nerd: "\uf45e", fallback: "☑" }, // List icon for TODO header
 }
 

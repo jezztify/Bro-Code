@@ -1,5 +1,16 @@
 {
 	"greeting": "Welcome to Zoo Code!",
+	"kanban": {
+		"title": "Board",
+		"loading": "Loading board...",
+		"noActiveTask": "No active task. Start or open a task to see its plan here.",
+		"columns": {
+			"notDone": "Not Done",
+			"inProgress": "In Progress",
+			"testing": "Testing",
+			"done": "Done"
+		}
+	},
 	"task": {
 		"title": "Task",
 		"expand": "Expand task",
@@ -20,7 +31,8 @@
 		"backToParentTask": "Parent task",
 		"waitingOnSubtask": "Waiting on subtask",
 		"goToSubtask": "Go to subtask",
-		"tokenBreakdown": "View token breakdown by model or provider profile"
+		"tokenBreakdown": "View token breakdown by model or provider profile",
+		"openKanbanBoard": "Board"
 	},
 	"tokenBreakdownModal": {
 		"titleByModel": "Tokens by Model",
@@ -498,5 +510,10 @@
 		"title": "Provider no longer supported",
 		"message": "This provider is no longer available. Select a supported provider to continue.",
 		"openSettings": "Open Settings"
+	},
+	"mobile": {
+		"title": "Zoo Code",
+		"newTask": "New task",
+		"reconnecting": "Reconnecting..."
 	}
 }

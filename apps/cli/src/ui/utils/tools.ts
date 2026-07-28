@@ -282,6 +282,7 @@ export function parseTodosFromToolInfo(toolInfo: Record<string, unknown>): TodoI
  * Format:
  *   [ ] pending item
  *   [-] in progress item
+ *   [t] testing item
  *   [x] completed item
  */
 export function parseMarkdownChecklist(markdown: string): TodoItem[] {
@@ -302,7 +303,7 @@ export function parseMarkdownChecklist(markdown: string): TodoItem[] {
 		}
 
 		// Match markdown checkbox patterns
-		const checkboxMatch = trimmedLine.match(/^\[([x\-\s])\]\s*(.+)$/i)
+		const checkboxMatch = trimmedLine.match(/^\[([x\-t\s])\]\s*(.+)$/i)
 
 		if (checkboxMatch) {
 			const statusChar = checkboxMatch[1] ?? " "
@@ -313,6 +314,8 @@ export function parseMarkdownChecklist(markdown: string): TodoItem[] {
 				status = "completed"
 			} else if (statusChar === "-") {
 				status = "in_progress"
+			} else if (statusChar.toLowerCase() === "t") {
+				status = "testing"
 			}
 
 			todos.push({ id: `todo-${i}`, content: content.trim(), status })

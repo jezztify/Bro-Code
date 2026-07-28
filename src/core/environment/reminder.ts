@@ -10,6 +10,7 @@ export function formatReminderSection(todoList?: TodoItem[]): string {
 	const statusMap: Record<TodoStatus, string> = {
 		pending: "Pending",
 		in_progress: "In Progress",
+		testing: "Testing",
 		completed: "Completed",
 	}
 	const lines: string[] = [

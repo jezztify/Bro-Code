@@ -1,7 +1,7 @@
 import { t } from "i18next"
-import { ArrowRight, Check, ListChecks, SquareDashed } from "lucide-react"
+import { ArrowRight, Check, FlaskConical, ListChecks, SquareDashed } from "lucide-react"
 
-type TodoStatus = "completed" | "in_progress" | "pending"
+type TodoStatus = "completed" | "in_progress" | "testing" | "pending"
 
 interface TodoItem {
 	id?: string
@@ -20,6 +20,8 @@ function getTodoIcon(status: TodoStatus | null) {
 			return <Check className="size-3 mt-1 shrink-0" />
 		case "in_progress":
 			return <ArrowRight className="size-3 mt-1 shrink-0" />
+		case "testing":
+			return <FlaskConical className="size-3 mt-1 shrink-0 text-vscode-charts-purple" />
 		default:
 			return <SquareDashed className="size-3 mt-1 shrink-0" />
 	}
@@ -44,6 +46,10 @@ export function TodoChangeDisplay({ previousTodos, newTodos }: TodoChangeDisplay
 			if (newTodo.status === "in_progress") {
 				const previousTodo = previousTodos.find((p) => p.id === newTodo.id || p.content === newTodo.content)
 				return !previousTodo || previousTodo.status !== "in_progress"
+			}
+			if (newTodo.status === "testing") {
+				const previousTodo = previousTodos.find((p) => p.id === newTodo.id || p.content === newTodo.content)
+				return !previousTodo || previousTodo.status !== "testing"
 			}
 			return false
 		})
@@ -72,7 +78,11 @@ export function TodoChangeDisplay({ previousTodos, newTodos }: TodoChangeDisplay
 							<li
 								key={todo.id || todo.content}
 								className={`flex flex-row gap-2 items-start ${
-									status === "in_progress" ? "text-vscode-charts-yellow" : ""
+									status === "in_progress"
+										? "text-vscode-charts-yellow"
+										: status === "testing"
+											? "text-vscode-charts-purple"
+											: ""
 								}`}>
 								{icon}
 								<span>{todo.content}</span>

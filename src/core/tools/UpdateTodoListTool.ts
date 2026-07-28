@@ -48,6 +48,37 @@ export class UpdateTodoListTool extends BaseTool<"update_todo_list"> {
 				status: normalizeStatus(t.status),
 			}))
 
+			// Reconcile ids against the previous todo list by normalized-content match, so an
+			// item's id (and any relatedTaskId it carries) survives across update_todo_list
+			// calls that re-describe the same plan. Also validate that each item's status
+			// transition from its prior state (if any) is legal for a manual (model-driven)
+			// update — a brand new item with no prior state is always accepted as-is.
+			const previousTodos = task.todoList ?? []
+			const previousByContent = new Map(previousTodos.map((t) => [normalizeContent(t.content), t]))
+			for (const todo of normalizedTodos) {
+				const previous = previousByContent.get(normalizeContent(todo.content))
+				if (previous) {
+					todo.id = previous.id
+					if (previous.relatedTaskId && todo.status !== "pending") {
+						todo.relatedTaskId = previous.relatedTaskId
+					}
+					if (
+						previous.status !== todo.status &&
+						!canTransitionTodoStatus(previous.status, todo.status, "manual")
+					) {
+						task.consecutiveMistakeCount++
+						task.recordToolError("update_todo_list")
+						task.didToolFailInCurrentTurn = true
+						pushToolResult(
+							formatResponse.toolError(
+								`Invalid status transition for "${todo.content}": ${previous.status} -> ${todo.status}`,
+							),
+						)
+						return
+					}
+				}
+			}
+
 			const approvalMsg = JSON.stringify({
 				tool: "updateTodoList",
 				todos: normalizedTodos,
@@ -75,11 +106,17 @@ export class UpdateTodoListTool extends BaseTool<"update_todo_list"> {
 
 			await setTodoListForTask(task, normalizedTodos)
 
+			const provider = task.providerRef.deref()
+			if (provider) {
+				void provider.broadcastKanbanBoardIfWatched(task.rootTaskId ?? task.taskId)
+			}
+
 			if (isTodoListChanged) {
 				const md = todoListToMarkdown(normalizedTodos)
 				pushToolResult(formatResponse.toolResult("User edits todo:\n\n" + md))
 			} else {
-				pushToolResult(formatResponse.toolResult("Todo list updated successfully."))
+				const md = todoListToMarkdownWithIds(normalizedTodos)
+				pushToolResult(formatResponse.toolResult("Todo list updated successfully.\n\n" + md))
 			}
 		} catch (error) {
 			await handleError("update todo list", error as Error)
@@ -117,20 +154,62 @@ export function addTodoToTask(cline: Task, content: string, status: TodoStatus =
 	return todo
 }
 
-export function updateTodoStatusForTask(cline: Task, id: string, nextStatus: TodoStatus): boolean {
+export type TransitionSource = "manual" | "auto"
+
+/**
+ * Explicit table of legal todo status transitions, tagged by who is allowed to perform
+ * them. "manual" transitions are driven by the model (or a user edit) via update_todo_list.
+ * "auto" transitions are driven by the system, currently only in_progress -> testing when a
+ * delegated subtask completes. Keeping these disjoint prevents the manual tool path and the
+ * automatic completion-hook path from performing each other's transitions.
+ */
+const LEGAL_TRANSITIONS: Record<TodoStatus, Partial<Record<TodoStatus, TransitionSource[]>>> = {
+	pending: { in_progress: ["manual"] },
+	// "auto" = a delegated subtask (new_task with todoId) completed. "manual" also allows
+	// completed directly and testing directly: most items are never delegated at all (the
+	// agent just implements them inline in the same task and marks them done itself), so a
+	// manual-only path from in_progress all the way to completed must exist - without it,
+	// any non-delegated item would get stuck at in_progress forever, since testing was
+	// previously reachable only via delegation.
+	in_progress: {
+		testing: ["auto", "manual"],
+		completed: ["manual"],
+		// Escape hatch: the delegated subtask stalled, failed, or was abandoned with no other
+		// hook catching it. Without this, an item that reached in_progress had no way back -
+		// it could only go forward to testing/completed, which is wrong if the work never
+		// actually happened. "auto" covers abandonSubtask resetting it automatically; "manual"
+		// lets the agent (or user) free it up itself via update_todo_list when nothing else did.
+		pending: ["manual", "auto"],
+	},
+	testing: { completed: ["manual"], in_progress: ["manual"] }, // testing->in_progress = "sent back for rework"
+	completed: {},
+}
+
+export function canTransitionTodoStatus(from: TodoStatus, to: TodoStatus, source: TransitionSource): boolean {
+	if (from === to) return true
+	return !!LEGAL_TRANSITIONS[from]?.[to]?.includes(source)
+}
+
+export function updateTodoStatusForTask(
+	cline: Task,
+	id: string,
+	nextStatus: TodoStatus,
+	source: TransitionSource = "manual",
+): boolean {
 	if (!cline.todoList) return false
 	const idx = cline.todoList.findIndex((t) => t.id === id)
 	if (idx === -1) return false
 	const current = cline.todoList[idx]
-	if (
-		(current.status === "pending" && nextStatus === "in_progress") ||
-		(current.status === "in_progress" && nextStatus === "completed") ||
-		current.status === nextStatus
-	) {
-		cline.todoList[idx] = { ...current, status: nextStatus }
-		return true
+	if (!canTransitionTodoStatus(current.status, nextStatus, source)) return false
+	const next: TodoItem = { ...current, status: nextStatus }
+	if (nextStatus === "pending") {
+		// Resetting to pending means "no subtask assigned" - drop the stale link so the card
+		// isn't left pointing at a dead/abandoned task, and so the item is legal to delegate
+		// again via a fresh new_task call.
+		delete next.relatedTaskId
 	}
-	return false
+	cline.todoList[idx] = next
+	return true
 }
 
 export function removeTodoFromTask(cline: Task, id: string): boolean {
@@ -158,21 +237,30 @@ export function restoreTodoListForTask(cline: Task, todoList?: TodoItem[]) {
 	cline.todoList = getLatestTodo(cline.clineMessages)
 }
 
+function statusBox(status: TodoStatus): string {
+	if (status === "completed") return "[x]"
+	if (status === "in_progress") return "[-]"
+	if (status === "testing") return "[t]"
+	return "[ ]"
+}
+
 function todoListToMarkdown(todos: TodoItem[]): string {
-	return todos
-		.map((t) => {
-			let box = "[ ]"
-			if (t.status === "completed") box = "[x]"
-			else if (t.status === "in_progress") box = "[-]"
-			return `${box} ${t.content}`
-		})
-		.join("\n")
+	return todos.map((t) => `${statusBox(t.status)} ${t.content}`).join("\n")
+}
+
+export function todoListToMarkdownWithIds(todos: TodoItem[]): string {
+	return todos.map((t) => `- ${statusBox(t.status)} (id: ${t.id}) ${t.content}`).join("\n")
 }
 
 function normalizeStatus(status: string | undefined): TodoStatus {
 	if (status === "completed") return "completed"
 	if (status === "in_progress") return "in_progress"
+	if (status === "testing") return "testing"
 	return "pending"
+}
+
+function normalizeContent(content: string): string {
+	return content.trim().toLowerCase()
 }
 
 export function parseMarkdownChecklist(md: string): TodoItem[] {
@@ -183,15 +271,13 @@ export function parseMarkdownChecklist(md: string): TodoItem[] {
 		.filter(Boolean)
 	const todos: TodoItem[] = []
 	for (const line of lines) {
-		const match = line.match(/^(?:-\s*)?\[\s*([ xX\-~])\s*\]\s+(.+)$/)
+		const match = line.match(/^(?:-\s*)?\[\s*([ xX\-~tT])\s*\]\s+(.+)$/)
 		if (!match) continue
 		let status: TodoStatus = "pending"
 		if (match[1] === "x" || match[1] === "X") status = "completed"
 		else if (match[1] === "-" || match[1] === "~") status = "in_progress"
-		const id = crypto
-			.createHash("md5")
-			.update(match[2] + status)
-			.digest("hex")
+		else if (match[1] === "t" || match[1] === "T") status = "testing"
+		const id = crypto.createHash("md5").update(normalizeContent(match[2])).digest("hex")
 		todos.push({
 			id,
 			content: match[2],

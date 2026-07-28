@@ -91,6 +91,11 @@
 				"icon": "$(link-external)"
 			},
 			{
+				"command": "zoo-code.kanbanButtonClicked",
+				"title": "%command.kanban.title%",
+				"icon": "$(checklist)"
+			},
+			{
 				"command": "zoo-code.settingsButtonClicked",
 				"title": "%command.settings.title%",
 				"icon": "$(settings-gear)"
@@ -169,6 +174,21 @@
 				"command": "zoo-code.toggleAutoApprove",
 				"title": "%command.toggleAutoApprove.title%",
 				"category": "%configuration.title%"
+			},
+			{
+				"command": "zoo-code.startMobileServer",
+				"title": "%command.startMobileServer.title%",
+				"category": "%configuration.title%"
+			},
+			{
+				"command": "zoo-code.stopMobileServer",
+				"title": "%command.stopMobileServer.title%",
+				"category": "%configuration.title%"
+			},
+			{
+				"command": "zoo-code.regenerateMobileServerToken",
+				"title": "%command.regenerateMobileServerToken.title%",
+				"category": "%configuration.title%"
 			}
 		],
 		"menus": {
@@ -237,6 +257,11 @@
 					"command": "zoo-code.popoutButtonClicked",
 					"group": "overflow@2",
 					"when": "view == zoo-code.SidebarProvider"
+				},
+				{
+					"command": "zoo-code.kanbanButtonClicked",
+					"group": "overflow@3",
+					"when": "view == zoo-code.SidebarProvider"
 				}
 			],
 			"editor/title": [
@@ -263,6 +288,11 @@
 				{
 					"command": "zoo-code.popoutButtonClicked",
 					"group": "overflow@2",
+					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+				},
+				{
+					"command": "zoo-code.kanbanButtonClicked",
+					"group": "overflow@3",
 					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
 				}
 			]
@@ -336,6 +366,24 @@
 					"type": "boolean",
 					"default": false,
 					"description": "%commands.preventCompletionWithOpenTodos.description%"
+				},
+				"zoo-code.mobileServer.autoStart": {
+					"type": "boolean",
+					"default": false,
+					"description": "%settings.mobileServer.autoStart.description%"
+				},
+				"zoo-code.mobileServer.tokenMode": {
+					"type": "string",
+					"enum": [
+						"dynamic",
+						"fixed"
+					],
+					"enumDescriptions": [
+						"%settings.mobileServer.tokenMode.dynamic.description%",
+						"%settings.mobileServer.tokenMode.fixed.description%"
+					],
+					"default": "dynamic",
+					"description": "%settings.mobileServer.tokenMode.description%"
 				},
 				"zoo-code.vsCodeLmModelSelector": {
 					"type": "object",
@@ -524,6 +572,7 @@
 		"vscode-material-icons": "^0.1.1",
 		"web-tree-sitter": "^0.25.6",
 		"workerpool": "^9.2.0",
+		"ws": "^8.18.0",
 		"yaml": "^2.8.0",
 		"zod": "3.25.76"
 	},
@@ -541,6 +590,7 @@
 		"@types/ps-tree": "1.1.6",
 		"@types/semver-compare": "1.0.3",
 		"@types/vscode": "1.100.0",
+		"@types/ws": "^8.18.0",
 		"@vitest/coverage-v8": "4.1.9",
 		"@vscode/vsce": "3.9.2",
 		"ai": "6.0.218",

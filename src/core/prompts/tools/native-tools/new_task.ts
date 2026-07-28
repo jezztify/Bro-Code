@@ -12,6 +12,8 @@ const TODOS_PARAMETER_DESCRIPTION = `Optional initial todo list written as a mar
 
 const TIER_PARAMETER_DESCRIPTION = `Optional difficulty tier for this step ("trivial" | "standard" | "hard"), used to route the subtask to a provider profile configured for that tier (Settings -> Providers). If the tier has no mapped profile, the target mode's own configured profile is used, falling back to the global default.`
 
+const TODO_ID_PARAMETER_DESCRIPTION = `Optional id of the todo item (echoed in your most recent update_todo_list result) that this subtask accomplishes. When provided, that item's board card moves to In-Progress and is linked to this subtask so the user can click through to your progress.`
+
 export default {
 	type: "function",
 	function: {
@@ -38,8 +40,12 @@ export default {
 					enum: ["trivial", "standard", "hard", null],
 					description: TIER_PARAMETER_DESCRIPTION,
 				},
+				todoId: {
+					type: ["string", "null"],
+					description: TODO_ID_PARAMETER_DESCRIPTION,
+				},
 			},
-			required: ["mode", "message", "todos", "tier"],
+			required: ["mode", "message", "todos", "tier", "todoId"],
 			additionalProperties: false,
 		},
 	},

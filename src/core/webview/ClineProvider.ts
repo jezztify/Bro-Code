@@ -118,6 +118,10 @@ import { getUri } from "./getUri"
 import { REQUESTY_BASE_URL } from "../../shared/utils/requesty"
 import { validateAndFixToolResultIds } from "../task/validateToolResultIds"
 import { PendingEditOperationStore, type PendingEditOperationInput } from "./PendingEditOperationStore"
+import { getKanbanBoardForRootTask } from "./kanbanBoard"
+import { updateTodoStatusForTask, canTransitionTodoStatus } from "../tools/UpdateTodoListTool"
+import { getLatestTodo } from "../../shared/todo"
+import { v7 as uuidv7 } from "uuid"
 
 /**
  * https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -183,12 +187,19 @@ export class ClineProvider
 	// abandonSubtask so the parent resumes on its own profile instead of silently
 	// inheriting the child's tier-routed model. See H3 in docs/REVIEW_1.md.
 	private pendingTierProfileRestoreByChildId = new Map<string, string>()
+	// Root task id whose kanban board view is currently open in the webview, if any.
+	// Gates broadcastKanbanBoardIfWatched() so board rebuilds/postMessages only happen
+	// while a viewer is actually watching this root task's board.
+	private kanbanWatchedRootTaskId: string | undefined
 	private codeIndexStatusSubscription?: vscode.Disposable
 	private codeIndexManager?: CodeIndexManager
 	private _workspaceTracker?: WorkspaceTracker // workSpaceTracker read-only for access outside this class
 	protected mcpHub?: McpHub // Change from private to protected
 	protected skillsManager?: SkillsManager
-	private marketplaceManager: MarketplaceManager
+	// Public (not private) so `MobileServer` can pass it straight through to
+	// `webviewMessageHandler` for WS-originated messages, mirroring what
+	// `setWebviewMessageListener` already does for the desktop webview.
+	public marketplaceManager: MarketplaceManager
 	private mdmService?: MdmService
 	private taskCreationCallback: (task: Task) => void
 	private taskEventListeners: WeakMap<Task, Array<() => void>> = new WeakMap()
@@ -1326,11 +1337,39 @@ export class ClineProvider
 			return
 		}
 
+		// Fan out to any registered out-of-band listeners (currently just
+		// `MobileServer`) *before* the `this.view` check below, so it still fires
+		// when the desktop webview is hidden/disposed - e.g. the VS Code window is
+		// minimized/backgrounded, which is exactly when a phone client is most useful.
+		for (const listener of this.postMessageListeners) {
+			try {
+				listener(message)
+			} catch (error) {
+				this.log(`[postMessageToWebview] postMessageListener threw: ${error}`)
+			}
+		}
+
 		try {
 			await this.view?.webview.postMessage(message)
 		} catch {
 			// View disposed, drop message silently
 		}
+	}
+
+	private postMessageListeners: Array<(message: ExtensionMessage) => void> = []
+
+	/**
+	 * Registers a listener that receives every `ExtensionMessage` this provider
+	 * sends to its webview, regardless of whether a webview is currently attached.
+	 * `MobileServer` uses this to fan the same messages out to connected WebSocket
+	 * clients, making phone and desktop peers of the same running task engine.
+	 */
+	public addPostMessageListener(listener: (message: ExtensionMessage) => void): vscode.Disposable {
+		this.postMessageListeners.push(listener)
+
+		return new vscode.Disposable(() => {
+			this.postMessageListeners = this.postMessageListeners.filter((registered) => registered !== listener)
+		})
 	}
 
 	private async getHMRHtmlContent(webview: vscode.Webview): Promise<string> {
@@ -2221,6 +2260,10 @@ export class ClineProvider
 		const state = await this.getStateToPostToWebview()
 		this.clineMessagesSeq++
 		state.clineMessagesSeq = this.clineMessagesSeq
+		// Awaited (not fire-and-forget): callers that await this method - e.g. delegation
+		// flows that post an interim state before a later, superseding one - need the actual
+		// send to complete before proceeding, so two state pushes issued in sequence can't
+		// have their underlying webview.postMessage() calls race/reorder in flight.
 		await this.postMessageToWebview({ type: "state", state })
 	}
 
@@ -2237,6 +2280,9 @@ export class ClineProvider
 		this.clineMessagesSeq++
 		state.clineMessagesSeq = this.clineMessagesSeq
 		const { taskHistory: _omit, ...rest } = state
+		// Awaited (not fire-and-forget): see postStateToWebview for why - this matters most
+		// here, since delegateParentAndOpenChild calls this twice in sequence (once for the
+		// parent, once for the child) and relies on delivery order matching call order.
 		await this.postMessageToWebview({ type: "state", state: rest })
 	}
 
@@ -2254,6 +2300,7 @@ export class ClineProvider
 	async postStateToWebviewWithoutClineMessages(): Promise<void> {
 		const state = await this.getStateToPostToWebview()
 		const { clineMessages: _omitMessages, taskHistory: _omitHistory, ...rest } = state
+		// Awaited (not fire-and-forget): see postStateToWebview for why.
 		await this.postMessageToWebview({ type: "state", state: rest })
 	}
 
@@ -3018,6 +3065,58 @@ export class ClineProvider
 		console.log(message)
 	}
 
+	public getOutputChannel(): vscode.OutputChannel {
+		return this.outputChannel
+	}
+
+	// kanban board (real-time)
+
+	/**
+	 * Rebuild and broadcast the kanban board for `rootTaskId` to every panel/view instance
+	 * currently watching it (setKanbanWatchedRootTaskId), not just `this`. A board can be
+	 * watched from a different ClineProvider instance than the one whose task mutation
+	 * triggered the broadcast — e.g. the task runs in the sidebar provider while the board is
+	 * open in a separate editor-tab provider (see openKanbanBoardInNewTab) — so this must fan
+	 * out across ClineProvider.getAllInstances() rather than only checking `this`. Safe to call
+	 * unconditionally after any todo-list mutation that could affect a board — the watch-id
+	 * check makes it a cheap no-op when nobody is watching.
+	 */
+	public async broadcastKanbanBoardIfWatched(rootTaskId: string | undefined) {
+		if (!rootTaskId) {
+			return
+		}
+
+		const watchers = ClineProvider.getAllInstances().filter(
+			(instance) => instance.kanbanWatchedRootTaskId === rootTaskId && instance.isViewLaunched,
+		)
+
+		if (watchers.length === 0) {
+			return
+		}
+
+		// Compute once (preferring `this`, which is most likely to have the task resident in
+		// memory since it's the instance whose mutation triggered this broadcast) and fan out
+		// the same board to every watcher.
+		const board = await getKanbanBoardForRootTask(this, rootTaskId)
+		await Promise.all(
+			watchers.map((instance) =>
+				instance.postMessageToWebview({ type: "kanbanBoardUpdated", kanbanBoard: board }),
+			),
+		)
+	}
+
+	/**
+	 * Set (or clear, with undefined) which root task's kanban board the webview currently has
+	 * open. Setting a root task id immediately triggers a broadcast so the webview gets an
+	 * up-to-date board without waiting for the next mutation.
+	 */
+	public setKanbanWatchedRootTaskId(rootTaskId: string | undefined) {
+		this.kanbanWatchedRootTaskId = rootTaskId
+		if (rootTaskId) {
+			void this.broadcastKanbanBoardIfWatched(rootTaskId)
+		}
+	}
+
 	// getters
 
 	public get workspaceTracker(): WorkspaceTracker | undefined {
@@ -3535,13 +3634,16 @@ export class ClineProvider
 
 		const task = this.getCurrentTask()
 		const todoList = task?.todoList
-		let todos: { total: number; completed: number; inProgress: number; pending: number } | undefined
+		let todos:
+			| { total: number; completed: number; inProgress: number; inTesting: number; pending: number }
+			| undefined
 
 		if (todoList && todoList.length > 0) {
 			todos = {
 				total: todoList.length,
 				completed: todoList.filter((todo) => todo.status === "completed").length,
 				inProgress: todoList.filter((todo) => todo.status === "in_progress").length,
+				inTesting: todoList.filter((todo) => todo.status === "testing").length,
 				pending: todoList.filter((todo) => todo.status === "pending").length,
 			}
 		}
@@ -3600,8 +3702,9 @@ export class ClineProvider
 		initialTodos: TodoItem[]
 		mode: string
 		tier?: "trivial" | "standard" | "hard"
+		todoId?: string
 	}): Promise<Task> {
-		const { parentTaskId, message, initialTodos, mode, tier } = params
+		const { parentTaskId, message, initialTodos, mode, tier, todoId } = params
 
 		// Metadata-driven delegation is always enabled
 
@@ -3615,6 +3718,40 @@ export class ClineProvider
 				`[delegateParentAndOpenChild] Parent mismatch: expected ${parentTaskId}, current ${parent.taskId}`,
 			)
 		}
+
+		// 1b) If this delegation is linked to a kanban board todo item, flip that item to
+		//     in_progress and link it to the child's (pre-generated) id, while the parent is
+		//     still the live, resident, on-stack Task instance. Persist through the same
+		//     message-log mechanism update_todo_list uses (task.say("user_edit_todos", ...))
+		//     so the link survives the parent's disposal/rehydration below. Must run before the
+		//     flush/disposal steps so `parent` is guaranteed to still be a usable Task instance.
+		let precomputedChildId: string | undefined
+		if (todoId) {
+			precomputedChildId = uuidv7()
+			const transitioned = updateTodoStatusForTask(parent, todoId, "in_progress", "manual")
+			if (transitioned && parent.todoList) {
+				const idx = parent.todoList.findIndex((t) => t.id === todoId)
+				if (idx !== -1) {
+					parent.todoList[idx] = { ...parent.todoList[idx], relatedTaskId: precomputedChildId }
+				}
+				try {
+					await parent.say(
+						"user_edit_todos",
+						JSON.stringify({ tool: "updateTodoList", todos: parent.todoList }),
+					)
+				} catch (error) {
+					this.log(
+						`[delegateParentAndOpenChild] Failed to persist todoId link for ${parentTaskId} -> ${todoId} (non-fatal): ${
+							error instanceof Error ? error.message : String(error)
+						}`,
+					)
+				}
+				// Optional chaining: defensive against test doubles/partial provider stubs that
+				// don't stub every method. On the real ClineProvider this is always present.
+				void this.broadcastKanbanBoardIfWatched?.(parent.rootTaskId ?? parent.taskId)?.catch?.(() => {})
+			}
+		}
+
 		// 2) Flush pending tool results to API history BEFORE disposing the parent.
 		//    This is critical: when tools are called before new_task,
 		//    their tool_result blocks are in userMessageContent but not yet saved to API history.
@@ -3732,6 +3869,7 @@ export class ClineProvider
 			initialTodos,
 			initialStatus: "active",
 			startTask: false,
+			...(precomputedChildId ? { taskId: precomputedChildId } : {}),
 		})
 
 		if (tierSwitchedProfile && preTierSwitchProfileName) {
@@ -3938,6 +4076,30 @@ export class ClineProvider
 			if (!Array.isArray(parentClineMessages)) parentClineMessages = []
 			if (!Array.isArray(parentApiMessages)) parentApiMessages = []
 
+			// 1b) Auto-move the kanban board card linked to this child (if any) from
+			//     in_progress to testing now that the delegated subtask has completed.
+			//     Piggyback on the message round trip already happening in this function
+			//     (parentClineMessages is loaded above and saved via saveTaskMessages below,
+			//     then re-hydrated into the parent instance via overwriteClineMessages further
+			//     down) rather than issuing a separate disk write.
+			const todosForAutoTransition = getLatestTodo(parentClineMessages) ?? []
+			const linkedTodoIdx = todosForAutoTransition.findIndex((t) => t.relatedTaskId === childTaskId)
+			if (
+				linkedTodoIdx !== -1 &&
+				canTransitionTodoStatus(todosForAutoTransition[linkedTodoIdx].status, "testing", "auto")
+			) {
+				todosForAutoTransition[linkedTodoIdx] = {
+					...todosForAutoTransition[linkedTodoIdx],
+					status: "testing" as const,
+				}
+				parentClineMessages.push({
+					type: "say",
+					say: "user_edit_todos",
+					text: JSON.stringify({ tool: "updateTodoList", todos: todosForAutoTransition }),
+					ts,
+				})
+			}
+
 			const subtaskUiMessage: ClineMessage = {
 				type: "say",
 				say: "subtask_result",
@@ -4138,6 +4300,14 @@ export class ClineProvider
 
 				// Auto-resume parent without ask("resume_task")
 				await parentInstance.resumeAfterDelegation()
+
+				// Broadcast the kanban board in case the auto-transition above (in_progress ->
+				// testing) moved a card, so a watching webview picks it up immediately.
+				// Optional chaining: defensive against test doubles/partial provider stubs
+				// that don't stub every method. On the real ClineProvider this is always present.
+				void this.broadcastKanbanBoardIfWatched?.(parentInstance.rootTaskId ?? parentInstance.taskId)?.catch?.(
+					() => {},
+				)
 			}
 
 			// 9) Emit TaskDelegationResumed (provider-level)
@@ -4229,6 +4399,56 @@ export class ClineProvider
 				}),
 			)
 			this.recentTasksCache = undefined
+
+			// Free up the plan item (if any) that was delegated to this child, so it can be
+			// re-delegated or worked on directly instead of being stuck at in_progress forever
+			// linked to a task that will never complete. Mirrors the auto-transition in
+			// reopenParentFromDelegation, but resets to pending (clearing the link) instead of
+			// advancing to testing, since the work was abandoned rather than finished.
+			try {
+				const residentParent = this.getCurrentTask()
+				if (residentParent?.taskId === parentTaskId) {
+					// Parent is resident (e.g. the user navigated back to it) - mutate its live
+					// todoList directly and persist the same way delegateParentAndOpenChild
+					// does, rather than only writing to disk where the live instance wouldn't
+					// pick the change up until it reloads.
+					const linkedTodo = residentParent.todoList?.find((t) => t.relatedTaskId === childTaskId)
+					if (linkedTodo && updateTodoStatusForTask(residentParent, linkedTodo.id, "pending", "auto")) {
+						await residentParent.say(
+							"user_edit_todos",
+							JSON.stringify({ tool: "updateTodoList", todos: residentParent.todoList }),
+						)
+					}
+				} else {
+					const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
+					let parentClineMessages = await readTaskMessages({ taskId: parentTaskId, globalStoragePath })
+					if (!Array.isArray(parentClineMessages)) parentClineMessages = []
+					const todos = getLatestTodo(parentClineMessages) ?? []
+					const linkedIdx = todos.findIndex((t) => t.relatedTaskId === childTaskId)
+					if (linkedIdx !== -1 && canTransitionTodoStatus(todos[linkedIdx].status, "pending", "auto")) {
+						const { relatedTaskId: _unused, ...rest } = todos[linkedIdx]
+						todos[linkedIdx] = { ...rest, status: "pending" }
+						parentClineMessages.push({
+							ts: Date.now(),
+							type: "say",
+							say: "user_edit_todos",
+							text: JSON.stringify({ tool: "updateTodoList", todos }),
+						})
+						await saveTaskMessages({
+							messages: parentClineMessages,
+							taskId: parentTaskId,
+							globalStoragePath,
+						})
+					}
+				}
+				void this.broadcastKanbanBoardIfWatched(parentHistory.rootTaskId ?? parentTaskId)
+			} catch (error) {
+				this.log(
+					`[abandonSubtask] Failed to reset linked todo item for parent ${parentTaskId}: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				)
+			}
 
 			// This child will never reach reopenParentFromDelegation, so restore any
 			// tier-routing profile switch here instead - otherwise the next task the user

@@ -1,5 +1,6 @@
 import * as vscode from "vscode"
 import delay from "delay"
+import pWaitFor from "p-wait-for"
 
 import type { CommandId } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -7,6 +8,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { Package } from "../shared/package"
 import { getCommand } from "../utils/commands"
 import { ClineProvider } from "../core/webview/ClineProvider"
+import { MobileServer } from "../services/mobileServer/MobileServer"
 import { ContextProxy } from "../core/config/ContextProxy"
 import { focusPanel } from "../utils/focusPanel"
 import { handleNewTask } from "./handleTask"
@@ -60,6 +62,7 @@ export type RegisterCommandOptions = {
 	context: vscode.ExtensionContext
 	outputChannel: vscode.OutputChannel
 	provider: ClineProvider
+	mobileServer: MobileServer
 }
 
 export const registerCommands = (options: RegisterCommandOptions) => {
@@ -89,6 +92,7 @@ const getCommandsMap = ({
 	context,
 	outputChannel,
 	provider,
+	mobileServer,
 }: RegisterCommandOptions): Record<Exclude<CommandId, "showRipgrepDiagnostic">, CommandCallback> => ({
 	activationCompleted: () => {},
 	plusButtonClicked: async () => {
@@ -151,6 +155,19 @@ const getCommandsMap = ({
 			.catch((error) =>
 				outputChannel.appendLine(`[marketplaceButtonClicked] postMessageToWebview failed: ${error}`),
 			)
+	},
+	kanbanButtonClicked: () => {
+		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+		if (!visibleProvider) return
+
+		TelemetryService.instance.captureTitleButtonClicked("kanban")
+
+		const currentTask = visibleProvider.getCurrentTask()
+		const rootTaskId = currentTask?.rootTaskId ?? currentTask?.taskId
+
+		void openKanbanBoardInNewTab({ context, outputChannel }, rootTaskId).catch((error) =>
+			outputChannel.appendLine(`[kanbanButtonClicked] openKanbanBoardInNewTab failed: ${error}`),
+		)
 	},
 	newTask: handleNewTask,
 	setCustomStoragePath: async () => {
@@ -219,9 +236,29 @@ const getCommandsMap = ({
 			outputChannel.appendLine(`[toggleAutoApprove] postMessageToWebview failed: ${error}`)
 		}
 	},
+	startMobileServer: async () => {
+		await mobileServer.start().catch((error) => {
+			outputChannel.appendLine(`[startMobileServer] failed: ${error instanceof Error ? error.message : error}`)
+		})
+	},
+	stopMobileServer: async () => {
+		await mobileServer.stop().catch((error) => {
+			outputChannel.appendLine(`[stopMobileServer] failed: ${error instanceof Error ? error.message : error}`)
+		})
+	},
+	regenerateMobileServerToken: async () => {
+		await mobileServer.regenerateToken().catch((error) => {
+			outputChannel.appendLine(
+				`[regenerateMobileServerToken] failed: ${error instanceof Error ? error.message : error}`,
+			)
+		})
+	},
 })
 
-export const openClineInNewTab = async ({ context, outputChannel }: Omit<RegisterCommandOptions, "provider">) => {
+export const openClineInNewTab = async ({
+	context,
+	outputChannel,
+}: Omit<RegisterCommandOptions, "provider" | "mobileServer">) => {
 	// (This example uses webviewProvider activation event which is necessary to
 	// deserialize cached webview, but since we use retainContextWhenHidden, we
 	// don't need to use that event).
@@ -293,6 +330,56 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 	// Lock the editor group so clicking on files doesn't open them over the panel.
 	await delay(100)
 	await vscode.commands.executeCommand("workbench.action.lockEditorGroup")
+
+	return tabProvider
+}
+
+/**
+ * Open the kanban board for `rootTaskId` in its own editor tab, rather than switching the tab
+ * within whichever panel (sidebar or an existing editor tab) triggered it. Reuses
+ * openClineInNewTab for the panel itself, then arms the new panel's watch and routes it
+ * straight to the kanban tab. `rootTaskId` may be undefined (no active task) - the board just
+ * renders its own empty state in that case, same as the in-panel path.
+ */
+export const openKanbanBoardInNewTab = async (
+	options: Omit<RegisterCommandOptions, "provider" | "mobileServer">,
+	rootTaskId: string | undefined,
+) => {
+	const tabProvider = await openClineInNewTab(options)
+
+	// The new panel's webview (React app) hasn't booted yet at this point - it signals
+	// readiness with a "webviewDidLaunch" message once its bundle has loaded and mounted (see
+	// the "webviewDidLaunch" case in webviewMessageHandler.ts, which flips isViewLaunched).
+	// postMessageToWebview before that point is silently dropped (no listener registered yet
+	// on the webview side), so switchTab would land on nothing and the panel would just show
+	// its default chat/welcome view. Same fix API#resumeTask already needs for this exact race.
+	const launched = await pWaitFor(() => tabProvider.viewLaunched, { timeout: 5_000, interval: 50 }).then(
+		() => true,
+		() => false,
+	)
+
+	if (!launched) {
+		options.outputChannel.appendLine(
+			"[openKanbanBoardInNewTab] webview did not launch within 5000ms; kanban tab not opened",
+		)
+		return tabProvider
+	}
+
+	if (rootTaskId) {
+		// Arms the watch immediately so the panel doesn't miss broadcasts that land between
+		// now and the webview's own kanbanBoardOpened message (see KanbanBoardView's mount
+		// effect) - broadcastKanbanBoardIfWatched fans out to every watching instance, so this
+		// is safe even though it's a different ClineProvider instance than whichever one is
+		// actually running the task.
+		tabProvider.setKanbanWatchedRootTaskId(rootTaskId)
+	}
+
+	await tabProvider.postMessageToWebview({
+		type: "action",
+		action: "switchTab",
+		tab: "kanban",
+		values: { rootTaskId },
+	})
 
 	return tabProvider
 }

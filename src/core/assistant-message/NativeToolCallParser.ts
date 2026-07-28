@@ -637,6 +637,7 @@ export class NativeToolCallParser {
 						message: partialArgs.message,
 						todos: partialArgs.todos,
 						tier: partialArgs.tier,
+						todoId: partialArgs.todoId,
 					}
 				}
 				break
@@ -993,6 +994,7 @@ export class NativeToolCallParser {
 							message: args.message,
 							todos: args.todos,
 							tier: args.tier,
+							todoId: args.todoId,
 						} as NativeArgsFor<TName>
 					}
 					break

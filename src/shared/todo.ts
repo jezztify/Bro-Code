@@ -1,6 +1,6 @@
-import { ClineMessage } from "@roo-code/types"
+import { ClineMessage, TodoItem } from "@roo-code/types"
 
-export function getLatestTodo(clineMessages: ClineMessage[]) {
+export function getLatestTodo(clineMessages: ClineMessage[]): TodoItem[] {
 	const todos = clineMessages
 		.filter(
 			(msg) =>
