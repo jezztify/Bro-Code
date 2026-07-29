@@ -34,6 +34,15 @@ interface DelegationProvider {
 	}): Promise<boolean>
 }
 
+/**
+ * Interface for the provider method that retires a Tasks board card once its
+ * execution task reports completion.
+ */
+interface BoardCompletionProvider {
+	log(message: string): void
+	markBoardTaskCompleted(historyTaskId: string): Promise<void>
+}
+
 export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 	readonly name = "attempt_completion" as const
 
@@ -80,6 +89,13 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 			task.consecutiveMistakeCount = 0
 
 			await task.say("completion_result", result, undefined, false)
+
+			// The agent has declared the work finished, so retire its board card here.
+			// TaskCompleted cannot carry this on its own: for a top-level task it is only
+			// emitted on "yesButtonClicked", and the completion_result ask renders a
+			// "Start New Task" button that posts clearTask instead — so a board card
+			// would otherwise sit in In Progress forever.
+			await this.markBoardTaskCompleted(task)
 
 			// Check for subtask using parentTaskId (metadata-driven delegation)
 			if (task.parentTaskId) {
@@ -214,6 +230,25 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 			}
 		} else {
 			await task.say("completion_result", result ?? "", undefined, block.partial)
+		}
+	}
+
+	/**
+	 * Board bookkeeping must never be able to fail a completion, so this swallows
+	 * its errors after logging them.
+	 */
+	private async markBoardTaskCompleted(task: Task): Promise<void> {
+		const provider = task.providerRef?.deref() as BoardCompletionProvider | undefined
+		if (!provider?.markBoardTaskCompleted) return
+
+		try {
+			await provider.markBoardTaskCompleted(task.taskId)
+		} catch (error) {
+			provider.log(
+				`[AttemptCompletionTool] Failed to move the board card for ${task.taskId} to done: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			)
 		}
 	}
 

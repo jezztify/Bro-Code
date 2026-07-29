@@ -166,6 +166,7 @@ vi.mock("../extension/api", () => ({
 vi.mock("../activate", () => ({
 	handleUri: vi.fn(),
 	registerCommands: vi.fn(),
+	createSidebarRedirectProvider: vi.fn(() => ({ resolveWebviewView: vi.fn() })),
 	registerCodeActions: vi.fn(),
 	registerTerminalActions: vi.fn(),
 	CodeActionProvider: vi.fn().mockImplementation(function () {

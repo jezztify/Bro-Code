@@ -275,6 +275,7 @@ vi.mock("../../task/Task", () => ({
 			setTaskNumber: vi.fn(),
 			setParentTask: vi.fn(),
 			setRootTask: vi.fn(),
+			getTaskMode: vi.fn().mockResolvedValue(options?.historyItem?.mode || options?.initialMode || "code"),
 			taskId: options?.historyItem?.id || "test-task-id",
 			emit: vi.fn(),
 		}
@@ -422,6 +423,7 @@ describe("ClineProvider", () => {
 				setTaskNumber: vi.fn(),
 				setParentTask: vi.fn(),
 				setRootTask: vi.fn(),
+				getTaskMode: vi.fn().mockResolvedValue(options?.historyItem?.mode || options?.initialMode || "code"),
 				taskId: options?.historyItem?.id || "test-task-id",
 				emit: vi.fn(),
 			}
@@ -698,6 +700,7 @@ describe("ClineProvider", () => {
 			version: "1.0.0",
 			clineMessages: [],
 			taskHistory: [],
+			boardState: { version: 1, workspaces: [], tasks: [], migrations: {} },
 			shouldShowAnnouncement: false,
 			apiConfiguration: {
 				apiProvider: "openrouter",
@@ -994,6 +997,28 @@ describe("ClineProvider", () => {
 
 		// verify current cline instance is the last one added
 		expect(provider.getCurrentTask()).toBe(mockCline2)
+	})
+
+	test("sets the composer mode to the mode inherited by a newly focused task", async () => {
+		const task = new Task({ ...defaultTaskOptions, initialMode: "code" })
+
+		await provider.addClineToStack(task)
+
+		expect((await provider.getState()).mode).toBe("code")
+	})
+
+	test("sets the composer mode when focusing a different resident task", async () => {
+		const codeTask = new Task({ ...defaultTaskOptions, initialMode: "code" })
+		const architectTask = new Task({ ...defaultTaskOptions, initialMode: "architect" })
+		Object.defineProperty(codeTask, "taskId", { value: "code-task", writable: true })
+		Object.defineProperty(architectTask, "taskId", { value: "architect-task", writable: true })
+
+		await provider.addClineToStack(codeTask)
+		await provider.addClineToStack(architectTask)
+		await provider.showTaskWithId(codeTask.taskId)
+
+		expect(provider.getCurrentTask()).toBe(codeTask)
+		expect((await provider.getState()).mode).toBe("code")
 	})
 
 	test("getState returns correct initial state", async () => {
@@ -2095,7 +2120,7 @@ describe("ClineProvider", () => {
 			// Initialize with history item
 			await provider.createTaskWithHistoryItem(historyItem)
 
-			// Verify no mode validation occurred (mode update not called)
+			// No explicit mode validation is needed for a legacy task.
 			expect(mockContext.globalState.update).not.toHaveBeenCalledWith("mode", expect.any(String))
 		})
 

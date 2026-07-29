@@ -3,6 +3,7 @@ import { z } from "zod"
 import { RooCodeEventName } from "./events.js"
 import type { RooCodeSettings } from "./global-settings.js"
 import type { ClineMessage, QueuedMessage, TokenUsage } from "./message.js"
+import type { ReasoningEffortOverride } from "./model.js"
 import type { ToolUsage, ToolName } from "./tool.js"
 import type { TodoItem } from "./todo.js"
 
@@ -94,6 +95,10 @@ export interface CreateTaskOptions {
 	/** Whether to start the task loop immediately (default: true).
 	 *  When false, the caller must invoke `task.start()` manually. */
 	startTask?: boolean
+	/** Mode assigned at creation without changing the globally selected mode. */
+	initialMode?: string
+	/** Initial per-task reasoning selection; omitted means Default/Auto. */
+	initialReasoningEffort?: ReasoningEffortOverride
 }
 
 export enum TaskStatus {
@@ -121,13 +126,21 @@ export interface TaskLike {
 	readonly taskAsk: ClineMessage | undefined
 	readonly queuedMessages: QueuedMessage[]
 	readonly tokenUsage: TokenUsage | undefined
+	readonly reasoningEffort?: ReasoningEffortOverride
 
 	on<K extends keyof TaskEvents>(event: K, listener: (...args: TaskEvents[K]) => void | Promise<void>): this
 	off<K extends keyof TaskEvents>(event: K, listener: (...args: TaskEvents[K]) => void | Promise<void>): this
 
 	approveAsk(options?: { text?: string; images?: string[] }): void
 	denyAsk(options?: { text?: string; images?: string[] }): void
-	submitUserMessage(text: string, images?: string[], mode?: string, providerProfile?: string): Promise<void>
+	submitUserMessage(
+		text: string,
+		images?: string[],
+		mode?: string,
+		providerProfile?: string,
+		reasoningEffort?: ReasoningEffortOverride | null,
+	): Promise<void>
+	setReasoningEffort(value: ReasoningEffortOverride | null): Promise<void>
 	abortTask(): void
 }
 

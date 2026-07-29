@@ -234,8 +234,8 @@ Just some text
 		it("should generate the same id for same content regardless of status", () => {
 			// Ids are now derived from normalized content only (not status), so an item's id
 			// stays stable across update_todo_list calls that change its status. This is what
-			// allows a kanban board card to keep its identity (and relatedTaskId link) as the
-			// linked todo moves through pending -> in_progress -> testing -> completed.
+			// allows a todo item to keep its identity (and relatedTaskId link) as it moves
+			// through pending -> in_progress -> testing -> completed.
 			const md = `[ ] Task 1
 [x] Task 1`
 			const result = parseMarkdownChecklist(md)

@@ -18,7 +18,7 @@ suite("Zoo Code Extension", function () {
 			"popoutButtonClicked",
 			"openInNewTab",
 			"settingsButtonClicked",
-			"historyButtonClicked",
+			"boardButtonClicked",
 			"newTask",
 			"setCustomStoragePath",
 			"focusInput",

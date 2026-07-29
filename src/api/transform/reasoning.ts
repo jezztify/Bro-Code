@@ -4,7 +4,7 @@ import type { GenerateContentConfig } from "@google/genai"
 
 import type { ModelInfo, ProviderSettings, ReasoningEffortExtended } from "@roo-code/types"
 
-import { shouldUseReasoningBudget, shouldUseReasoningEffort } from "../../shared/api"
+import { resolveReasoningSettings, shouldUseReasoningBudget, shouldUseReasoningEffort } from "../../shared/api"
 
 export type OpenRouterReasoningParams = {
 	effort?: ReasoningEffortExtended
@@ -116,12 +116,15 @@ export const getAnthropicProviderReasoning = ({
 	model,
 	reasoningBudget,
 	settings,
+	reasoningEffort,
 }: GetModelReasoningOptions): AnthropicProviderReasoningParams | undefined => {
-	if (model.supportsReasoningBinary && settings.enableReasoningEffort) {
+	const effectiveSettings = resolveReasoningSettings({ model, settings, reasoningEffort })
+
+	if (model.supportsReasoningBinary && effectiveSettings.enableReasoningEffort) {
 		return { type: "adaptive" }
 	}
 
-	return getAnthropicReasoning({ model, reasoningBudget, settings })
+	return getAnthropicReasoning({ model, reasoningBudget, settings: effectiveSettings })
 }
 
 export const getOpenAiReasoning = ({

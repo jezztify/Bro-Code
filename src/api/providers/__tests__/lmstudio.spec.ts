@@ -61,6 +61,7 @@ vi.mock("openai", () => {
 })
 
 import type { Anthropic } from "@anthropic-ai/sdk"
+import { openAiModelInfoSaneDefaults } from "@roo-code/types"
 
 import { LmStudioHandler } from "../lm-studio"
 import type { ApiHandlerOptions } from "../../../shared/api"
@@ -158,6 +159,47 @@ describe("LmStudioHandler", () => {
 			expect(textChunks[0].text).toBe("Final answer")
 		})
 
+		it("should apply a task-local reasoning effort to the request", async () => {
+			vi.spyOn(handler, "getModel").mockReturnValue({
+				id: "local-model",
+				info: {
+					...openAiModelInfoSaneDefaults,
+					supportsReasoningEffort: true,
+				},
+			})
+
+			for await (const _chunk of handler.createMessage(systemPrompt, messages, {
+				taskId: "test-task-id",
+				reasoningEffort: "high",
+			})) {
+				// Consume the stream so the request is constructed.
+			}
+
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({ reasoning_effort: "high" }),
+				expect.objectContaining({ signal: undefined }),
+		)
+		})
+
+		it("should omit reasoning effort when a task-local override is Off", async () => {
+			vi.spyOn(handler, "getModel").mockReturnValue({
+				id: "local-model",
+				info: {
+					...openAiModelInfoSaneDefaults,
+					supportsReasoningEffort: true,
+				},
+			})
+
+			for await (const _chunk of handler.createMessage(systemPrompt, messages, {
+				taskId: "test-task-id",
+				reasoningEffort: "disable",
+			})) {
+				// Consume the stream so the request is constructed.
+			}
+
+			expect(mockCreate.mock.calls[0][0]).not.toHaveProperty("reasoning_effort")
+		})
+
 		it("should still detect reasoning from <think> tags", async () => {
 			mockCreate.mockImplementationOnce(async () => ({
 				[Symbol.asyncIterator]: async function* () {
@@ -250,12 +292,15 @@ describe("LmStudioHandler", () => {
 		it("should complete prompt successfully", async () => {
 			const result = await handler.completePrompt("Test prompt")
 			expect(result).toBe("Test response")
-			expect(mockCreate).toHaveBeenCalledWith({
-				model: mockOptions.lmStudioModelId,
-				messages: [{ role: "user", content: "Test prompt" }],
-				temperature: 0,
-				stream: false,
-			})
+			expect(mockCreate).toHaveBeenCalledWith(
+				{
+					model: mockOptions.lmStudioModelId,
+					messages: [{ role: "user", content: "Test prompt" }],
+					temperature: 0,
+					stream: false,
+				},
+				{ signal: undefined },
+			)
 		})
 
 		it("should handle API errors", async () => {

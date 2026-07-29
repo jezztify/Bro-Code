@@ -183,8 +183,8 @@ export class TaskHistoryStore {
 	 * Writes the per-task file immediately (source of truth),
 	 * updates the in-memory Map, and schedules a debounced index write.
 	 */
-	async upsert(item: HistoryItem): Promise<HistoryItem[]> {
-		return this.withLock(() => this.upsertCore(item))
+	async upsert(item: HistoryItem, options: { removeReasoningEffort?: boolean } = {}): Promise<HistoryItem[]> {
+		return this.withLock(() => this.upsertCore(item, options))
 	}
 
 	/**
@@ -196,7 +196,7 @@ export class TaskHistoryStore {
 	 */
 	private async upsertCore(
 		item: HistoryItem,
-		options: { skipTransitionCheck?: boolean } = {},
+		options: { skipTransitionCheck?: boolean; removeReasoningEffort?: boolean } = {},
 	): Promise<HistoryItem[]> {
 		const existing = this.cache.get(item.id)
 
@@ -212,8 +212,11 @@ export class TaskHistoryStore {
 			}
 		}
 
-		// Merge: preserve existing metadata unless explicitly overwritten
-		const merged = existing ? { ...existing, ...item } : item
+		// Merge: preserve existing metadata unless explicitly overwritten.
+		const merged = existing ? { ...existing, ...item } : { ...item }
+		if (options.removeReasoningEffort) {
+			delete merged.reasoningEffort
+		}
 
 		// Write per-task file (source of truth)
 		await this.writeTaskFile(merged)

@@ -20,7 +20,7 @@ export abstract class BaseProvider implements ApiHandler {
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream
 
-	abstract getModel(): { id: string; info: ModelInfo }
+	abstract getModel(metadata?: ApiHandlerCreateMessageMetadata): { id: string; info: ModelInfo }
 
 	/**
 	 * Converts an array of tools to be compatible with OpenAI's strict mode.

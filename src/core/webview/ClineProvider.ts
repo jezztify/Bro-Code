@@ -29,6 +29,11 @@ import {
 	type TerminalActionId,
 	type TerminalActionPromptType,
 	type HistoryItem,
+	type BoardState,
+	type BoardTask,
+	type BoardStage,
+	type BoardWorkspace,
+	type BoardPlanningSessionState,
 	type CloudUserInfo,
 	type CloudOrganizationMembership,
 	type CreateTaskOptions,
@@ -51,6 +56,7 @@ import {
 	getModelId,
 	isRetiredProvider,
 	providerIdentifiers,
+	parseBoardTaskNumber,
 } from "@roo-code/types"
 import { RateLimitClock, createRateLimitClock } from "../task/RateLimitClock"
 import { TaskRegistry } from "../task/TaskRegistry"
@@ -95,13 +101,15 @@ import { setPanel } from "../../activate/registerCommands"
 
 import { t } from "../../i18n"
 
-import { buildApiHandler } from "../../api"
 import { forceFullModelDetailsLoad, hasLoadedFullDetails } from "../../api/providers/fetchers/lmstudio"
 
 import { ContextProxy } from "../config/ContextProxy"
 import { ProviderSettingsManager } from "../config/ProviderSettingsManager"
 import { CustomModesManager } from "../config/CustomModesManager"
 import { Task } from "../task/Task"
+import { BoardStore } from "../board/BoardStore"
+import { BoardPlanningSession } from "../board/BoardPlanningSession"
+import { buildApiHandler } from "../../api"
 
 import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { ClineMessage, TodoItem } from "@roo-code/types"
@@ -118,7 +126,6 @@ import { getUri } from "./getUri"
 import { REQUESTY_BASE_URL } from "../../shared/utils/requesty"
 import { validateAndFixToolResultIds } from "../task/validateToolResultIds"
 import { PendingEditOperationStore, type PendingEditOperationInput } from "./PendingEditOperationStore"
-import { getKanbanBoardForRootTask } from "./kanbanBoard"
 import { updateTodoStatusForTask, canTransitionTodoStatus } from "../tools/UpdateTodoListTool"
 import { getLatestTodo } from "../../shared/todo"
 import { v7 as uuidv7 } from "uuid"
@@ -179,6 +186,7 @@ export class ClineProvider
 	private view?: vscode.WebviewView | vscode.WebviewPanel
 	private taskRegistry = new TaskRegistry()
 	private taskScheduler = new TaskScheduler()
+	private taskNavigationQueue: Promise<void> = Promise.resolve()
 	private delegationTransitionLocks?: Map<string, Promise<void>>
 	private cancelledDelegationChildIds = new Set<string>()
 	// Keyed by child taskId: the provider profile that was globally active on the parent
@@ -187,10 +195,6 @@ export class ClineProvider
 	// abandonSubtask so the parent resumes on its own profile instead of silently
 	// inheriting the child's tier-routed model. See H3 in docs/REVIEW_1.md.
 	private pendingTierProfileRestoreByChildId = new Map<string, string>()
-	// Root task id whose kanban board view is currently open in the webview, if any.
-	// Gates broadcastKanbanBoardIfWatched() so board rebuilds/postMessages only happen
-	// while a viewer is actually watching this root task's board.
-	private kanbanWatchedRootTaskId: string | undefined
 	private codeIndexStatusSubscription?: vscode.Disposable
 	private codeIndexManager?: CodeIndexManager
 	private _workspaceTracker?: WorkspaceTracker // workSpaceTracker read-only for access outside this class
@@ -209,6 +213,10 @@ export class ClineProvider
 
 	private recentTasksCache?: string[]
 	public readonly taskHistoryStore: TaskHistoryStore
+	public readonly boardStore: BoardStore
+	private boardPlanningSession?: BoardPlanningSession
+	private readonly boardTaskStartClaims = new Map<string, Promise<void>>()
+	private readonly boardTaskRefineClaims = new Map<string, Promise<void>>()
 	private taskHistoryStoreInitialized = false
 	private globalStateWriteThroughTimer: ReturnType<typeof setTimeout> | null = null
 	private static readonly GLOBAL_STATE_WRITE_THROUGH_DEBOUNCE_MS = 5000 // 5 seconds
@@ -266,6 +274,10 @@ export class ClineProvider
 		this.initializeTaskHistoryStore().catch((error) => {
 			this.log(`Failed to initialize TaskHistoryStore: ${error}`)
 		})
+		this.boardStore = new BoardStore(this.contextProxy.globalStorageUri.fsPath, (message) => this.log(message))
+		this.boardStore.initialize().catch((error) => {
+			this.log(`Failed to initialize BoardStore: ${error}`)
+		})
 
 		// Start configuration loading (which might trigger indexing) in the background.
 		// Don't await, allowing activation to continue immediately.
@@ -318,6 +330,7 @@ export class ClineProvider
 					if (existing && existing.status !== "completed") {
 						await this.updateTaskHistory({ ...existing, status: "completed" })
 					}
+					await this.updateBoardState(await this.boardStore.moveLinkedHistoryTaskToDone(taskId))
 				} catch (err) {
 					this.log(
 						`[onTaskCompleted] Failed to write completed status for ${taskId}: ${err instanceof Error ? err.message : String(err)}`,
@@ -427,6 +440,8 @@ export class ClineProvider
 			}
 
 			this.taskHistoryStoreInitialized = true
+			await this.boardStore.initialized
+			await this.boardStore.importHistoryOnce(this.taskHistoryStore.getAll())
 		} catch (error) {
 			this.log(`[initializeTaskHistoryStore] Error: ${error instanceof Error ? error.message : String(error)}`)
 		}
@@ -486,9 +501,18 @@ export class ClineProvider
 	// When the task is completed, the top instance is removed, reactivating the
 	// previous task.
 	async addClineToStack(task: Task) {
+		// The outgoing task keeps running in the background; it only loses focus.
+		// (When the caller evicted it first, current is already gone and this no-ops.)
+		const outgoing = this.taskRegistry.current
+
+		if (outgoing && outgoing.taskId !== task.taskId) {
+			outgoing.emit(RooCodeEventName.TaskUnfocused)
+		}
+
 		// Add this cline instance into the stack that represents the order of
 		// all the called tasks.
 		this.taskRegistry.push(task)
+		await this.syncFocusedTaskMode(task)
 		task.emit(RooCodeEventName.TaskFocused)
 
 		// Perform special setup provider specific tasks.
@@ -499,6 +523,22 @@ export class ClineProvider
 
 		if (!state || typeof state.mode !== "string") {
 			throw new Error(t("common:errors.retrieve_current_mode"))
+		}
+	}
+
+	/**
+	 * Keep the global mode selection, which drives the composer picker, aligned
+	 * with the task that currently owns the chat view. Task modes remain scoped
+	 * to their own instances; focusing a task must not rewrite its history or
+	 * activate its mode-specific provider profile.
+	 */
+	private async syncFocusedTaskMode(task: Task): Promise<void> {
+		const taskMode = await task.getTaskMode()
+		const { mode } = await this.getState()
+
+		if (mode !== taskMode) {
+			await this.updateGlobalState("mode", taskMode)
+			this.emit(RooCodeEventName.ModeChanged, taskMode)
 		}
 	}
 
@@ -528,13 +568,27 @@ export class ClineProvider
 		}
 
 		// Remove the focused Cline instance from the stack.
-		let task = this.taskRegistry.current
-		if (task) {
-			task = this.taskRegistry.remove(task.taskId)
+		const current = this.taskRegistry.current
+
+		if (current) {
+			await this.destroyResidentTask(current.taskId)
 		}
+	}
+
+	/**
+	 * Aborts a task that is resident in the registry — focused or not — and removes it.
+	 * Since a task no longer has to be focused to be running, background tasks need the
+	 * same teardown the focused one gets.
+	 */
+	private async destroyResidentTask(taskId: string): Promise<void> {
+		const wasFocused = this.taskRegistry.current?.taskId === taskId
+		let task = this.taskRegistry.remove(taskId)
 
 		if (task) {
-			task.emit(RooCodeEventName.TaskUnfocused)
+			// A background task was never focused, so it has no focus to give up.
+			if (wasFocused) {
+				task.emit(RooCodeEventName.TaskUnfocused)
+			}
 
 			try {
 				// Abort the running task and set isAbandoned to true so
@@ -542,7 +596,7 @@ export class ClineProvider
 				await task.abortTask(true)
 			} catch (e) {
 				this.log(
-					`[ClineProvider#removeClineFromStack] abortTask() failed ${task.taskId}.${task.instanceId}: ${e.message}`,
+					`[ClineProvider#destroyResidentTask] abortTask() failed ${task.taskId}.${task.instanceId}: ${e.message}`,
 				)
 			}
 
@@ -558,7 +612,7 @@ export class ClineProvider
 				}
 			} catch (e) {
 				this.log(
-					`[ClineProvider#removeClineFromStack] Failed to restore pre-failover profile for task ${task.taskId}: ${e instanceof Error ? e.message : String(e)}`,
+					`[ClineProvider#destroyResidentTask] Failed to restore pre-failover profile for task ${task.taskId}: ${e instanceof Error ? e.message : String(e)}`,
 				)
 			}
 
@@ -574,6 +628,25 @@ export class ClineProvider
 			// garbage collected.
 			task = undefined
 		}
+	}
+
+	/**
+	 * Drops focus from the current task without ending it. The task stays in the registry
+	 * and keeps running; the webview simply renders no task, which is what the "+" button
+	 * needs so the user can compose a new one alongside work already in flight.
+	 *
+	 * Contrast with evictCurrentTask(), which aborts and discards.
+	 */
+	public async unfocusCurrentTask(): Promise<void> {
+		const current = this.getCurrentTask()
+
+		if (!current) {
+			return
+		}
+
+		current.emit(RooCodeEventName.TaskUnfocused)
+		this.taskRegistry.clearCurrent()
+		await this.postStateToWebview()
 	}
 
 	/**
@@ -1091,9 +1164,12 @@ export class ClineProvider
 
 	public async createTaskWithHistoryItem(
 		historyItem: HistoryItem & { rootTask?: Task; parentTask?: Task },
-		options?: { startTask?: boolean },
+		options?: { startTask?: boolean; preserveCurrentTask?: boolean },
 	) {
 		const isCliRuntime = process.env.ROO_CLI_RUNTIME === "1"
+		const preserveCurrentTask = options?.preserveCurrentTask ?? false
+		let restoredApiConfiguration: ProviderSettings | undefined
+		let restoredProfileName: string | undefined
 		// CLI injects runtime provider settings from command flags/env at startup.
 		// Restoring provider profiles from task history can overwrite those
 		// runtime settings with stale/incomplete persisted profiles.
@@ -1103,7 +1179,7 @@ export class ClineProvider
 		const currentTask = this.getCurrentTask()
 		const isRehydratingCurrentTask = currentTask && currentTask.taskId === historyItem.id
 
-		if (!isRehydratingCurrentTask) {
+		if (!isRehydratingCurrentTask && !preserveCurrentTask) {
 			await this.evictCurrentTask()
 		}
 
@@ -1155,7 +1231,12 @@ export class ClineProvider
 							const hasActualSettings = !!fullProfile.apiProvider
 
 							if (hasActualSettings) {
-								await this.activateProviderProfile({ name: profile.name })
+								if (preserveCurrentTask) {
+									restoredApiConfiguration = fullProfile
+									restoredProfileName = profile.name
+								} else {
+									await this.activateProviderProfile({ name: profile.name })
+								}
 							} else {
 								// The task will continue with the current/default configuration.
 							}
@@ -1185,7 +1266,12 @@ export class ClineProvider
 			if (profile?.name) {
 				try {
 					if (profile.apiProvider) {
-						await this.activateProviderProfile({ name: profile.name }, { persistTaskHistory: false })
+						if (preserveCurrentTask) {
+							restoredApiConfiguration = await this.providerSettingsManager.getProfile({ name: profile.name })
+							restoredProfileName = profile.name
+						} else {
+							await this.activateProviderProfile({ name: profile.name }, { persistTaskHistory: false })
+						}
 					}
 				} catch (error) {
 					// Log the error but continue with task restoration.
@@ -1219,10 +1305,10 @@ export class ClineProvider
 
 		const task = new Task({
 			provider: this,
-			apiConfiguration,
+			apiConfiguration: restoredApiConfiguration ?? apiConfiguration,
 			enableCheckpoints,
 			checkpointTimeout,
-			consecutiveMistakeLimit: apiConfiguration.consecutiveMistakeLimit,
+			consecutiveMistakeLimit: (restoredApiConfiguration ?? apiConfiguration).consecutiveMistakeLimit,
 			historyItem,
 			experiments,
 			rootTask: historyItem.rootTask,
@@ -1233,6 +1319,7 @@ export class ClineProvider
 			startTask: false,
 			// Preserve the status from the history item to avoid overwriting it when the task saves messages
 			initialStatus: historyItem.status,
+			initialReasoningEffort: historyItem.reasoningEffort,
 			rateLimitClock: this.rateLimitClock,
 			diffFuzzyThreshold,
 		})
@@ -1262,6 +1349,7 @@ export class ClineProvider
 				this.taskRegistry.replace(oldTask.taskId, task)
 			}
 
+			await this.syncFocusedTaskMode(task)
 			task.emit(RooCodeEventName.TaskFocused)
 
 			// Perform preparation tasks and set up event listeners
@@ -1284,6 +1372,12 @@ export class ClineProvider
 			if (options?.startTask !== false) {
 				scheduleTask(this.taskScheduler, task, "createTaskWithHistoryItem")
 			}
+		}
+
+		// A historical task can be viewed while another task is running. Activate its
+		// profile only after it is focused, so the background task is never reconfigured.
+		if (restoredProfileName) {
+			await this.activateProviderProfile({ name: restoredProfileName }, { persistTaskHistory: false })
 		}
 
 		// Check if there's a pending edit after checkpoint restoration
@@ -1570,9 +1664,15 @@ export class ClineProvider
 	/**
 	 * Handle switching to a new mode, including updating the associated API configuration
 	 * @param newMode The mode to switch to
+	 * @param callingTask The task that requested the switch. Several tasks can be running at
+	 * once (see {@link TaskRegistry}) while only one holds UI focus, so an agent-initiated
+	 * switch must name its own task — otherwise it would restamp whichever task the user
+	 * happens to be looking at. Omit it for user-initiated switches, which target the
+	 * focused task by definition.
 	 */
-	public async handleModeSwitch(newMode: Mode) {
-		const task = this.getCurrentTask()
+	public async handleModeSwitch(newMode: Mode, callingTask?: Task) {
+		const focusedTask = this.getCurrentTask()
+		const task = callingTask ?? focusedTask
 
 		if (task) {
 			TelemetryService.instance.captureModeSwitch(task.taskId, newMode)
@@ -1600,6 +1700,14 @@ export class ClineProvider
 				// This ensures the in-memory state remains consistent with persisted state.
 				throw error
 			}
+		}
+
+		// Everything below is single-valued across every running task: the global `mode`,
+		// the active provider profile, and the webview. Only the task the user is actually
+		// looking at may move them — a background task switching mode changes its own mode
+		// and nothing else, and so keeps the provider profile it is already streaming with.
+		if (task && task.taskId !== focusedTask?.taskId) {
+			return
 		}
 
 		await this.updateGlobalState("mode", newMode)
@@ -1861,10 +1969,14 @@ export class ClineProvider
 		}
 	}
 
-	async activateProviderProfile(args: { name: string } | { id: string }, options?: { persistTaskHistory?: boolean }) {
+	async activateProviderProfile(
+		args: { name: string } | { id: string },
+		options?: { persistTaskHistory?: boolean; updateCurrentTask?: boolean },
+	) {
 		const { name, id: _id, ...providerSettings } = await this.providerSettingsManager.activateProfile(args)
 
 		const persistTaskHistory = options?.persistTaskHistory ?? true
+		const updateCurrentTask = options?.updateCurrentTask ?? true
 
 		// See `upsertProviderProfile` for a description of what this is doing.
 		// Note: this does NOT assign the profile to the current mode's configuration
@@ -1875,8 +1987,11 @@ export class ClineProvider
 			this.contextProxy.setProviderSettings(providerSettings),
 		])
 
-		// Change the provider for the current task.
-		this.updateTaskApiHandlerIfNeeded(providerSettings, { forceRebuild: true })
+		// When viewing a historical task, a different task can still be streaming in
+		// the background. Do not rebuild that task's handler for the viewed task's profile.
+		if (updateCurrentTask) {
+			this.updateTaskApiHandlerIfNeeded(providerSettings, { forceRebuild: true })
+		}
 
 		// Update the current task's sticky provider profile, unless this activation is
 		// being used purely as a non-persisting restoration (e.g., reopening a task from history).
@@ -1886,7 +2001,7 @@ export class ClineProvider
 
 		await this.postStateToWebview()
 
-		if (providerSettings.apiProvider) {
+		if (updateCurrentTask && providerSettings.apiProvider) {
 			this.emit(RooCodeEventName.ProviderProfileChanged, { name, provider: providerSettings.apiProvider })
 		}
 	}
@@ -2130,10 +2245,29 @@ export class ClineProvider
 	}
 
 	async showTaskWithId(id: string) {
-		if (id !== this.getCurrentTask()?.taskId) {
-			// Non-current task.
-			const { historyItem } = await this.getTaskWithId(id)
-			await this.createTaskWithHistoryItem(historyItem) // Clears existing task.
+		const navigation = this.taskNavigationQueue.then(() => this.showTaskWithIdInternal(id))
+		this.taskNavigationQueue = navigation.catch(() => undefined)
+		return navigation
+	}
+
+	private async showTaskWithIdInternal(id: string) {
+		const currentTask = this.getCurrentTask()
+		if (id !== currentTask?.taskId) {
+			const residentTask = this.taskRegistry.getById(id)
+			if (residentTask) {
+				// Keep in-progress tasks alive when navigating between open tasks. Rehydrating
+				// would evict and abort the currently focused task before recreating this one.
+				currentTask?.emit(RooCodeEventName.TaskUnfocused)
+				this.taskRegistry.setCurrent(id)
+				await this.syncFocusedTaskMode(residentTask)
+				residentTask.emit(RooCodeEventName.TaskFocused)
+			} else {
+				const { historyItem } = await this.getTaskWithId(id)
+				// Viewing a task from history must not abort a task that is still running.
+				currentTask?.emit(RooCodeEventName.TaskUnfocused)
+				await this.createTaskWithHistoryItem(historyItem, { preserveCurrentTask: true })
+			}
+			await this.postStateToWebview()
 		}
 
 		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
@@ -2172,14 +2306,20 @@ export class ClineProvider
 
 			// Collect all task IDs to delete (parent + all subtasks)
 			const allIdsToDelete: string[] = [id]
+			const idsToDelete = new Set(allIdsToDelete)
 
 			if (cascadeSubtasks) {
-				// Recursively collect all child IDs
+				// Recursively collect all child IDs. Persisted task history can be malformed, so
+				// skip IDs already seen to avoid cycles and duplicate deletion work.
 				const collectChildIds = async (taskId: string): Promise<void> => {
 					try {
 						const { historyItem: item } = await this.getTaskWithId(taskId)
 						if (item.childIds && item.childIds.length > 0) {
 							for (const childId of item.childIds) {
+								if (idsToDelete.has(childId)) {
+									continue
+								}
+								idsToDelete.add(childId)
 								allIdsToDelete.push(childId)
 								await collectChildIds(childId)
 							}
@@ -2193,12 +2333,12 @@ export class ClineProvider
 				await collectChildIds(id)
 			}
 
-			// Remove from stack if any of the tasks to delete are in the current task stack
+			// Tear down every live instance being deleted, not just the focused one — a
+			// backgrounded task would otherwise keep running against deleted history.
+			// Delegation flows are handled via metadata if applicable.
 			for (const taskId of allIdsToDelete) {
-				if (taskId === this.getCurrentTask()?.taskId) {
-					// Close the current task instance; delegation flows will be handled via metadata if applicable.
-					await this.removeClineFromStack()
-					break
+				if (this.taskRegistry.getById(taskId)) {
+					await this.destroyResidentTask(taskId)
 				}
 			}
 
@@ -2408,6 +2548,7 @@ export class ClineProvider
 	async getStateToPostToWebview(): Promise<ExtensionState> {
 		// Ensure the store is initialized before reading task history
 		await this.taskHistoryStore.initialized
+		await this.boardStore.initialized
 
 		const {
 			apiConfiguration,
@@ -2424,6 +2565,7 @@ export class ClineProvider
 			alwaysAllowMcp,
 			alwaysAllowModeSwitch,
 			alwaysAllowSubtasks,
+			alwaysAllowBoardTasks,
 			allowedMaxRequests,
 			allowedMaxCost,
 			autoCondenseContext,
@@ -2571,6 +2713,7 @@ export class ClineProvider
 			alwaysAllowMcp: alwaysAllowMcp ?? false,
 			alwaysAllowModeSwitch: alwaysAllowModeSwitch ?? false,
 			alwaysAllowSubtasks: alwaysAllowSubtasks ?? false,
+			alwaysAllowBoardTasks: alwaysAllowBoardTasks ?? false,
 			allowedMaxRequests,
 			allowedMaxCost,
 			autoCondenseContext: autoCondenseContext ?? true,
@@ -2578,10 +2721,12 @@ export class ClineProvider
 			uriScheme: vscode.env.uriScheme,
 			currentTaskId: currentTask?.taskId,
 			currentTaskItem: currentTask?.taskId ? this.taskHistoryStore.get(currentTask.taskId) : undefined,
+			currentTaskReasoningEffort: currentTask?.reasoningEffort ?? null,
 			clineMessages: currentTask?.clineMessages || [],
 			currentTaskTodos: currentTask?.todoList || [],
 			messageQueue: currentTask?.messageQueueService?.messages,
 			taskHistory: this.taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task),
+			boardState: this.boardStore.getSnapshot(),
 			soundEnabled: soundEnabled ?? false,
 			ttsEnabled: ttsEnabled ?? false,
 			ttsSpeed: ttsSpeed ?? 1.0,
@@ -2807,6 +2952,7 @@ export class ClineProvider
 			alwaysAllowMcp: stateValues.alwaysAllowMcp ?? false,
 			alwaysAllowModeSwitch: stateValues.alwaysAllowModeSwitch ?? false,
 			alwaysAllowSubtasks: stateValues.alwaysAllowSubtasks ?? false,
+			alwaysAllowBoardTasks: stateValues.alwaysAllowBoardTasks ?? false,
 			alwaysAllowFollowupQuestions: stateValues.alwaysAllowFollowupQuestions ?? false,
 			followupAutoApproveTimeoutMs: stateValues.followupAutoApproveTimeoutMs ?? 60000,
 			diagnosticsEnabled: stateValues.diagnosticsEnabled ?? true,
@@ -2815,6 +2961,7 @@ export class ClineProvider
 			autoCondenseContext: stateValues.autoCondenseContext ?? true,
 			autoCondenseContextPercent: stateValues.autoCondenseContextPercent ?? 100,
 			taskHistory: this.taskHistoryStore.getAll(),
+			boardState: this.boardStore.getSnapshot(),
 			allowedCommands: stateValues.allowedCommands,
 			deniedCommands: stateValues.deniedCommands,
 			soundEnabled: stateValues.soundEnabled ?? false,
@@ -2920,10 +3067,13 @@ export class ClineProvider
 	 * @param options.broadcast Whether to broadcast the updated history to the webview (default: true)
 	 * @returns The updated task history array
 	 */
-	async updateTaskHistory(item: HistoryItem, options: { broadcast?: boolean } = {}): Promise<HistoryItem[]> {
-		const { broadcast = true } = options
+	async updateTaskHistory(
+		item: HistoryItem,
+		options: { broadcast?: boolean; removeReasoningEffort?: boolean } = {},
+	): Promise<HistoryItem[]> {
+		const { broadcast = true, removeReasoningEffort = false } = options
 
-		const history = await this.taskHistoryStore.upsert(item)
+		const history = await this.taskHistoryStore.upsert(item, { removeReasoningEffort })
 		this.recentTasksCache = undefined
 
 		// Broadcast the updated history to the webview if requested.
@@ -2934,6 +3084,377 @@ export class ClineProvider
 		}
 
 		return history
+	}
+
+	private async updateBoardState(boardState: BoardState): Promise<void> {
+		if (this.isViewLaunched) {
+			await this.postMessageToWebview({ type: "boardStateUpdated", boardState })
+		}
+	}
+
+	private async updateBoardPlanning(state: BoardPlanningSessionState): Promise<void> {
+		if (this.isViewLaunched) await this.postMessageToWebview({ type: "boardPlanningUpdated", boardPlanning: state })
+	}
+
+	async startBoardPlanning(workspaceId: string): Promise<void> {
+		await this.boardStore.initialized
+		const snapshot = this.boardStore.getSnapshot()
+		if (snapshot.selectedWorkspaceId !== workspaceId)
+			throw new Error("Board planning must target the active workspace")
+		const workspace = snapshot.workspaces.find((candidate) => candidate.id === workspaceId)
+		if (!workspace) throw new Error("Board workspace does not exist")
+		const state = await this.getState()
+		if (!state.apiConfiguration) throw new Error("Configure a model before planning with AI")
+		const session = new BoardPlanningSession(this.boardStore, workspace, (planningState) =>
+			this.updateBoardPlanning(planningState),
+		)
+		this.boardPlanningSession = session
+		await this.updateBoardPlanning(session.state)
+		const api = buildApiHandler(state.apiConfiguration)
+		const prompt = [
+			"You are planning board work only.",
+			`Active board workspace: ${workspace.name} (${workspace.id}).`,
+			workspace.linkedWorkspacePath
+				? `Linked folder context: ${workspace.linkedWorkspacePath}.`
+				: "No folder is linked.",
+			"Propose cards using only create_board_task and update_board_task. Do not create or execute coding tasks.",
+			"Card changes are held until the user explicitly approves the plan.",
+		].join("\n")
+		try {
+			await session.start(
+				api.createMessage(prompt, [{ role: "user", content: "Create a concise plan for this workspace." }], {
+					taskId: session.state.id,
+					tools: session.tools,
+					tool_choice: "auto",
+					parallelToolCalls: false,
+				}),
+			)
+		} catch (error) {
+			session.state.status = "error"
+			session.state.error = error instanceof Error ? error.message : String(error)
+			await this.updateBoardPlanning(session.state)
+		}
+	}
+
+	async approveBoardPlanning(): Promise<void> {
+		if (!this.boardPlanningSession) throw new Error("No board plan is awaiting approval")
+		await this.boardPlanningSession.approve()
+		await this.updateBoardState(this.boardStore.getSnapshot())
+	}
+
+	async createBoardWorkspace(name: string, linkedWorkspacePath?: string): Promise<void> {
+		await this.updateBoardState(await this.boardStore.createWorkspace(name, linkedWorkspacePath))
+	}
+
+	async updateBoardWorkspace(id: string, input: { name?: string; linkedWorkspacePath?: string }): Promise<void> {
+		await this.updateBoardState(await this.boardStore.updateWorkspace(id, input))
+	}
+
+	async deleteBoardWorkspace(id: string): Promise<void> {
+		await this.updateBoardState(await this.boardStore.deleteWorkspace(id))
+	}
+
+	async selectBoardWorkspace(id: string): Promise<void> {
+		await this.updateBoardState(await this.boardStore.selectWorkspace(id))
+	}
+
+	async setBoardColumnMode(workspaceId: string, stage: BoardStage, mode: string | null): Promise<void> {
+		if (mode && !getModeBySlug(mode, await this.customModesManager.getCustomModes())) {
+			throw new Error(`Mode ${mode} is not available`)
+		}
+		await this.updateBoardState(await this.boardStore.setColumnMode(workspaceId, stage, mode))
+	}
+
+	async createBoardTask(input: {
+		workspaceId: string
+		title?: string
+		description?: string
+		stage?: BoardStage
+	}): Promise<void> {
+		await this.updateBoardState(await this.boardStore.createTask(input))
+	}
+
+	/**
+	 * Used by the grantable `create_board_task` native tool. The active logical
+	 * board workspace, rather than a model-supplied ID, is the only permitted target.
+	 */
+	async createBoardTaskInSelectedWorkspace(input: {
+		title: string
+		description?: string
+		stage: BoardStage
+	}): Promise<BoardTask | undefined> {
+		await this.boardStore.initialized
+		const workspaceId = this.boardStore.getSnapshot().selectedWorkspaceId
+		if (!workspaceId) throw new Error("Select a board workspace before creating a board task")
+		await this.createBoardTask({ workspaceId, ...input })
+		return this.boardStore.getSnapshot().tasks.at(-1)
+	}
+
+	/**
+	 * `reference` is whatever the model was given to identify a card: its opaque ID or
+	 * the `TASK-12` number the user sees on the board.
+	 */
+	async readBoardTasksInSelectedWorkspace(reference?: string): Promise<BoardTask[]> {
+		await this.boardStore.initialized
+		const { selectedWorkspaceId, tasks } = this.boardStore.getSnapshot()
+		if (!selectedWorkspaceId) throw new Error("Select a board workspace before reading board tasks")
+		const selectedTasks = tasks.filter((task) => task.workspaceId === selectedWorkspaceId)
+		if (!reference) return selectedTasks
+		const number = parseBoardTaskNumber(reference)
+		const task = selectedTasks.find(
+			(candidate) => candidate.id === reference || (number !== undefined && candidate.number === number),
+		)
+		if (!task) throw new Error("Board task does not exist in the selected workspace")
+		return [task]
+	}
+
+	async updateBoardTaskInSelectedWorkspace(
+		reference: string,
+		input: { title?: string; description?: string | null; stage?: BoardStage },
+	): Promise<void> {
+		const [task] = await this.readBoardTasksInSelectedWorkspace(reference)
+		await this.updateBoardTask(task.id, input)
+	}
+
+	async deleteBoardTaskInSelectedWorkspace(reference: string): Promise<void> {
+		const [task] = await this.readBoardTasksInSelectedWorkspace(reference)
+		await this.deleteBoardTask(task.id)
+	}
+
+	async updateBoardTask(
+		id: string,
+		input: {
+			title?: string
+			description?: string | null
+			stage?: BoardStage
+			position?: number
+		},
+	): Promise<void> {
+		await this.updateBoardState(await this.boardStore.updateTask(id, input))
+	}
+
+	async deleteBoardTask(id: string): Promise<void> {
+		await this.updateBoardState(await this.boardStore.deleteTask(id))
+	}
+
+	async startBoardTask(id: string): Promise<void> {
+		const existingClaim = this.boardTaskStartClaims.get(id)
+		if (existingClaim) return existingClaim
+
+		const claim = this.startBoardTaskOnce(id)
+		this.boardTaskStartClaims.set(id, claim)
+		try {
+			await claim
+		} finally {
+			if (this.boardTaskStartClaims.get(id) === claim) this.boardTaskStartClaims.delete(id)
+		}
+	}
+
+	private async startBoardTaskOnce(id: string): Promise<void> {
+		await this.boardStore.initialized
+		const snapshot = this.boardStore.getSnapshot()
+		const task = snapshot.tasks.find((candidate) => candidate.id === id)
+		if (!task) throw new Error("Board task does not exist")
+		if (task.linkedHistoryTaskId) {
+			await this.showTaskWithId(task.linkedHistoryTaskId)
+			return
+		}
+		if (!task.title.trim()) throw new Error("A board task needs a title before it can be started")
+		// The mode belongs to the column the card is started from, not to the card.
+		const columnMode = ClineProvider.getBoardColumnMode(snapshot, task)
+		if (columnMode) {
+			const customModes = await this.customModesManager.getCustomModes()
+			if (!getModeBySlug(columnMode, customModes)) {
+				throw new Error(`Mode ${columnMode} assigned to this column is no longer available`)
+			}
+		}
+		const executionTask = await this.createTask(
+			ClineProvider.buildBoardExecutePrompt(task),
+			undefined,
+			undefined,
+			columnMode ? { initialMode: columnMode } : {},
+		)
+		try {
+			await this.updateBoardState(await this.boardStore.linkTaskToHistory(id, executionTask.taskId))
+		} catch (error) {
+			this.log(
+				`[startBoardTask] Execution task ${executionTask.taskId} was created but could not be linked: ${String(error)}`,
+			)
+			throw new Error(
+				`Execution task was created but could not be linked. Open task ${executionTask.taskId} and link it manually.`,
+			)
+		}
+	}
+
+	/**
+	 * A card is run in the mode its column carries, so the mode is looked up on the
+	 * card's workspace rather than on the card itself. Undefined means the column has
+	 * no mode and the run uses whichever mode is currently selected.
+	 */
+	private static getBoardColumnMode(state: BoardState, task: BoardTask): string | undefined {
+		return state.workspaces.find((workspace) => workspace.id === task.workspaceId)?.columnModes?.[task.stage]
+	}
+
+	/**
+	 * The opening message of an execution run. The card's description is where
+	 * refinement records the agreed scope and acceptance criteria, so starting from
+	 * the title alone would throw that work away.
+	 */
+	private static buildBoardExecutePrompt(task: BoardTask): string {
+		const description = task.description?.trim()
+		if (!description) {
+			return task.title
+		}
+
+		const lines = [task.title, "", description]
+		if (task.linkedRefinementTaskId) {
+			lines.push(
+				"",
+				"The scope and acceptance criteria above were agreed while refining this task. Implement what is described and check with me before going beyond it.",
+			)
+		}
+		return lines.join("\n")
+	}
+
+	/**
+	 * Open the card's refinement chat, creating it on first use. Idempotent: a card
+	 * always returns to the same conversation rather than starting a new one.
+	 */
+	async refineBoardTask(id: string): Promise<void> {
+		const existingClaim = this.boardTaskRefineClaims.get(id)
+		if (existingClaim) return existingClaim
+
+		const claim = this.refineBoardTaskOnce(id)
+		this.boardTaskRefineClaims.set(id, claim)
+		try {
+			await claim
+		} finally {
+			if (this.boardTaskRefineClaims.get(id) === claim) this.boardTaskRefineClaims.delete(id)
+		}
+	}
+
+	private async refineBoardTaskOnce(id: string): Promise<void> {
+		await this.boardStore.initialized
+		const snapshot = this.boardStore.getSnapshot()
+		const task = snapshot.tasks.find((candidate) => candidate.id === id)
+		if (!task) throw new Error("Board task does not exist")
+		if (task.linkedRefinementTaskId) {
+			// showTaskWithId already switches the webview to the chat tab.
+			await this.showTaskWithId(task.linkedRefinementTaskId)
+			return
+		}
+		if (!task.title.trim()) throw new Error("A board task needs a title before it can be refined")
+
+		// Refinement runs in the mode of the column the card is refined from, falling
+		// back to the dedicated refiner when that column has no mode of its own.
+		const columnMode = ClineProvider.getBoardColumnMode(snapshot, task)
+		if (columnMode) {
+			const customModes = await this.customModesManager.getCustomModes()
+			if (!getModeBySlug(columnMode, customModes)) {
+				throw new Error(`Mode ${columnMode} assigned to this column is no longer available`)
+			}
+		}
+		const workspace = snapshot.workspaces.find((candidate) => candidate.id === task.workspaceId)
+		const refinementTask = await this.createTask(
+			ClineProvider.buildBoardRefinePrompt(task, workspace),
+			undefined,
+			undefined,
+			{ initialMode: columnMode ?? "board-refine" },
+		)
+		try {
+			await this.updateBoardState(await this.boardStore.linkRefinementTask(id, refinementTask.taskId))
+		} catch (error) {
+			this.log(
+				`[refineBoardTask] Refinement task ${refinementTask.taskId} was created but could not be linked: ${String(error)}`,
+			)
+			throw new Error(
+				`Refinement chat was created but could not be linked. Open task ${refinementTask.taskId} and link it manually.`,
+			)
+		}
+		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+	}
+
+	/**
+	 * The opening message of a refinement chat. A board card is often a one-line
+	 * idea, so this drives the model to ground itself in the codebase before it asks
+	 * anything — questions answerable by reading the code are wasted turns.
+	 */
+	private static buildBoardRefinePrompt(task: BoardTask, workspace?: BoardWorkspace): string {
+		const description = task.description?.trim()
+		const workspaceLine = workspace
+			? `${workspace.name}${workspace.linkedWorkspacePath ? ` (folder: ${workspace.linkedWorkspacePath})` : ""}`
+			: "(unknown)"
+
+		return [
+			"Refine this board task card with me until it is ready to be implemented. Investigate the codebase first, then ask me about what you could not work out on your own.",
+			"",
+			"## The card",
+			`- ID — pass this as \`task_id\` when you call \`update_board_task\`: ${task.id}`,
+			`- Title: ${task.title}`,
+			`- Description: ${description || "(empty — this card is only a title so far)"}`,
+			`- Stage: ${task.stage}`,
+			// Execution always starts from the approved column, so that column's mode is
+			// the one this card will run in.
+			`- Will be executed in mode: ${
+				workspace?.columnModes?.approved ??
+				"(the approved column has no mode — whichever mode is selected when it starts)"
+			}`,
+			`- Board workspace: ${workspaceLine}`,
+			"",
+			"## Investigate before you reply",
+			"1. Work out what this card actually refers to in this codebase. Search for the feature, files, and symbols it names or implies.",
+			"2. Read the code that would have to change and identify the concrete entry points an implementer would touch.",
+			"3. Look for prior art — existing patterns, helpers, or near-identical features worth reusing instead of rebuilding.",
+			"4. Note what already works versus what is missing, plus anything that constrains the work: tests covering the area, schemas or migrations, and callers that would break.",
+			"",
+			"## Then reply with",
+			"- Your read of the card, grounded in what you found, citing specific files (`path:line` where it helps).",
+			"- The questions that genuinely block implementation — scope boundaries, acceptance criteria, edge cases, decisions only I can make. Ask only what the code could not tell you.",
+			"- Anything the card assumes that the code contradicts.",
+			"",
+			"Do not write or edit product code or tests — this card gets executed later, in a separate task. Do not call `update_board_task` yet: we agree on the shape of the work first, and only then do you write the sharpened title and description back to the card and move it to `scoped`.",
+		].join("\n")
+	}
+
+	/**
+	 * Cancel a card's in-flight execution run and return the card to the approved
+	 * column so it can be started again.
+	 */
+	async stopBoardTask(id: string): Promise<void> {
+		await this.boardStore.initialized
+		const task = this.boardStore.getSnapshot().tasks.find((candidate) => candidate.id === id)
+		if (!task) throw new Error("Board task does not exist")
+
+		const executionTaskId = task.linkedHistoryTaskId
+		if (executionTaskId && this.taskRegistry.hasRunning(executionTaskId)) {
+			// Board execution tasks are top-level, so the running one is normally the
+			// current task; focus it first if some other task has taken over the UI.
+			if (this.getCurrentTask()?.taskId !== executionTaskId) {
+				this.taskRegistry.setCurrent(executionTaskId)
+			}
+			await this.cancelTask()
+		}
+
+		await this.updateBoardState(await this.boardStore.unlinkExecutionTask(id))
+	}
+
+	/**
+	 * Advance the board card belonging to a task that has reported completion: an
+	 * execution run retires its card to done, a refinement chat promotes a still-in-
+	 * backlog card to scoped. Both are no-ops when the task has no card of that kind,
+	 * so an unrelated task (or a subtask) changes nothing.
+	 */
+	async markBoardTaskCompleted(historyTaskId: string): Promise<void> {
+		await this.boardStore.moveLinkedHistoryTaskToDone(historyTaskId)
+		// The second call returns the full state, so it carries the first one's change.
+		await this.updateBoardState(await this.boardStore.moveLinkedRefinementTaskToScoped(historyTaskId))
+	}
+
+	async approveBoardTask(id: string): Promise<void> {
+		await this.boardStore.initialized
+		const task = this.boardStore.getSnapshot().tasks.find((candidate) => candidate.id === id)
+		if (!task) throw new Error("Board task does not exist")
+		await this.updateBoardTask(id, { stage: "approved" })
 	}
 
 	/**
@@ -3067,54 +3588,6 @@ export class ClineProvider
 
 	public getOutputChannel(): vscode.OutputChannel {
 		return this.outputChannel
-	}
-
-	// kanban board (real-time)
-
-	/**
-	 * Rebuild and broadcast the kanban board for `rootTaskId` to every panel/view instance
-	 * currently watching it (setKanbanWatchedRootTaskId), not just `this`. A board can be
-	 * watched from a different ClineProvider instance than the one whose task mutation
-	 * triggered the broadcast — e.g. the task runs in the sidebar provider while the board is
-	 * open in a separate editor-tab provider (see openKanbanBoardInNewTab) — so this must fan
-	 * out across ClineProvider.getAllInstances() rather than only checking `this`. Safe to call
-	 * unconditionally after any todo-list mutation that could affect a board — the watch-id
-	 * check makes it a cheap no-op when nobody is watching.
-	 */
-	public async broadcastKanbanBoardIfWatched(rootTaskId: string | undefined) {
-		if (!rootTaskId) {
-			return
-		}
-
-		const watchers = ClineProvider.getAllInstances().filter(
-			(instance) => instance.kanbanWatchedRootTaskId === rootTaskId && instance.isViewLaunched,
-		)
-
-		if (watchers.length === 0) {
-			return
-		}
-
-		// Compute once (preferring `this`, which is most likely to have the task resident in
-		// memory since it's the instance whose mutation triggered this broadcast) and fan out
-		// the same board to every watcher.
-		const board = await getKanbanBoardForRootTask(this, rootTaskId)
-		await Promise.all(
-			watchers.map((instance) =>
-				instance.postMessageToWebview({ type: "kanbanBoardUpdated", kanbanBoard: board }),
-			),
-		)
-	}
-
-	/**
-	 * Set (or clear, with undefined) which root task's kanban board the webview currently has
-	 * open. Setting a root task id immediately triggers a broadcast so the webview gets an
-	 * up-to-date board without waiting for the next mutation.
-	 */
-	public setKanbanWatchedRootTaskId(rootTaskId: string | undefined) {
-		this.kanbanWatchedRootTaskId = rootTaskId
-		if (rootTaskId) {
-			void this.broadcastKanbanBoardIfWatched(rootTaskId)
-		}
 	}
 
 	// getters
@@ -3340,14 +3813,14 @@ export class ClineProvider
 			experiments,
 			organizationAllowList,
 			diffFuzzyThreshold,
+			mode,
 		} = await this.getState()
+		const initialMode = options.initialMode ?? (parentTask ? await parentTask.getTaskMode() : mode ?? defaultModeSlug)
 
-		// Single-open-task invariant: always enforce for user-initiated top-level tasks.
-		if (!parentTask) {
-			await this.evictCurrentTask().catch(() => {
-				// Non-fatal
-			})
-		}
+		// Starting a new task no longer closes the one already open: the previous task
+		// stays resident in the registry and keeps running in the background, and merely
+		// loses focus (see addClineToStack). This matches showTaskWithIdInternal, which
+		// already switches between open tasks without aborting them.
 
 		if (!ProfileValidator.isProfileAllowed(apiConfiguration, organizationAllowList)) {
 			throw new OrganizationAllowListViolationError(t("common:errors.violated_organization_allowlist"))
@@ -3362,16 +3835,21 @@ export class ClineProvider
 			task: text,
 			images,
 			experiments,
-			rootTask: this.taskRegistry.getAll()[0],
+			// Derive lineage from the parent rather than from registry position: with
+			// several top-level tasks resident at once, registry[0] is just whichever
+			// task happens to be oldest, not this task's root.
+			rootTask: parentTask ? (parentTask.rootTask ?? parentTask) : undefined,
 			parentTask,
-			taskNumber: this.taskRegistry.length + 1,
+			taskNumber: parentTask ? parentTask.taskNumber + 1 : 1,
 			onCreated: this.taskCreationCallback,
 			initialTodos: options.initialTodos,
+			initialReasoningEffort: options.initialReasoningEffort,
 			// Ensure this task is present in the registry before startTask() emits
 			// its initial state update, so state.currentTaskId is available ASAP.
 			startTask: false,
 			diffFuzzyThreshold,
 			...options,
+			initialMode,
 			rateLimitClock: this.rateLimitClock,
 		})
 
@@ -3719,7 +4197,7 @@ export class ClineProvider
 			)
 		}
 
-		// 1b) If this delegation is linked to a kanban board todo item, flip that item to
+		// 1b) If this delegation is linked to a todo item, flip that item to
 		//     in_progress and link it to the child's (pre-generated) id, while the parent is
 		//     still the live, resident, on-stack Task instance. Persist through the same
 		//     message-log mechanism update_todo_list uses (task.say("user_edit_todos", ...))
@@ -3746,9 +4224,6 @@ export class ClineProvider
 						}`,
 					)
 				}
-				// Optional chaining: defensive against test doubles/partial provider stubs that
-				// don't stub every method. On the real ClineProvider this is always present.
-				void this.broadcastKanbanBoardIfWatched?.(parent.rootTaskId ?? parent.taskId)?.catch?.(() => {})
 			}
 		}
 
@@ -4076,7 +4551,7 @@ export class ClineProvider
 			if (!Array.isArray(parentClineMessages)) parentClineMessages = []
 			if (!Array.isArray(parentApiMessages)) parentApiMessages = []
 
-			// 1b) Auto-move the kanban board card linked to this child (if any) from
+			// 1b) Auto-move the todo item linked to this child (if any) from
 			//     in_progress to testing now that the delegated subtask has completed.
 			//     Piggyback on the message round trip already happening in this function
 			//     (parentClineMessages is loaded above and saved via saveTaskMessages below,
@@ -4300,14 +4775,6 @@ export class ClineProvider
 
 				// Auto-resume parent without ask("resume_task")
 				await parentInstance.resumeAfterDelegation()
-
-				// Broadcast the kanban board in case the auto-transition above (in_progress ->
-				// testing) moved a card, so a watching webview picks it up immediately.
-				// Optional chaining: defensive against test doubles/partial provider stubs
-				// that don't stub every method. On the real ClineProvider this is always present.
-				void this.broadcastKanbanBoardIfWatched?.(parentInstance.rootTaskId ?? parentInstance.taskId)?.catch?.(
-					() => {},
-				)
 			}
 
 			// 9) Emit TaskDelegationResumed (provider-level)
@@ -4441,8 +4908,7 @@ export class ClineProvider
 						})
 					}
 				}
-				void this.broadcastKanbanBoardIfWatched(parentHistory.rootTaskId ?? parentTaskId)
-			} catch (error) {
+				} catch (error) {
 				this.log(
 					`[abandonSubtask] Failed to reset linked todo item for parent ${parentTaskId}: ${
 						error instanceof Error ? error.message : String(error)

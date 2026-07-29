@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { tokenUsageBreakdownEntrySchema } from "./message.js"
+import { reasoningEffortOverrideSchema } from "./model.js"
 
 /**
  * HistoryItem
@@ -26,6 +27,8 @@ export const historyItemSchema = z.object({
 	workspace: z.string().optional(),
 	mode: z.string().optional(),
 	apiConfigName: z.string().optional(), // Provider profile name for sticky profile feature
+	/** Explicit per-task reasoning selection; omitted for Default/Auto. */
+	reasoningEffort: reasoningEffortOverrideSchema.optional(),
 	status: z.enum(["active", "completed", "delegated", "interrupted"]).optional(),
 	delegatedToId: z.string().optional(), // Last child this parent delegated to
 	childIds: z.array(z.string()).optional(), // All children spawned by this task

@@ -76,9 +76,9 @@
 				"icon": "$(edit)"
 			},
 			{
-				"command": "zoo-code.historyButtonClicked",
-				"title": "%command.history.title%",
-				"icon": "$(history)"
+				"command": "zoo-code.boardButtonClicked",
+				"title": "%command.board.title%",
+				"icon": "$(layout)"
 			},
 			{
 				"command": "zoo-code.marketplaceButtonClicked",
@@ -249,7 +249,7 @@
 					"when": "view == zoo-code.SidebarProvider"
 				},
 				{
-					"command": "zoo-code.historyButtonClicked",
+					"command": "zoo-code.boardButtonClicked",
 					"group": "overflow@1",
 					"when": "view == zoo-code.SidebarProvider"
 				},
@@ -281,7 +281,7 @@
 					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
 				},
 				{
-					"command": "zoo-code.historyButtonClicked",
+					"command": "zoo-code.boardButtonClicked",
 					"group": "overflow@1",
 					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
 				},

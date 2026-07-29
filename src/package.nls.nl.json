@@ -6,7 +6,7 @@
 	"views.activitybar.title": "Zoo Code",
 	"views.sidebar.name": "Zoo Code",
 	"command.newTask.title": "Nieuwe Taak",
-	"command.history.title": "Taakgeschiedenis",
+	"command.board.title": "Taakgeschiedenis",
 	"command.marketplace.title": "Marktplaats",
 	"command.openInEditor.title": "Openen in Editor",
 	"command.settings.title": "Instellingen",

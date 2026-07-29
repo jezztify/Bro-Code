@@ -222,12 +222,24 @@ describe("registerCommands handlers", () => {
 		expect(mockVisibleProvider.postMessageToWebview).not.toHaveBeenCalled()
 	})
 
-	it("historyButtonClicked posts historyButtonClicked action", () => {
-		handlers["zoo-code.historyButtonClicked"]()
+	it("boardButtonClicked posts boardButtonClicked action", () => {
+		handlers["zoo-code.boardButtonClicked"]()
 
 		expect(mockVisibleProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "action",
-			action: "historyButtonClicked",
+			action: "boardButtonClicked",
+		})
+	})
+
+	// The per-task kanban this used to open is gone; the command survives as an alias so the
+	// existing toolbar button keeps working, and every board entry point lands on the same
+	// workspace board.
+	it("kanbanButtonClicked redirects to the workspace board", () => {
+		handlers["zoo-code.kanbanButtonClicked"]()
+
+		expect(mockVisibleProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "action",
+			action: "boardButtonClicked",
 		})
 	})
 
@@ -318,7 +330,7 @@ describe("registerCommands handlers", () => {
 
 	// Representative coverage for the .catch arm on all five void-prefixed
 	// postMessageToWebview sites in registerCommands.ts (settingsButtonClicked
-	// posts twice, plus historyButtonClicked, marketplaceButtonClicked, and
+	// posts twice, plus boardButtonClicked, marketplaceButtonClicked, and
 	// acceptInput). Each handler is synchronous, so the .catch arm runs on a
 	// microtask; setImmediate ensures all microtasks are flushed before we assert. The
 	// log messages carry a `[<handlerName>]` prefix so multi-failure logs
@@ -326,7 +338,7 @@ describe("registerCommands handlers", () => {
 	// settingsButtonClicked's posts share the same prefix).
 	it.each([
 		{ command: "zoo-code.settingsButtonClicked", prefix: "settingsButtonClicked", expectedCalls: 2 },
-		{ command: "zoo-code.historyButtonClicked", prefix: "historyButtonClicked", expectedCalls: 1 },
+		{ command: "zoo-code.boardButtonClicked", prefix: "boardButtonClicked", expectedCalls: 1 },
 		{ command: "zoo-code.marketplaceButtonClicked", prefix: "marketplaceButtonClicked", expectedCalls: 1 },
 		{ command: "zoo-code.acceptInput", prefix: "acceptInput", expectedCalls: 1 },
 	])(
@@ -365,15 +377,19 @@ describe("registerCommands handlers", () => {
 		)
 	})
 
-	it("plusButtonClicked calls evictCurrentTask on the visible provider", async () => {
+	it("plusButtonClicked unfocuses the current task without ending it", async () => {
 		const evictCurrentTask = vi.fn().mockResolvedValue(undefined)
+		const unfocusCurrentTask = vi.fn().mockResolvedValue(undefined)
 		const refreshWorkspace = vi.fn().mockResolvedValue(undefined)
 		;(mockVisibleProvider as any).evictCurrentTask = evictCurrentTask
+		;(mockVisibleProvider as any).unfocusCurrentTask = unfocusCurrentTask
 		;(mockVisibleProvider as any).refreshWorkspace = refreshWorkspace
 
 		await handlers["zoo-code.plusButtonClicked"]()
 
-		expect(evictCurrentTask).toHaveBeenCalledTimes(1)
+		expect(unfocusCurrentTask).toHaveBeenCalledTimes(1)
+		// The open task keeps running in the background.
+		expect(evictCurrentTask).not.toHaveBeenCalled()
 	})
 
 	it("plusButtonClicked is a no-op when no visible provider", async () => {

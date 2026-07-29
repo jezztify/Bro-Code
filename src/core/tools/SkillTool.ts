@@ -43,9 +43,9 @@ export class SkillTool extends BaseTool<"skill"> {
 				return
 			}
 
-			// Get current mode for skill resolution
-			const state = await provider?.getState()
-			const currentMode = state?.mode ?? "code"
+			// A task can keep running after another task takes focus and changes the
+			// composer picker. Resolve skills from this task's own persisted mode.
+			const currentMode = await task.getTaskMode()
 
 			// Fetch skill content
 			const skillContent = await resolveSkillContentForMode(skillsManager, skillName, currentMode)

@@ -216,7 +216,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
-		const { id: model, info, reasoning: thinkingConfig, maxTokens } = this.getModel()
+		const { id: model, info, reasoning: thinkingConfig, maxTokens } = this.getModel(metadata)
 		// Reset per-request metadata that we persist into apiConversationHistory.
 		this.lastThoughtSignature = undefined
 		this.lastResponseId = undefined
@@ -488,7 +488,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 		}
 	}
 
-	override getModel() {
+	override getModel(metadata?: ApiHandlerCreateMessageMetadata) {
 		const modelId = this.options.apiModelId
 		let id: string
 		let info: ModelInfo
@@ -525,6 +525,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 			modelId: id,
 			model: info,
 			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
 			defaultTemperature: info.defaultTemperature ?? 1,
 		})
 
@@ -577,7 +578,11 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 	}
 
 	async completePrompt(prompt: string, options?: CompletePromptOptions): Promise<string> {
-		const { id: model, info } = this.getModel()
+		const metadata: ApiHandlerCreateMessageMetadata = {
+			taskId: "completePrompt",
+			reasoningEffort: options?.reasoningEffort,
+		}
+		const { id: model, info, reasoning: thinkingConfig, maxTokens } = this.getModel(metadata)
 
 		try {
 			const supportsTemperature = info.supportsTemperature !== false
@@ -590,6 +595,8 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 					? { baseUrl: this.options.googleGeminiBaseUrl }
 					: undefined,
 				temperature: temperatureConfig,
+				thinkingConfig,
+				maxOutputTokens: maxTokens,
 			}
 
 			const request = {

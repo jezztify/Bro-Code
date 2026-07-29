@@ -32,6 +32,7 @@ class TestOpenAiCompatibleProvider extends BaseOpenAiCompatibleProvider<"test-mo
 				contextWindow: 128000,
 				supportsImages: false,
 				supportsPromptCache: false,
+				supportsReasoningEffort: true,
 				inputPrice: 0.5,
 				outputPrice: 1.5,
 			},
@@ -57,6 +58,26 @@ describe("BaseOpenAiCompatibleProvider", () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks()
+	})
+
+	it("forwards a task-local reasoning effort to the OpenAI-compatible request", async () => {
+		mockCreate.mockResolvedValueOnce({
+			[Symbol.asyncIterator]: async function* () {
+				yield { choices: [{ delta: {} }] }
+			},
+		})
+
+		for await (const _chunk of handler.createMessage("system prompt", [], {
+			taskId: "task-id",
+			reasoningEffort: "high",
+		})) {
+			// Consume the stream so the request is created.
+		}
+
+		expect(mockCreate).toHaveBeenCalledWith(
+			expect.objectContaining({ reasoning_effort: "high" }),
+			undefined,
+		)
 	})
 
 	describe("TagMatcher reasoning tags", () => {

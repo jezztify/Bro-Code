@@ -34,6 +34,20 @@ export function getVisibleProviderOrLog(outputChannel: vscode.OutputChannel): Cl
 let sidebarPanel: vscode.WebviewView | undefined = undefined
 let tabPanel: vscode.WebviewPanel | undefined = undefined
 
+// Every editor-tab panel that is currently open, in the order they were opened.
+// `tabPanel` above can't be used for this: `setPanel` clears it whenever the sidebar resolves,
+// even though the tab is still open, so it tracks "most recently resolved panel" rather than
+// "live tabs". Callers that need to reuse an already-open tab (the activity bar redirect) need
+// the latter.
+const openTabPanels = new Set<vscode.WebviewPanel>()
+
+/**
+ * The editor-tab panels that are currently open, oldest first.
+ */
+export function getOpenTabPanels(): vscode.WebviewPanel[] {
+	return Array.from(openTabPanels)
+}
+
 /**
  * Get the currently active panel
  * @returns WebviewPanel或WebviewView
@@ -104,7 +118,9 @@ const getCommandsMap = ({
 
 		TelemetryService.instance.captureTitleButtonClicked("plus")
 
-		await visibleProvider.evictCurrentTask()
+		// Blank the composer without touching the open task: it stays resident and keeps
+		// running in the background, reachable again from the board or history.
+		await visibleProvider.unfocusCurrentTask()
 		await visibleProvider.refreshWorkspace()
 		await visibleProvider.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
 		// Send focusInput action immediately after chatButtonClicked
@@ -134,18 +150,18 @@ const getCommandsMap = ({
 			.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
 			.catch((error) => outputChannel.appendLine(`[settingsButtonClicked] postMessageToWebview failed: ${error}`))
 	},
-	historyButtonClicked: () => {
+	boardButtonClicked: () => {
 		const visibleProvider = getVisibleProviderOrLog(outputChannel)
 
 		if (!visibleProvider) {
 			return
 		}
 
-		TelemetryService.instance.captureTitleButtonClicked("history")
+		TelemetryService.instance.captureTitleButtonClicked("board")
 
 		void visibleProvider
-			.postMessageToWebview({ type: "action", action: "historyButtonClicked" })
-			.catch((error) => outputChannel.appendLine(`[historyButtonClicked] postMessageToWebview failed: ${error}`))
+			.postMessageToWebview({ type: "action", action: "boardButtonClicked" })
+			.catch((error) => outputChannel.appendLine(`[boardButtonClicked] postMessageToWebview failed: ${error}`))
 	},
 	marketplaceButtonClicked: () => {
 		const visibleProvider = getVisibleProviderOrLog(outputChannel)
@@ -156,18 +172,17 @@ const getCommandsMap = ({
 				outputChannel.appendLine(`[marketplaceButtonClicked] postMessageToWebview failed: ${error}`),
 			)
 	},
+	// Retained as an alias for the board: it used to open the per-task kanban, which no longer
+	// exists, so it lands on the same workspace board as boardButtonClicked.
 	kanbanButtonClicked: () => {
 		const visibleProvider = getVisibleProviderOrLog(outputChannel)
 		if (!visibleProvider) return
 
 		TelemetryService.instance.captureTitleButtonClicked("kanban")
 
-		const currentTask = visibleProvider.getCurrentTask()
-		const rootTaskId = currentTask?.rootTaskId ?? currentTask?.taskId
-
-		void openKanbanBoardInNewTab({ context, outputChannel }, rootTaskId).catch((error) =>
-			outputChannel.appendLine(`[kanbanButtonClicked] openKanbanBoardInNewTab failed: ${error}`),
-		)
+		void visibleProvider
+			.postMessageToWebview({ type: "action", action: "boardButtonClicked" })
+			.catch((error) => outputChannel.appendLine(`[kanbanButtonClicked] postMessageToWebview failed: ${error}`))
 	},
 	newTask: handleNewTask,
 	setCustomStoragePath: async () => {
@@ -276,17 +291,14 @@ export const openClineInNewTab = async ({
 	}
 
 	const tabProvider = new ClineProvider(context, outputChannel, "editor", contextProxy, mdmService)
-	const lastCol = Math.max(...vscode.window.visibleTextEditors.map((editor) => editor.viewColumn || 0))
+	const visibleEditors = vscode.window.visibleTextEditors
 
-	// Check if there are any visible text editors, otherwise open a new group
-	// to the right.
-	const hasVisibleEditors = vscode.window.visibleTextEditors.length > 0
-
-	if (!hasVisibleEditors) {
-		await vscode.commands.executeCommand("workbench.action.newGroupRight")
-	}
-
-	const targetCol = hasVisibleEditors ? Math.max(lastCol + 1, 1) : vscode.ViewColumn.Two
+	// With editors open, put the panel in its own group to the right of them. With none open
+	// there's still an editor group - an empty one - so splitting off a new group to the right
+	// just strands that empty group beside the panel; take it over instead.
+	const targetCol = visibleEditors.length
+		? Math.max(Math.max(...visibleEditors.map((editor) => editor.viewColumn || 0)) + 1, 1)
+		: vscode.ViewColumn.One
 
 	const newPanel = vscode.window.createWebviewPanel(ClineProvider.tabPanelId, "Zoo Code", targetCol, {
 		enableScripts: true,
@@ -296,6 +308,7 @@ export const openClineInNewTab = async ({
 
 	// Save as tab type panel.
 	setPanel(newPanel, "tab")
+	openTabPanels.add(newPanel)
 
 	// TODO: Use better svg icon with light and dark variants (see
 	// https://stackoverflow.com/questions/58365687/vscode-extension-iconpath).
@@ -321,6 +334,7 @@ export const openClineInNewTab = async ({
 	// Handle panel closing events.
 	newPanel.onDidDispose(
 		() => {
+			openTabPanels.delete(newPanel)
 			setPanel(undefined, "tab")
 		},
 		null,
@@ -335,16 +349,11 @@ export const openClineInNewTab = async ({
 }
 
 /**
- * Open the kanban board for `rootTaskId` in its own editor tab, rather than switching the tab
- * within whichever panel (sidebar or an existing editor tab) triggered it. Reuses
- * openClineInNewTab for the panel itself, then arms the new panel's watch and routes it
- * straight to the kanban tab. `rootTaskId` may be undefined (no active task) - the board just
- * renders its own empty state in that case, same as the in-panel path.
+ * Open the workspace board in its own editor tab, rather than switching the tab within whichever
+ * panel (sidebar or an existing editor tab) triggered it. Reuses openClineInNewTab for the panel
+ * itself, then routes it straight to the board tab.
  */
-export const openKanbanBoardInNewTab = async (
-	options: Omit<RegisterCommandOptions, "provider" | "mobileServer">,
-	rootTaskId: string | undefined,
-) => {
+export const openBoardInNewTab = async (options: Omit<RegisterCommandOptions, "provider" | "mobileServer">) => {
 	const tabProvider = await openClineInNewTab(options)
 
 	// The new panel's webview (React app) hasn't booted yet at this point - it signals
@@ -359,27 +368,11 @@ export const openKanbanBoardInNewTab = async (
 	)
 
 	if (!launched) {
-		options.outputChannel.appendLine(
-			"[openKanbanBoardInNewTab] webview did not launch within 5000ms; kanban tab not opened",
-		)
+		options.outputChannel.appendLine("[openBoardInNewTab] webview did not launch within 5000ms; board not opened")
 		return tabProvider
 	}
 
-	if (rootTaskId) {
-		// Arms the watch immediately so the panel doesn't miss broadcasts that land between
-		// now and the webview's own kanbanBoardOpened message (see KanbanBoardView's mount
-		// effect) - broadcastKanbanBoardIfWatched fans out to every watching instance, so this
-		// is safe even though it's a different ClineProvider instance than whichever one is
-		// actually running the task.
-		tabProvider.setKanbanWatchedRootTaskId(rootTaskId)
-	}
-
-	await tabProvider.postMessageToWebview({
-		type: "action",
-		action: "switchTab",
-		tab: "kanban",
-		values: { rootTaskId },
-	})
+	await tabProvider.postMessageToWebview({ type: "action", action: "switchTab", tab: "board" })
 
 	return tabProvider
 }

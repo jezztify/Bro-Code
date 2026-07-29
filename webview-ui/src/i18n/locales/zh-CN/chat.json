@@ -495,5 +495,21 @@
 		"title": "供应商不再受支持",
 		"message": "此提供商已不可用。请选择受支持的提供商以继续。",
 		"openSettings": "打开设置"
+	},
+	"boardTasks": {
+		"wantsToCreate": "Zoo wants to create a board task:",
+		"didCreate": "Zoo created a board task:",
+		"wantsToRead": "Zoo wants to read the board:",
+		"didRead": "Zoo read the board:",
+		"wantsToUpdate": "Zoo wants to update a board task:",
+		"didUpdate": "Zoo updated a board task:",
+		"wantsToDelete": "Zoo wants to delete a board task:",
+		"didDelete": "Zoo deleted a board task:",
+		"card": "Card",
+		"title": "Title",
+		"description": "Description",
+		"stage": "Stage",
+		"cleared": "(cleared)",
+		"allCards": "All cards in the selected workspace"
 	}
 }

@@ -349,6 +349,16 @@ const renderChatView = (props: Partial<ChatViewProps> = {}) => {
 	)
 }
 
+describe("ChatView - Docked Layout", () => {
+	it("uses remaining flex space for the message list when docked", () => {
+		const { getByTestId } = renderChatView({ variant: "docked" })
+
+		expect(getByTestId("chat-view")).toHaveClass("flex-1")
+		expect(getByTestId("chat-view")).toHaveClass("min-h-0")
+		expect(getByTestId("chat-view")).not.toHaveClass("h-full")
+	})
+})
+
 describe("ChatView - Sound Playing Tests", () => {
 	beforeEach(() => vi.clearAllMocks())
 

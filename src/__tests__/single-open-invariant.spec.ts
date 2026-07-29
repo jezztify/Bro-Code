@@ -22,6 +22,7 @@ type PrivateClineProviderMethods = {
 		...args: Parameters<ClineProvider["createTaskWithHistoryItem"]>
 	) => ReturnType<ClineProvider["createTaskWithHistoryItem"]>
 	evictCurrentTask: (this: unknown) => ReturnType<ClineProvider["evictCurrentTask"]>
+	unfocusCurrentTask: (this: unknown) => ReturnType<ClineProvider["unfocusCurrentTask"]>
 }
 
 const privateClineProvider = ClineProvider.prototype as unknown as PrivateClineProviderMethods
@@ -34,14 +35,19 @@ vi.mock("../core/task/Task", () => {
 		public parentTask?: unknown
 		public apiConfiguration: unknown
 		public rootTask?: unknown
+		public taskNumber?: number
 		constructor(opts: {
 			historyItem?: { id: string }
 			parentTask?: unknown
+			rootTask?: unknown
+			taskNumber?: number
 			apiConfiguration?: unknown
 			onCreated?: (t: TaskStub) => void
 		}) {
 			this.taskId = opts.historyItem?.id ?? `task-${Math.random().toString(36).slice(2, 8)}`
 			this.parentTask = opts.parentTask
+			this.rootTask = opts.rootTask
+			this.taskNumber = opts.taskNumber
 			this.apiConfiguration = opts.apiConfiguration ?? { apiProvider: "anthropic" }
 			opts.onCreated?.(this)
 		}
@@ -56,12 +62,12 @@ vi.mock("../core/task/Task", () => {
 	return { Task: TaskStub }
 })
 
-describe("Single-open-task invariant", () => {
+describe("Starting a task alongside one already open", () => {
 	beforeEach(() => {
 		vi.restoreAllMocks()
 	})
 
-	it("User-initiated create: closes existing before opening new", async () => {
+	it("User-initiated create: leaves the existing task resident and running", async () => {
 		// Allow profile
 		vi.spyOn(ProfileValidatorMod.ProfileValidator, "isProfileAllowed").mockReturnValue(true)
 
@@ -108,17 +114,63 @@ describe("Single-open-task invariant", () => {
 
 		await privateClineProvider.createTask.call(provider, "New task")
 
-		expect(removeClineFromStack).toHaveBeenCalledTimes(1)
+		expect(removeClineFromStack).not.toHaveBeenCalled()
 		expect(addClineToStack).toHaveBeenCalledTimes(1)
 		expect(schedulespy).toHaveBeenCalledTimes(1)
+		// The task that was already open is untouched — not aborted, not evicted.
+		expect(registry.getById("existing-1")).toBe(existingTask)
 	})
 
-	it("Subtask create: keeps existing task open when parentTask is provided", async () => {
+	it("User-initiated create: new top-level task does not inherit lineage from a resident task", async () => {
+		vi.spyOn(ProfileValidatorMod.ProfileValidator, "isProfileAllowed").mockReturnValue(true)
+
+		const existingTask = { taskId: "existing-1", abort: false, abandoned: false, taskNumber: 1 }
+		const registry = new TaskRegistry()
+		registry.push(existingTask as unknown as Task)
+
+		const provider = {
+			taskRegistry: registry,
+			getCurrentTask: vi.fn(() => existingTask),
+			taskHistoryStore: { get: vi.fn(() => undefined) },
+			setValues: vi.fn(),
+			getState: vi.fn().mockResolvedValue({
+				apiConfiguration: { apiProvider: "anthropic", consecutiveMistakeLimit: 0 },
+				organizationAllowList: "*",
+				enableCheckpoints: true,
+				checkpointTimeout: 60,
+				cloudUserInfo: null,
+			}),
+			addClineToStack: vi.fn().mockResolvedValue(undefined),
+			setProviderProfile: vi.fn(),
+			log: vi.fn(),
+			getStateToPostToWebview: vi.fn(),
+			providerSettingsManager: { getModeConfigId: vi.fn(), listConfig: vi.fn() },
+			customModesManager: { getCustomModes: vi.fn().mockResolvedValue([]) },
+			taskCreationCallback: vi.fn(),
+			contextProxy: {
+				extensionUri: {},
+				setValue: vi.fn(),
+				getValue: vi.fn(),
+				setProviderSettings: vi.fn(),
+				getProviderSettings: vi.fn(() => ({})),
+			},
+		} as unknown as ClineProvider
+
+		const task = (await privateClineProvider.createTask.call(provider, "New task")) as unknown as {
+			rootTask?: unknown
+			taskNumber?: number
+		}
+
+		expect(task.rootTask).toBeUndefined()
+		expect(task.taskNumber).toBe(1)
+	})
+
+	it("Subtask create: keeps existing task open and roots itself at the parent", async () => {
 		vi.spyOn(ProfileValidatorMod.ProfileValidator, "isProfileAllowed").mockReturnValue(true)
 
 		const removeClineFromStack = vi.fn().mockResolvedValue(undefined)
 		const addClineToStack = vi.fn().mockResolvedValue(undefined)
-		const parentTask = { taskId: "parent-1", abort: false, abandoned: false }
+		const parentTask = { taskId: "parent-1", abort: false, abandoned: false, taskNumber: 1 }
 		const registry2 = new TaskRegistry()
 		registry2.push(parentTask as unknown as Task)
 
@@ -150,10 +202,17 @@ describe("Single-open-task invariant", () => {
 			},
 		} as unknown as ClineProvider
 
-		await privateClineProvider.createTask.call(provider, "Subtask", undefined, parentTask as unknown as Task)
+		const task = (await privateClineProvider.createTask.call(
+			provider,
+			"Subtask",
+			undefined,
+			parentTask as unknown as Task,
+		)) as unknown as { rootTask?: unknown; taskNumber?: number }
 
 		expect(removeClineFromStack).not.toHaveBeenCalled()
 		expect(addClineToStack).toHaveBeenCalledTimes(1)
+		expect(task.rootTask).toBe(parentTask)
+		expect(task.taskNumber).toBe(2)
 	})
 
 	it("History resume path always closes current before rehydration (non-rehydrating case)", async () => {
@@ -294,16 +353,22 @@ describe("Single-open-task invariant", () => {
 		expect(removeClineFromStack).not.toHaveBeenCalled()
 	})
 
-	it("IPC StartNewTask path closes current before new task", async () => {
+	it("IPC StartNewTask path unfocuses the current task instead of ending it", async () => {
 		const removeClineFromStack = vi.fn().mockResolvedValue(undefined)
 		const createTask = vi.fn().mockResolvedValue({ taskId: "ipc-1" })
+
+		const existingTask = { taskId: "existing-1", abort: false, abandoned: false, emit: vi.fn() }
+		const registry = new TaskRegistry()
+		registry.push(existingTask as unknown as Task)
+
 		const provider = {
 			context: {} as unknown,
-			getCurrentTask: vi.fn(() => undefined),
+			taskRegistry: registry,
+			getCurrentTask: vi.fn(() => registry.current),
 			taskHistoryStore: { get: vi.fn(() => undefined) },
 			markDelegatedChildInterrupted: vi.fn().mockResolvedValue(undefined),
-			get evictCurrentTask() {
-				return privateClineProvider.evictCurrentTask.bind(this)
+			get unfocusCurrentTask() {
+				return privateClineProvider.unfocusCurrentTask.bind(this)
 			},
 			removeClineFromStack,
 			postStateToWebview: vi.fn(),
@@ -330,7 +395,10 @@ describe("Single-open-task invariant", () => {
 		})
 
 		expect(taskId).toBe("ipc-1")
-		expect(removeClineFromStack).toHaveBeenCalledTimes(1)
+		expect(removeClineFromStack).not.toHaveBeenCalled()
 		expect(createTask).toHaveBeenCalled()
+		// Still resident and running, just no longer the focused task.
+		expect(registry.getById("existing-1")).toBe(existingTask)
+		expect(registry.current).toBeUndefined()
 	})
 })

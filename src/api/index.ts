@@ -7,6 +7,7 @@ import {
 	retiredProviderIdentifiers,
 	type ProviderSettings,
 	type ModelInfo,
+	type ReasoningEffortOverride,
 } from "@roo-code/types"
 
 import { getRouterRemovalMessage } from "../core/config/routerRemoval"
@@ -53,7 +54,7 @@ import { NativeOllamaHandler } from "./providers/native-ollama"
  * Options for completePrompt — unified with ApiHandlerCreateMessageMetadata.
  * Uses abortSignal (not signal) to match the metadata pattern used in stream path.
  */
-export interface CompletePromptOptions extends Pick<ApiHandlerCreateMessageMetadata, "abortSignal"> {
+export interface CompletePromptOptions extends Pick<ApiHandlerCreateMessageMetadata, "abortSignal" | "reasoningEffort"> {
 	/** Optional timeout override (ms) — falls back to provider default if omitted */
 	timeoutMs?: number
 }
@@ -108,6 +109,8 @@ export interface ApiHandlerCreateMessageMetadata {
 	 * Only applies to providers that support function calling restrictions (e.g., Gemini).
 	 */
 	allowedFunctionNames?: string[]
+	/** Request-local task reasoning selection. Omitted means use profile settings. */
+	reasoningEffort?: ReasoningEffortOverride
 	/**
 	 * Abort signal for cancelling the HTTP request mid-stream.
 	 * Passed through to AI SDK's streamText() so the underlying HTTP request is aborted
@@ -123,7 +126,7 @@ export interface ApiHandler {
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream
 
-	getModel(): { id: string; info: ModelInfo }
+	getModel(metadata?: ApiHandlerCreateMessageMetadata): { id: string; info: ModelInfo }
 
 	/**
 	 * Ensures model metadata has been fetched from the remote API so that getModel()

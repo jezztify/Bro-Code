@@ -1,0 +1,18 @@
+{
+	"rail": {
+		"tasks": "Tasks",
+		"settings": "Settings",
+		"marketplace": "Marketplace"
+	},
+	"dock": {
+		"newChat": "New empty chat",
+		"chipsLabel": "Recent tasks",
+		"taskList": "Task chats ({{count}})",
+		"closeTask": "Close {{task}} chat",
+		"collapseChat": "Collapse chat",
+		"expandChat": "Expand chat",
+		"maximizeChat": "Maximize chat",
+		"restoreChat": "Restore chat size",
+		"resizeChat": "Resize chat"
+	}
+}

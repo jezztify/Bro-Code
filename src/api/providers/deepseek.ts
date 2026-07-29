@@ -9,7 +9,7 @@ import {
 	type ModelInfo,
 } from "@roo-code/types"
 
-import type { ApiHandlerOptions } from "../../shared/api"
+import { resolveReasoningSettings, type ApiHandlerOptions } from "../../shared/api"
 
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
@@ -74,7 +74,7 @@ export class DeepSeekHandler extends OpenAiHandler {
 		})
 	}
 
-	override getModel() {
+	override getModel(metadata?: ApiHandlerCreateMessageMetadata) {
 		const id = this.options.apiModelId ?? deepSeekDefaultModelId
 		const info = deepSeekModels[id as keyof typeof deepSeekModels] || deepSeekModels[deepSeekDefaultModelId]
 		const params = getModelParams({
@@ -82,6 +82,7 @@ export class DeepSeekHandler extends OpenAiHandler {
 			modelId: id,
 			model: info,
 			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
 			defaultTemperature: DEEP_SEEK_DEFAULT_TEMPERATURE,
 		})
 		return { id, info, ...params }
@@ -93,9 +94,14 @@ export class DeepSeekHandler extends OpenAiHandler {
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
 		const modelId = this.options.apiModelId ?? deepSeekDefaultModelId
-		const { info: modelInfo, temperature, reasoningEffort, maxTokens } = this.getModel()
+		const { info: modelInfo, temperature, reasoningEffort, maxTokens } = this.getModel(metadata)
 
-		const isThinkingModel = isDeepSeekThinkingEnabled(modelId, this.options)
+		const requestSettings = resolveReasoningSettings({
+			model: modelInfo,
+			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
+		})
+		const isThinkingModel = isDeepSeekThinkingEnabled(modelId, requestSettings)
 		const thinking = supportsDeepSeekThinkingToggle(modelId)
 			? ({ type: isThinkingModel ? "enabled" : "disabled" } as const)
 			: isThinkingModel

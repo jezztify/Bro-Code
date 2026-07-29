@@ -137,7 +137,6 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			isViewLaunched: false,
 			recentTasksCache: undefined,
 			taskHistoryStore,
-			broadcastKanbanBoardIfWatched: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
@@ -224,7 +223,6 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			isViewLaunched: false,
 			recentTasksCache: undefined,
 			taskHistoryStore: makeStoreStub(),
-			broadcastKanbanBoardIfWatched: vi.fn().mockResolvedValue(undefined),
 			deleteTaskWithId,
 			createTaskWithHistoryItem,
 			getTaskWithId,

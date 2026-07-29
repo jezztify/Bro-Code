@@ -1,5 +1,6 @@
 import path from "path"
 
+import * as vscode from "vscode"
 import type OpenAI from "openai"
 
 import type { ProviderSettings, ModeConfig, ModelInfo } from "@roo-code/types"
@@ -8,6 +9,7 @@ import { customToolRegistry, formatNative } from "@roo-code/core"
 import type { ClineProvider } from "../webview/ClineProvider"
 import { getRooDirectoriesForCwd } from "../../services/roo-config/index.js"
 import { getModeBySlug, defaultModeSlug } from "../../shared/modes"
+import { Package } from "../../shared/package"
 
 import { getNativeTools, getMcpServerTools } from "../prompts/tools/native-tools"
 import {
@@ -109,9 +111,15 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 	// Check if the model supports images for read_file tool description.
 	const supportsImages = modelInfo?.supportsImages ?? false
 
-	// Build native tools with dynamic read_file tool based on settings.
+	// Whether new_task must be handed an initial todo list. This is knowable here, so the tool
+	// description states it outright rather than leaving the model to guess at a condition it
+	// has no way to check - the same setting NewTaskTool enforces at call time.
+	const requireTodos = vscode.workspace.getConfiguration(Package.name).get<boolean>("newTaskRequireTodos", false)
+
+	// Build native tools with dynamic read_file and new_task tools based on settings.
 	const nativeTools = getNativeTools({
 		supportsImages,
+		requireTodos,
 	})
 
 	// Resolve mode config to get allowedMcpServers for MCP server filtering.

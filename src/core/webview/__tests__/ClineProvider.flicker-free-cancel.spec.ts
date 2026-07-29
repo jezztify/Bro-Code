@@ -403,6 +403,114 @@ describe("ClineProvider flicker-free cancel", () => {
 		await provider.dispose()
 	})
 
+	it("focuses a resident task without rehydrating or aborting it", async () => {
+		const residentTask = {
+			taskId: "resident-task",
+			instanceId: "resident-instance",
+			emit: vi.fn(),
+		} as unknown as Task
+		const currentTask = {
+			taskId: "current-task",
+			instanceId: "current-instance",
+			emit: vi.fn(),
+			abortTask: vi.fn(),
+		} as unknown as Task
+		seedRegistry(provider, residentTask, currentTask)
+		const createTaskWithHistoryItem = vi.spyOn(provider, "createTaskWithHistoryItem")
+		const getTaskWithId = vi.spyOn(provider, "getTaskWithId")
+		const postStateToWebview = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
+		const postMessageToWebview = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
+
+		await provider.showTaskWithId(residentTask.taskId)
+
+		expect(provider["taskRegistry"].current).toBe(residentTask)
+		expect(createTaskWithHistoryItem).not.toHaveBeenCalled()
+		expect(getTaskWithId).not.toHaveBeenCalled()
+		expect(currentTask.abortTask).not.toHaveBeenCalled()
+		expect(currentTask.emit).toHaveBeenCalledWith("taskUnfocused")
+		expect(residentTask.emit).toHaveBeenCalledWith("taskFocused")
+		expect(postStateToWebview).toHaveBeenCalledTimes(1)
+		expect(postMessageToWebview).toHaveBeenCalledWith({ type: "action", action: "chatButtonClicked" })
+		expect(postStateToWebview.mock.invocationCallOrder[0]).toBeLessThan(
+			postMessageToWebview.mock.invocationCallOrder[0]!,
+		)
+	})
+
+	it("keeps the current task alive when viewing a task that must be restored from history", async () => {
+		const currentTask = {
+			taskId: "current-task",
+			instanceId: "current-instance",
+			emit: vi.fn(),
+			abortTask: vi.fn(),
+		} as unknown as Task
+		seedRegistry(provider, currentTask)
+		const createTaskWithHistoryItem = vi.spyOn(provider, "createTaskWithHistoryItem").mockResolvedValue(undefined as any)
+		const postStateToWebview = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
+		const postMessageToWebview = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
+
+		await provider.showTaskWithId("historical-task")
+
+		expect(createTaskWithHistoryItem).toHaveBeenCalledWith(expect.objectContaining({ id: "historical-task" }), {
+			preserveCurrentTask: true,
+		})
+		expect(currentTask.abortTask).not.toHaveBeenCalled()
+		expect(currentTask.emit).toHaveBeenCalledWith("taskUnfocused")
+		expect(postStateToWebview).toHaveBeenCalledTimes(1)
+		expect(postMessageToWebview).toHaveBeenCalledWith({ type: "action", action: "chatButtonClicked" })
+	})
+
+	it("does not evict the current task when preserving it during history restoration", async () => {
+		const currentTask = {
+			taskId: "current-task",
+			instanceId: "current-instance",
+			emit: vi.fn(),
+			abortTask: vi.fn(),
+		} as unknown as Task
+		const restoredTask = {
+			taskId: "historical-task",
+			instanceId: "historical-instance",
+			emit: vi.fn(),
+			on: vi.fn(),
+			off: vi.fn(),
+		} as unknown as Task
+		seedRegistry(provider, currentTask)
+		vi.mocked(Task).mockImplementation(function () {
+			return restoredTask
+		})
+		;(provider as any).providerSettingsManager.listConfig = vi.fn().mockResolvedValue([
+			{ id: "view-profile-id", name: "view-profile", apiProvider: "openai" },
+		])
+		;(provider as any).providerSettingsManager.getProfile = vi.fn().mockResolvedValue({
+			id: "view-profile-id",
+			name: "view-profile",
+			apiProvider: "openai",
+		})
+		const activateProviderProfile = vi.spyOn(provider, "activateProviderProfile").mockResolvedValue(undefined)
+
+		await provider.createTaskWithHistoryItem(
+			{
+				id: "historical-task",
+				number: 2,
+				task: "historical task",
+				ts: Date.now(),
+				tokensIn: 100,
+				tokensOut: 200,
+				totalCost: 0.001,
+				workspace: "/test/workspace",
+				apiConfigName: "view-profile",
+			},
+			{ preserveCurrentTask: true },
+		)
+
+		expect(currentTask.abortTask).not.toHaveBeenCalled()
+		expect(provider["taskRegistry"].getById("current-task")).toBe(currentTask)
+		expect(provider["taskRegistry"].current).toBe(restoredTask)
+		expect(activateProviderProfile).toHaveBeenCalledWith(
+			{ name: "view-profile" },
+			{ persistTaskHistory: false },
+		)
+	})
+
 	it("should not remove current task from stack when rehydrating same taskId", async () => {
 		// Setup: Add a task to the registry first
 		seedRegistry(provider, mockTask1)

@@ -558,6 +558,40 @@ export class NativeToolCallParser {
 				}
 				break
 
+			case "create_board_task":
+				if (partialArgs.title !== undefined) {
+					nativeArgs = {
+						title: partialArgs.title,
+						description: partialArgs.description,
+						stage: partialArgs.stage,
+					}
+				}
+				break
+
+			case "read_board_task":
+				if (partialArgs.task_id !== undefined) {
+					nativeArgs = { task_id: partialArgs.task_id }
+				}
+				break
+
+			case "update_board_task":
+				if (partialArgs.task_id !== undefined) {
+					nativeArgs = {
+						task_id: partialArgs.task_id,
+						title: partialArgs.title,
+						description: partialArgs.description,
+						stage: partialArgs.stage,
+							clear_description: partialArgs.clear_description,
+					}
+				}
+				break
+
+			case "delete_board_task":
+				if (partialArgs.task_id !== undefined) {
+					nativeArgs = { task_id: partialArgs.task_id }
+				}
+				break
+
 			case "use_mcp_tool":
 				if (partialArgs.server_name !== undefined || partialArgs.tool_name !== undefined) {
 					nativeArgs = {
@@ -899,6 +933,46 @@ export class NativeToolCallParser {
 						nativeArgs = {
 							todos: args.todos,
 						} as NativeArgsFor<TName>
+					}
+					break
+
+				case "create_board_task":
+					if (args.title !== undefined && args.description !== undefined && args.stage !== undefined) {
+						nativeArgs = {
+							title: args.title,
+							description: args.description,
+							stage: args.stage,
+						} as NativeArgsFor<TName>
+					}
+					break
+
+				case "read_board_task":
+					if (args.task_id !== undefined) {
+						nativeArgs = { task_id: args.task_id } as NativeArgsFor<TName>
+					}
+					break
+
+				case "update_board_task":
+					if (
+						args.task_id !== undefined &&
+						args.title !== undefined &&
+						args.description !== undefined &&
+						args.stage !== undefined &&
+						args.clear_description !== undefined
+					) {
+						nativeArgs = {
+							task_id: args.task_id,
+							title: args.title,
+							description: args.description,
+							stage: args.stage,
+							clear_description: args.clear_description,
+						} as NativeArgsFor<TName>
+					}
+					break
+
+				case "delete_board_task":
+					if (args.task_id !== undefined) {
+						nativeArgs = { task_id: args.task_id } as NativeArgsFor<TName>
 					}
 					break
 

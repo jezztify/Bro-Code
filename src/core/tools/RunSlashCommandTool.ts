@@ -55,7 +55,9 @@ export class RunSlashCommandTool extends BaseTool<"run_slash_command"> {
 			const command = await getCommand(task.cwd, commandName)
 
 			if (!command) {
-				const currentMode = state?.mode ?? "code"
+				// The provider mode belongs to the focused task's composer. This task
+				// may be running in the background, so use its mode for skill fallback.
+				const currentMode = await task.getTaskMode()
 				const skillsManager = provider?.getSkillsManager()
 				const skillContent = await resolveSkillContentForMode(skillsManager, commandName, currentMode)
 
@@ -103,7 +105,7 @@ export class RunSlashCommandTool extends BaseTool<"run_slash_command"> {
 				const provider = task.providerRef.deref()
 				const targetMode = getModeBySlug(command.mode, (await provider?.getState())?.customModes)
 				if (targetMode) {
-					await provider?.handleModeSwitch(command.mode)
+					await provider?.handleModeSwitch(command.mode, task)
 				}
 			}
 

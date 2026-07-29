@@ -1,0 +1,59 @@
+<task_format_guidelines>
+  <overview>
+    The final output of this mode is NOT a markdown list — it is a set of empty board tasks
+    created directly on the Kanban board using the board tools: create_board_task,
+    read_board_task, update_board_task, and delete_board_task. Each decomposed subtask becomes
+    one board task with a specific, actionable title. Additional fields (description) are
+    included only when they can be stated with confidence from the given goal or codebase
+    context; otherwise they are left blank rather than filled with guesses or filler text.
+  </overview>
+
+  <tool_usage>
+    <tool name="create_board_task">
+      <purpose>Create one board task per decomposed subtask</purpose>
+      <usage>
+        Call once per subtask with a specific, action-oriented title. Only pass a description
+        if concrete details are already known; omit it otherwise (leave blank, do not invent
+        content). Set stage appropriately (typically the backlog/default stage) if the tool
+        supports it.
+      </usage>
+    </tool>
+    <tool name="read_board_task">
+      <purpose>Check existing board tasks before creating duplicates</purpose>
+      <usage>Use to inspect current board state when relevant, e.g., to avoid re-creating a task that already exists.</usage>
+    </tool>
+    <tool name="update_board_task">
+      <purpose>Refine a task already created in this session</purpose>
+      <usage>Use if new information becomes available that clarifies a previously-blank field, or if a title needs correction.</usage>
+    </tool>
+    <tool name="delete_board_task">
+      <purpose>Remove a task that was created in error or is no longer needed</purpose>
+      <usage>Use sparingly, only to correct mistakes made during this decomposition session.</usage>
+    </tool>
+  </tool_usage>
+
+  <blank_field_policy>
+    <rule>The task title is the only field that is always required and must be specific and actionable</rule>
+    <rule>Never invent descriptions to fill space</rule>
+    <rule>Leave a field blank/omitted rather than writing a vague placeholder</rule>
+    <rule>Only populate a field when the goal, request, or explored codebase context makes the detail evident</rule>
+  </blank_field_policy>
+
+  <sizing_guidance>
+    <rule>Prefer tasks completable in a single focused session (roughly a few hours of work)</rule>
+    <rule>Split tasks that bundle unrelated concerns (e.g., "build feature + write docs + add tests") into separate tasks</rule>
+    <rule>Merge trivial tasks that don't warrant standalone tracking</rule>
+  </sizing_guidance>
+
+  <naming_guidance>
+    <rule>Titles must be specific enough to act on without additional context (avoid vague titles like "Fix stuff")</rule>
+    <rule>Use action-oriented phrasing (verb + object), e.g., "Add validation to signup form"</rule>
+    <good_example>"Add rate limiting middleware to /api/login"</good_example>
+    <bad_example>"Login improvements"</bad_example>
+  </naming_guidance>
+
+  <output_wrapping>
+    <rule>After creating the board tasks, summarize what was created in a short list (titles only) in the chat response</rule>
+    <rule>Note assumptions and open questions in a separate section after the summary, not embedded within task titles</rule>
+  </output_wrapping>
+</task_format_guidelines>

@@ -908,6 +908,62 @@ export const ChatRowContent = ({
 						</div>
 					</>
 				)
+			case "createBoardTask":
+			case "readBoardTask":
+			case "updateBoardTask":
+			case "deleteBoardTask": {
+				// Show exactly what the card operation will do, so an approval prompt is
+				// actionable and an auto-approved run still leaves a readable trace.
+				const isAsk = message.type === "ask"
+				const boardHeading = {
+					createBoardTask: isAsk ? t("chat:boardTasks.wantsToCreate") : t("chat:boardTasks.didCreate"),
+					readBoardTask: isAsk ? t("chat:boardTasks.wantsToRead") : t("chat:boardTasks.didRead"),
+					updateBoardTask: isAsk ? t("chat:boardTasks.wantsToUpdate") : t("chat:boardTasks.didUpdate"),
+					deleteBoardTask: isAsk ? t("chat:boardTasks.wantsToDelete") : t("chat:boardTasks.didDelete"),
+				}[tool.tool as "createBoardTask" | "readBoardTask" | "updateBoardTask" | "deleteBoardTask"]
+
+				const boardDetails: [string, string | undefined][] =
+					tool.tool === "createBoardTask"
+						? [
+								[t("chat:boardTasks.title"), tool.title],
+								[t("chat:boardTasks.description"), tool.description],
+								[t("chat:boardTasks.stage"), tool.stage],
+							]
+						: tool.tool === "updateBoardTask"
+							? [
+									[t("chat:boardTasks.card"), tool.taskId],
+									[t("chat:boardTasks.title"), tool.update?.title],
+									[
+										t("chat:boardTasks.description"),
+										tool.update?.description === null
+											? t("chat:boardTasks.cleared")
+											: tool.update?.description,
+									],
+									[t("chat:boardTasks.stage"), tool.update?.stage],
+								]
+							: [[t("chat:boardTasks.card"), tool.taskId ?? t("chat:boardTasks.allCards")]]
+
+				const shownDetails = boardDetails.filter(([, value]) => value !== undefined && value !== "")
+
+				return (
+					<>
+						<div style={headerStyle}>
+							{toolIcon(tool.tool === "deleteBoardTask" ? "trash" : "checklist")}
+							<span style={{ fontWeight: "bold" }}>{boardHeading}</span>
+						</div>
+						{shownDetails.length > 0 && (
+							<div className="border-l border-muted-foreground/80 ml-2 pl-4 pb-1 text-sm">
+								{shownDetails.map(([label, value]) => (
+									<div key={label} className="mt-1">
+										<span className="text-vscode-descriptionForeground">{label}: </span>
+										<span className="whitespace-pre-wrap">{value}</span>
+									</div>
+								))}
+							</div>
+						)}
+					</>
+				)
+			}
 			case "runSlashCommand": {
 				const slashCommandInfo = tool
 				return (
@@ -1245,6 +1301,8 @@ export const ChatRowContent = ({
 											modeShortcutText=""
 											isEditMode={true}
 											onCancel={handleCancelEdit}
+													reasoningEffort={null}
+													onReasoningEffortChange={() => undefined}
 										/>
 									</div>
 								) : (

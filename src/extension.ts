@@ -44,6 +44,7 @@ import { API } from "./extension/api"
 import {
 	handleUri,
 	registerCommands,
+	createSidebarRedirectProvider,
 	registerCodeActions,
 	registerTerminalActions,
 	CodeActionProvider,
@@ -235,10 +236,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Finish initializing the provider.
 	TelemetryService.instance.setProvider(provider)
 
+	// The activity bar icon opens Zoo Code in an editor tab rather than the sidebar: the view is
+	// still registered (that's what contributes the icon) but hands off as soon as it shows.
 	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(ClineProvider.sideBarId, provider, {
-			webviewOptions: { retainContextWhenHidden: true },
-		}),
+		vscode.window.registerWebviewViewProvider(
+			ClineProvider.sideBarId,
+			createSidebarRedirectProvider(provider, { context, outputChannel }),
+			{ webviewOptions: { retainContextWhenHidden: true } },
+		),
 	)
 
 	// Check for worktree auto-open path (set when switching to a worktree)

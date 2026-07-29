@@ -1287,7 +1287,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 		})
 	})
 
-	describe("Kanban board auto-transition on subtask completion", () => {
+	describe("Linked todo item auto-transition on subtask completion", () => {
 		function makeTodoUiMessage(todos: unknown[], ts: number) {
 			return {
 				type: "say",

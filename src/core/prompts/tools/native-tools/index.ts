@@ -5,12 +5,15 @@ import applyPatch from "./apply_patch"
 import askFollowupQuestion from "./ask_followup_question"
 import attemptCompletion from "./attempt_completion"
 import codebaseSearch from "./codebase_search"
+import createBoardTask from "./create_board_task"
+import deleteBoardTask from "./delete_board_task"
 import editTool from "./edit"
 import executeCommand from "./execute_command"
 import generateImage from "./generate_image"
 import listFiles from "./list_files"
-import newTask from "./new_task"
+import { createNewTaskTool, type NewTaskToolOptions } from "./new_task"
 import readCommandOutput from "./read_command_output"
+import readBoardTask from "./read_board_task"
 import { createReadFileTool, type ReadFileToolOptions } from "./read_file"
 import runSlashCommand from "./run_slash_command"
 import skill from "./skill"
@@ -19,11 +22,13 @@ import edit_file from "./edit_file"
 import searchFiles from "./search_files"
 import switchMode from "./switch_mode"
 import updateTodoList from "./update_todo_list"
+import updateBoardTask from "./update_board_task"
 import writeToFile from "./write_to_file"
 
 export { getMcpServerTools } from "./mcp_server"
 export { convertOpenAIToolToAnthropic, convertOpenAIToolsToAnthropic } from "./converters"
 export type { ReadFileToolOptions } from "./read_file"
+export type { NewTaskToolOptions } from "./new_task"
 
 /**
  * Options for customizing the native tools array.
@@ -31,6 +36,8 @@ export type { ReadFileToolOptions } from "./read_file"
 export interface NativeToolsOptions {
 	/** Whether the model supports image processing (default: false) */
 	supportsImages?: boolean
+	/** Whether new_task mandates an initial todo list (default: false) */
+	requireTodos?: boolean
 }
 
 /**
@@ -40,10 +47,14 @@ export interface NativeToolsOptions {
  * @returns Array of native tool definitions
  */
 export function getNativeTools(options: NativeToolsOptions = {}): OpenAI.Chat.ChatCompletionTool[] {
-	const { supportsImages = false } = options
+	const { supportsImages = false, requireTodos = false } = options
 
 	const readFileOptions: ReadFileToolOptions = {
 		supportsImages,
+	}
+
+	const newTaskOptions: NewTaskToolOptions = {
+		requireTodos,
 	}
 
 	return [
@@ -53,11 +64,14 @@ export function getNativeTools(options: NativeToolsOptions = {}): OpenAI.Chat.Ch
 		askFollowupQuestion,
 		attemptCompletion,
 		codebaseSearch,
+		createBoardTask,
+		deleteBoardTask,
 		executeCommand,
 		generateImage,
 		listFiles,
-		newTask,
+		createNewTaskTool(newTaskOptions),
 		readCommandOutput,
+		readBoardTask,
 		createReadFileTool(readFileOptions),
 		runSlashCommand,
 		skill,
@@ -67,6 +81,7 @@ export function getNativeTools(options: NativeToolsOptions = {}): OpenAI.Chat.Ch
 		searchFiles,
 		switchMode,
 		updateTodoList,
+		updateBoardTask,
 		writeToFile,
 	] satisfies OpenAI.Chat.ChatCompletionTool[]
 }

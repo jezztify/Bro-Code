@@ -2,7 +2,7 @@ import { EventEmitter } from "events"
 
 import { v4 as uuidv4 } from "uuid"
 
-import { QueuedMessage } from "@roo-code/types"
+import { QueuedMessage, type ReasoningEffortOverride } from "@roo-code/types"
 
 export interface MessageQueueState {
 	messages: QueuedMessage[]
@@ -33,7 +33,11 @@ export class MessageQueueService extends EventEmitter<QueueEvents> {
 		return { index, message: this._messages[index] }
 	}
 
-	public addMessage(text: string, images?: string[]): QueuedMessage | undefined {
+	public addMessage(
+		text: string,
+		images?: string[],
+		reasoningEffort?: ReasoningEffortOverride,
+	): QueuedMessage | undefined {
 		if (!text && !images?.length) {
 			return undefined
 		}
@@ -43,6 +47,7 @@ export class MessageQueueService extends EventEmitter<QueueEvents> {
 			id: uuidv4(),
 			text,
 			images,
+			...(reasoningEffort !== undefined ? { reasoningEffort } : {}),
 		}
 
 		this._messages.push(message)

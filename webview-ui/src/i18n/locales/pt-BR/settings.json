@@ -320,6 +320,10 @@
 			"label": "Subtarefas",
 			"description": "Permitir a criação e conclusão de subtarefas sem exigir aprovação"
 		},
+		"boardTasks": {
+			"label": "Board tasks",
+			"description": "Allow reading, creating, updating, and deleting Tasks board cards without requiring approval"
+		},
 		"followupQuestions": {
 			"label": "Pergunta",
 			"description": "Selecionar automaticamente a primeira resposta sugerida para perguntas de acompanhamento após o tempo limite configurado",

@@ -2,7 +2,7 @@ import delay from "delay"
 
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
-import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
+import { getModeBySlug } from "../../shared/modes"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
 
@@ -38,8 +38,10 @@ export class SwitchModeTool extends BaseTool<"switch_mode"> {
 				return
 			}
 
-			// Check if already in requested mode
-			const currentMode = (await task.providerRef.deref()?.getState())?.mode ?? defaultModeSlug
+			// Check if already in requested mode. This is the calling task's own mode, not
+			// the provider's global one — a sibling task running in another mode must not
+			// make this look like a no-op (or hide a real one).
+			const currentMode = await task.getTaskMode()
 
 			if (currentMode === mode_slug) {
 				task.recordToolError("switch_mode")
@@ -56,7 +58,7 @@ export class SwitchModeTool extends BaseTool<"switch_mode"> {
 			}
 
 			// Switch the mode using shared handler
-			await task.providerRef.deref()?.handleModeSwitch(mode_slug)
+			await task.providerRef.deref()?.handleModeSwitch(mode_slug, task)
 
 			pushToolResult(
 				`Successfully switched from ${getModeBySlug(currentMode)?.name ?? currentMode} mode to ${

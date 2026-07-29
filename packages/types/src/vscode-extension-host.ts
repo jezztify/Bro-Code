@@ -3,11 +3,13 @@ import { z } from "zod"
 import type { GlobalSettings, RooCodeSettings } from "./global-settings.js"
 import type { ProviderSettings, ProviderSettingsEntry } from "./provider-settings.js"
 import type { HistoryItem } from "./history.js"
+import type { ReasoningEffortOverride } from "./model.js"
+import type { BoardPlanningSessionState, BoardState, BoardStage } from "./board.js"
 import type { ModeConfig, PromptComponent } from "./mode.js"
 import type { Experiments } from "./experiment.js"
 import type { ClineMessage, QueuedMessage, TokenUsage } from "./message.js"
 import type { MarketplaceItem, MarketplaceInstalledMetadata, InstallMarketplaceItemOptions } from "./marketplace.js"
-import type { TodoItem, KanbanBoard } from "./todo.js"
+import type { TodoItem } from "./todo.js"
 import type { CloudUserInfo, CloudOrganizationMembership, OrganizationAllowList, ShareVisibility } from "./cloud.js"
 import type { SerializedCustomToolDefinition } from "./custom-tool.js"
 import type { GitCommit } from "./git.js"
@@ -29,7 +31,8 @@ export interface ExtensionMessage {
 		| "state"
 		| "taskHistoryUpdated"
 		| "taskHistoryItemUpdated"
-		| "kanbanBoardUpdated"
+		| "boardStateUpdated"
+		| "boardPlanningUpdated"
 		| "selectedImages"
 		| "theme"
 		| "workspaceUpdated"
@@ -117,7 +120,7 @@ export interface ExtensionMessage {
 	action?:
 		| "chatButtonClicked"
 		| "settingsButtonClicked"
-		| "historyButtonClicked"
+		| "boardButtonClicked"
 		| "marketplaceButtonClicked"
 		| "didBecomeVisible"
 		| "focusInput"
@@ -210,10 +213,12 @@ export interface ExtensionMessage {
 	}
 	historyItem?: HistoryItem
 	taskHistory?: HistoryItem[] // For taskHistoryUpdated: full sorted task history
+	/** For boardStateUpdated: complete planning-board snapshot. */
+	boardState?: BoardState
+	/** For boardPlanningUpdated: transient, execution-free planning session state. */
+	boardPlanning?: BoardPlanningSessionState
 	/** For taskHistoryItemUpdated: single updated/added history item */
 	taskHistoryItem?: HistoryItem
-	/** For kanbanBoardUpdated: the current kanban board read-model for the watched root task */
-	kanbanBoard?: KanbanBoard
 	// Worktree response properties
 	worktrees?: Array<{
 		path: string
@@ -285,6 +290,7 @@ export type ExtensionState = Pick<
 	| "alwaysAllowMcp"
 	| "alwaysAllowModeSwitch"
 	| "alwaysAllowSubtasks"
+	| "alwaysAllowBoardTasks"
 	| "alwaysAllowFollowupQuestions"
 	| "alwaysAllowExecute"
 	| "followupAutoApproveTimeoutMs"
@@ -347,13 +353,14 @@ export type ExtensionState = Pick<
 	currentTaskId?: string
 	currentTaskItem?: HistoryItem
 	currentTaskTodos?: TodoItem[] // Initial todos for the current task
-	/** Kanban board read-model for the root task currently being watched by the webview (see kanbanBoardOpened/Closed) */
-	kanbanBoard?: KanbanBoard
+	/** Current task's transient reasoning selection; null means Default/Auto. */
+	currentTaskReasoningEffort?: ReasoningEffortOverride | null
 	apiConfiguration: ProviderSettings
 	uriScheme?: string
 	shouldShowAnnouncement: boolean
 
 	taskHistory: HistoryItem[]
+	boardState: BoardState
 
 	writeDelayMs: number
 	diffFuzzyThreshold: number
@@ -482,6 +489,7 @@ export interface WebviewMessage {
 		| "webviewDidLaunch"
 		| "newTask"
 		| "askResponse"
+		| "setTaskReasoningEffort"
 		| "terminalOperation"
 		| "clearTask"
 		| "didShowAnnouncement"
@@ -490,11 +498,23 @@ export interface WebviewMessage {
 		| "shareCurrentTask"
 		| "showTaskWithId"
 		| "deleteTaskWithId"
+		| "createBoardWorkspace"
+		| "updateBoardWorkspace"
+		| "deleteBoardWorkspace"
+		| "selectBoardWorkspace"
+		| "setBoardColumnMode"
+		| "createBoardTask"
+		| "updateBoardTask"
+		| "deleteBoardTask"
+		| "startBoardTask"
+		| "refineBoardTask"
+		| "stopBoardTask"
+		| "approveBoardTask"
+		| "startBoardPlanning"
+		| "approveBoardPlanning"
 		| "abandonSubtaskWithId"
 		| "exportTaskWithId"
-		| "kanbanBoardOpened"
-		| "kanbanBoardClosed"
-		| "openKanbanBoardInEditor"
+		| "openBoardInEditor"
 		| "importSettings"
 		| "exportSettings"
 		| "resetState"
@@ -666,12 +686,25 @@ export interface WebviewMessage {
 		| "openRulesDirectory"
 	text?: string
 	taskId?: string
+	workspaceId?: string
+	workspaceName?: string
+	linkedWorkspacePath?: string
+	/** The board column a `setBoardColumnMode` message targets. */
+	stage?: BoardStage
+	boardTask?: {
+		title?: string
+		description?: string
+		stage?: BoardStage
+		position?: number
+	}
 	editedMessageContent?: string
-	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud" | "kanban"
+	tab?: "settings" | "board" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"
 	disabled?: boolean
 	context?: string
 	dataUri?: string
 	askResponse?: ClineAskResponse
+	/** Per-task reasoning selection. `null` explicitly clears to Default/Auto. */
+	reasoningEffort?: ReasoningEffortOverride | null
 	apiConfiguration?: ProviderSettings
 	images?: string[]
 	bool?: boolean
@@ -864,7 +897,17 @@ export interface ClineSayTool {
 		| "runSlashCommand"
 		| "updateTodoList"
 		| "skill"
+		| "createBoardTask"
+		| "readBoardTask"
+		| "updateBoardTask"
+		| "deleteBoardTask"
 	path?: string
+	// Tasks board card being created, read, updated, or deleted.
+	// (`description` is declared further down and is reused here.)
+	taskId?: string
+	title?: string
+	stage?: string
+	update?: { title?: string; description?: string | null; stage?: string }
 	// For readCommandOutput
 	readStart?: number
 	readEnd?: number

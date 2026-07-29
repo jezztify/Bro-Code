@@ -17,6 +17,7 @@ import {
 	type RuleMetadata,
 	type Command,
 	type McpServer,
+	type BoardPlanningSessionState,
 	RouterModels,
 	ORGANIZATION_ALLOW_ALL,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
@@ -34,6 +35,7 @@ import { vscode } from "@src/utils/vscode"
 import { convertTextMateToHljs } from "@src/utils/textMateToHljs"
 
 export interface ExtensionStateContextType extends ExtensionState {
+	boardPlanning?: BoardPlanningSessionState
 	historyPreviewCollapsed?: boolean // Add the new state property
 	didHydrateState: boolean
 	showWelcome: boolean
@@ -71,6 +73,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setAlwaysAllowMcp: (value: boolean) => void
 	setAlwaysAllowModeSwitch: (value: boolean) => void
 	setAlwaysAllowSubtasks: (value: boolean) => void
+	setAlwaysAllowBoardTasks: (value: boolean) => void
 	setShowRooIgnoredFiles: (value: boolean) => void
 	setEnableSubfolderRules: (value: boolean) => void
 	setShowAnnouncement: (value: boolean) => void
@@ -176,7 +179,7 @@ export const mergeExtensionState = (prevState: ExtensionState, newState: Partial
 	// stale push arrives after a newer one, it must not apply *part* of its snapshot - e.g.
 	// reverting currentTaskId to an old task while clineMessages stays on the new one would
 	// show the wrong task's identity/todos alongside another task's messages. clineMessages,
-	// currentTaskId, currentTaskItem, currentTaskTodos, and messageQueue all describe the same
+	// currentTaskId, currentTaskItem, currentTaskTodos, currentTaskReasoningEffort, and messageQueue all describe the same
 	// snapshot-in-time of "the current task", so they must be rejected together whenever the
 	// incoming seq isn't strictly greater than the last applied one.
 	if (
@@ -195,6 +198,9 @@ export const mergeExtensionState = (prevState: ExtensionState, newState: Partial
 		}
 		if (newState.currentTaskTodos !== undefined) {
 			rest.currentTaskTodos = prevState.currentTaskTodos
+		}
+		if (newState.currentTaskReasoningEffort !== undefined) {
+			rest.currentTaskReasoningEffort = prevState.currentTaskReasoningEffort
 		}
 		if (newState.messageQueue !== undefined) {
 			rest.messageQueue = prevState.messageQueue
@@ -218,7 +224,9 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		apiConfiguration: {},
 		version: "",
 		clineMessages: [],
+		currentTaskReasoningEffort: null,
 		taskHistory: [],
+		boardState: { version: 1, workspaces: [], tasks: [], migrations: {} },
 		shouldShowAnnouncement: false,
 		allowedCommands: [],
 		deniedCommands: [],
@@ -290,6 +298,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		includeCurrentCost: true,
 		lockApiConfigAcrossModes: false,
 	})
+	const [boardPlanning, setBoardPlanning] = useState<BoardPlanningSessionState>()
 
 	const [didHydrateState, setDidHydrateState] = useState(false)
 	const [showWelcome, setShowWelcome] = useState(false)
@@ -494,10 +503,14 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 					})
 					break
 				}
-				case "kanbanBoardUpdated": {
-					if (message.kanbanBoard) {
-						setState((prevState) => ({ ...prevState, kanbanBoard: message.kanbanBoard }))
+				case "boardStateUpdated": {
+					if (message.boardState) {
+						setState((prevState) => ({ ...prevState, boardState: message.boardState! }))
 					}
+					break
+				}
+				case "boardPlanningUpdated": {
+					setBoardPlanning(message.boardPlanning)
 					break
 				}
 			}
@@ -529,6 +542,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 
 	const contextValue: ExtensionStateContextType = {
 		...state,
+		boardPlanning,
 		// `chatFontSize` is persisted as nullish (null on reset); normalize null to
 		// undefined so it matches the context type and means "use VS Code default".
 		chatFontSize: state.chatFontSize ?? undefined,
@@ -568,6 +582,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setAlwaysAllowMcp: (value) => setState((prevState) => ({ ...prevState, alwaysAllowMcp: value })),
 		setAlwaysAllowModeSwitch: (value) => setState((prevState) => ({ ...prevState, alwaysAllowModeSwitch: value })),
 		setAlwaysAllowSubtasks: (value) => setState((prevState) => ({ ...prevState, alwaysAllowSubtasks: value })),
+		setAlwaysAllowBoardTasks: (value) => setState((prevState) => ({ ...prevState, alwaysAllowBoardTasks: value })),
 		setAlwaysAllowFollowupQuestions,
 		setFollowupAutoApproveTimeoutMs: (value) =>
 			setState((prevState) => ({ ...prevState, followupAutoApproveTimeoutMs: value })),

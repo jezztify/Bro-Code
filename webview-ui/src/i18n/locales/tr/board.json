@@ -1,0 +1,33 @@
+{
+	"title": "Tasks",
+	"done": "Done",
+	"searchPlaceholder": "Fuzzy search tasks...",
+	"workspace": {
+		"prefix": "Workspace:",
+		"current": "Current",
+		"all": "All"
+	},
+	"selectionMode": "Selection Mode",
+	"exitSelectionMode": "Exit Selection Mode",
+	"enterSelectionMode": "Enter Selection Mode",
+	"exitSelection": "Exit Selection",
+	"deselectAll": "Deselect all",
+	"selectAll": "Select all",
+	"selectedItems": "Selected {{selected}}/{{total}} items",
+	"clearSelection": "Clear Selection",
+	"deleteSelected": "Delete Selected",
+	"actions": {
+		"refine": "Refine",
+		"approve": "Approve",
+		"start": "Start task",
+		"stop": "Stop",
+		"open": "Open task"
+	},
+	"columns": {
+		"backlog": "Backlog",
+		"scoped": "Scoped",
+		"approved": "Approved",
+		"inProgress": "In Progress",
+		"done": "Done"
+	}
+}

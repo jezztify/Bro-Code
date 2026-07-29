@@ -73,7 +73,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
-		const { id, info, temperature, maxTokens, reasoning: thinking, betas } = this.getModel()
+		const { id, info, temperature, maxTokens, reasoning: thinking, betas } = this.getModel(metadata)
 
 		const { supportsPromptCache } = info
 
@@ -210,7 +210,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 		}
 	}
 
-	getModel() {
+	getModel(metadata?: ApiHandlerCreateMessageMetadata) {
 		const modelId = this.options.apiModelId
 		const id = modelId && modelId in vertexModels ? (modelId as VertexModelId) : vertexDefaultModelId
 		let info: ModelInfo = vertexModels[id]
@@ -241,12 +241,14 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			modelId: id,
 			model: info,
 			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
 			defaultTemperature: 0,
 		})
 		const thinking = getAnthropicProviderReasoning({
 			model: info,
 			reasoningBudget: params.reasoningBudget,
 			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
 		})
 
 		// Build betas array for request headers
@@ -272,13 +274,17 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 
 	async completePrompt(prompt: string, options?: CompletePromptOptions) {
 		try {
+			const metadata: ApiHandlerCreateMessageMetadata = {
+				taskId: "completePrompt",
+				reasoningEffort: options?.reasoningEffort,
+			}
 			const {
 				id,
 				info: { supportsPromptCache },
 				temperature,
 				maxTokens = ANTHROPIC_DEFAULT_MAX_TOKENS,
 				reasoning: thinking,
-			} = this.getModel()
+			} = this.getModel(metadata)
 
 			const params = {
 				model: id,
@@ -296,7 +302,9 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 				stream: false,
 			} as Anthropic.Messages.MessageCreateParamsNonStreaming
 
-			const response = await this.client.messages.create(params)
+			const response = options?.abortSignal
+				? await this.client.messages.create(params, { signal: options.abortSignal })
+				: await this.client.messages.create(params)
 			const content = response.content.find(({ type }) => type === "text")
 
 			return content?.type === "text" ? content.text : ""

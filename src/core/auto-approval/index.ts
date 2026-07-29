@@ -20,6 +20,7 @@ export type AutoApprovalState =
 	| "alwaysAllowMcp"
 	| "alwaysAllowModeSwitch"
 	| "alwaysAllowSubtasks"
+	| "alwaysAllowBoardTasks"
 	| "alwaysAllowExecute"
 	| "alwaysAllowFollowupQuestions"
 
@@ -33,6 +34,13 @@ export type AutoApprovalStateOptions =
 	| "mcpServers" // For `alwaysAllowMcp`.
 	| "allowedCommands" // For `alwaysAllowExecute`.
 	| "deniedCommands"
+
+const BOARD_TOOL_ACTIONS: ClineSayTool["tool"][] = [
+	"createBoardTask",
+	"readBoardTask",
+	"updateBoardTask",
+	"deleteBoardTask",
+]
 
 export type CheckAutoApprovalResult =
 	| { decision: "approve" }
@@ -159,6 +167,13 @@ export async function checkAutoApproval({
 
 		if (["newTask", "finishTask"].includes(tool?.tool)) {
 			return state.alwaysAllowSubtasks === true ? { decision: "approve" } : { decision: "ask" }
+		}
+
+		// The board tools only touch Tasks board cards in the selected workspace —
+		// they never read or write files — so they get their own approval category
+		// rather than falling under read/write.
+		if (BOARD_TOOL_ACTIONS.includes(tool?.tool)) {
+			return state.alwaysAllowBoardTasks === true ? { decision: "approve" } : { decision: "ask" }
 		}
 
 		const isOutsideWorkspace = !!tool.isOutsideWorkspace

@@ -12,12 +12,14 @@ type ProviderStubFields = {
 	tasks?: Task[]
 	runDelegationTransition?: unknown
 	removeClineFromStack?: unknown
+	destroyResidentTask?: unknown
 	evictCurrentTask?: unknown
 }
 
 type PrivateProviderMethods = {
 	runDelegationTransition: (this: unknown, ...args: unknown[]) => unknown
 	removeClineFromStack: (this: unknown, ...args: unknown[]) => unknown
+	destroyResidentTask: (this: unknown, ...args: unknown[]) => unknown
 	evictCurrentTask: (this: unknown, ...args: unknown[]) => unknown
 }
 
@@ -50,6 +52,7 @@ export function makeProviderStub<T extends object>(stub: T): ClineProvider {
 
 	s.runDelegationTransition ??= proto.runDelegationTransition.bind(s)
 	s.removeClineFromStack ??= proto.removeClineFromStack.bind(s)
+	s.destroyResidentTask ??= proto.destroyResidentTask.bind(s)
 	s.evictCurrentTask ??= proto.evictCurrentTask.bind(s)
 	return s as unknown as ClineProvider
 }

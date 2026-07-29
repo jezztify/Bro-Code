@@ -3,6 +3,7 @@ import {
 	type ProviderSettings,
 	type VerbosityLevel,
 	type ReasoningEffortExtended,
+	type ReasoningEffortOverride,
 	ANTHROPIC_DEFAULT_MAX_TOKENS,
 } from "@roo-code/types"
 
@@ -13,6 +14,7 @@ import {
 	shouldUseReasoningBudget,
 	shouldUseReasoningEffort,
 	getModelMaxOutputTokens,
+	resolveReasoningSettings,
 } from "../../shared/api"
 
 import {
@@ -33,6 +35,7 @@ type GetModelParamsOptions<T extends Format> = {
 	modelId: string
 	model: ModelInfo
 	settings: ProviderSettings
+	reasoningEffort?: ReasoningEffortOverride
 	defaultTemperature: number
 }
 
@@ -77,21 +80,28 @@ export function getModelParams({
 	modelId,
 	model,
 	settings,
+	reasoningEffort: requestReasoningEffort,
 	defaultTemperature,
 }: GetModelParamsOptions<Format>): ModelParams {
+	const effectiveSettings = resolveReasoningSettings({
+		model,
+		settings,
+		reasoningEffort: requestReasoningEffort,
+	})
+
 	const {
 		modelMaxTokens: customMaxTokens,
 		modelMaxThinkingTokens: customMaxThinkingTokens,
 		modelTemperature: customTemperature,
 		reasoningEffort: customReasoningEffort,
 		verbosity: customVerbosity,
-	} = settings
+	} = effectiveSettings
 
 	// Use the centralized logic for computing maxTokens
 	const maxTokens = getModelMaxOutputTokens({
 		modelId,
 		model,
-		settings,
+		settings: effectiveSettings,
 		format,
 	})
 
@@ -100,7 +110,7 @@ export function getModelParams({
 	let reasoningEffort: ModelParams["reasoningEffort"] = undefined
 	const verbosity: VerbosityLevel | undefined = customVerbosity
 
-	if (shouldUseReasoningBudget({ model, settings })) {
+	if (shouldUseReasoningBudget({ model, settings: effectiveSettings })) {
 		// Check if this is a Gemini 2.5 Pro model
 		const isGemini25Pro = modelId.includes("gemini-2.5-pro")
 
@@ -128,7 +138,7 @@ export function getModelParams({
 		// Let's assume that "Hybrid" reasoning models require a temperature of
 		// 1.0 since Anthropic does.
 		temperature = 1.0
-	} else if (shouldUseReasoningEffort({ model, settings })) {
+	} else if (shouldUseReasoningEffort({ model, settings: effectiveSettings })) {
 		// "Traditional" reasoning models use the `reasoningEffort` parameter.
 		// Only fallback to model default if user hasn't explicitly set a value.
 		// If customReasoningEffort is "disable", don't fallback to model default.
@@ -154,7 +164,12 @@ export function getModelParams({
 		return {
 			format,
 			...params,
-			reasoning: getAnthropicReasoning({ model, reasoningBudget, reasoningEffort, settings }),
+			reasoning: getAnthropicReasoning({
+				model,
+				reasoningBudget,
+				reasoningEffort,
+				settings: effectiveSettings,
+			}),
 		}
 	} else if (format === "openai") {
 		// Special case for o1 and o3-mini, which don't support temperature.
@@ -166,14 +181,24 @@ export function getModelParams({
 		return {
 			format,
 			...params,
-			reasoning: getOpenAiReasoning({ model, reasoningBudget, reasoningEffort, settings }),
+			reasoning: getOpenAiReasoning({
+				model,
+				reasoningBudget,
+				reasoningEffort,
+				settings: effectiveSettings,
+			}),
 			// Whether tools are included is determined by whether the caller provided tool definitions.
 		}
 	} else if (format === "gemini") {
 		return {
 			format,
 			...params,
-			reasoning: getGeminiReasoning({ model, reasoningBudget, reasoningEffort, settings }),
+			reasoning: getGeminiReasoning({
+				model,
+				reasoningBudget,
+				reasoningEffort,
+				settings: effectiveSettings,
+			}),
 		}
 	} else {
 		if (model.supportsTemperature === false) {
@@ -190,7 +215,12 @@ export function getModelParams({
 		return {
 			format,
 			...params,
-			reasoning: getOpenRouterReasoning({ model, reasoningBudget, reasoningEffort, settings }),
+			reasoning: getOpenRouterReasoning({
+				model,
+				reasoningBudget,
+				reasoningEffort,
+				settings: effectiveSettings,
+			}),
 		}
 	}
 }

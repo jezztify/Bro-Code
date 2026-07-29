@@ -494,5 +494,21 @@
 		"title": "Provedor não é mais suportado",
 		"message": "Este provedor não está mais disponível. Selecione um provedor compatível para continuar.",
 		"openSettings": "Abrir configurações"
+	},
+	"boardTasks": {
+		"wantsToCreate": "Zoo wants to create a board task:",
+		"didCreate": "Zoo created a board task:",
+		"wantsToRead": "Zoo wants to read the board:",
+		"didRead": "Zoo read the board:",
+		"wantsToUpdate": "Zoo wants to update a board task:",
+		"didUpdate": "Zoo updated a board task:",
+		"wantsToDelete": "Zoo wants to delete a board task:",
+		"didDelete": "Zoo deleted a board task:",
+		"card": "Card",
+		"title": "Title",
+		"description": "Description",
+		"stage": "Stage",
+		"cleared": "(cleared)",
+		"allCards": "All cards in the selected workspace"
 	}
 }

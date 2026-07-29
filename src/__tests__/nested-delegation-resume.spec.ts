@@ -230,6 +230,9 @@ describe("Nested delegation resume (A → B → C)", () => {
 		// After C completes, B must be current
 		expect(currentActiveId).toBe("B")
 
+		// The completed child's board stage auto-advances to "done" alongside status.
+		expect(historyIndex["C"].boardStage).toBe("done")
+
 		// Events emitted: C -> B hop
 		const eventNamesAfterC = emitSpy.mock.calls.map((c: any[]) => c[0])
 		expect(eventNamesAfterC).toContain(RooCodeEventName.TaskDelegationCompleted)
@@ -272,6 +275,9 @@ describe("Nested delegation resume (A → B → C)", () => {
 		// Note: delegation resume may fall back to a non-tool_result user message when the parent history
 		// does not contain a new_task tool_use. This should not prevent reopening the parent.
 		expect(currentActiveId).toBe("A")
+
+		// The completed child's board stage auto-advances to "done" alongside status.
+		expect(historyIndex["B"].boardStage).toBe("done")
 
 		// Ensure no resume_task asks were scheduled: verified indirectly by startTask:false on both hops
 		// (asserted in createTaskWithHistoryItem mock)

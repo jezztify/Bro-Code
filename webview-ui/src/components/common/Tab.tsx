@@ -3,10 +3,22 @@ import React, { HTMLAttributes, useCallback, forwardRef } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { cn } from "@/lib/utils"
 
-type TabProps = HTMLAttributes<HTMLDivElement>
+type TabProps = HTMLAttributes<HTMLDivElement> & {
+	/**
+	 * "standalone" (default) is today's behavior: the tab pins itself to the full viewport.
+	 * "shell" makes it a normal flex child instead, for use inside AppShell where the rail
+	 * and the persistent chat dock also need to share the viewport.
+	 */
+	variant?: "standalone" | "shell"
+}
 
-export const Tab = ({ className, children, ...props }: TabProps) => (
-	<div className={cn("fixed inset-0 flex flex-col", className)} {...props}>
+export const Tab = ({ className, children, variant = "standalone", ...props }: TabProps) => (
+	<div
+		className={cn(
+			variant === "shell" ? "relative flex-1 min-h-0 flex flex-col" : "fixed inset-0 flex flex-col",
+			className,
+		)}
+		{...props}>
 		{children}
 	</div>
 )

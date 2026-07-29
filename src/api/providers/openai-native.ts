@@ -17,6 +17,7 @@ import {
 	SERVICE_TIER_KEY,
 	type ServiceTier,
 	ApiProviderError,
+	type ReasoningEffortOverride,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -177,7 +178,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
-		const model = this.getModel()
+		const model = this.getModel(metadata)
 
 		// Use Responses API for ALL models
 		yield* this.handleResponsesApiMessage(model, systemPrompt, messages, metadata)
@@ -203,10 +204,10 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		this.streamedToolCallIds.clear()
 
 		// Use Responses API for ALL models
-		const { verbosity, reasoning } = this.getModel()
+		const { verbosity } = model
 
 		// Resolve reasoning effort for models that support it
-		const reasoningEffort = this.getReasoningEffort(model)
+		const reasoningEffort = this.getReasoningEffort(model, metadata?.reasoningEffort)
 
 		// Format full conversation (messages already include reasoning items from API history)
 		const formattedInput = this.formatFullConversation(systemPrompt, messages)
@@ -1384,9 +1385,12 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		}
 	}
 
-	private getReasoningEffort(model: OpenAiNativeModel): ReasoningEffortExtended | undefined {
+	private getReasoningEffort(
+		model: OpenAiNativeModel,
+		reasoningEffort?: ReasoningEffortOverride,
+	): ReasoningEffortExtended | undefined {
 		// Single source of truth: user setting overrides, else model default (from types).
-		const selected = (this.options.reasoningEffort as any) ?? (model.info.reasoningEffort as any)
+		const selected = reasoningEffort ?? (this.options.reasoningEffort as any) ?? (model.info.reasoningEffort as any)
 		return selected && selected !== "disable" ? (selected as any) : undefined
 	}
 
@@ -1438,7 +1442,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 
 	// Removed isResponsesApiModel method as ALL models now use the Responses API
 
-	override getModel() {
+	override getModel(metadata?: ApiHandlerCreateMessageMetadata) {
 		const modelId = this.options.apiModelId
 
 		const id =
@@ -1451,6 +1455,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			modelId: id,
 			model: info,
 			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
 			defaultTemperature: OPENAI_NATIVE_DEFAULT_TEMPERATURE,
 		})
 
@@ -1495,7 +1500,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			const { verbosity } = model
 
 			// Resolve reasoning effort for models that support it
-			const reasoningEffort = this.getReasoningEffort(model)
+			const reasoningEffort = this.getReasoningEffort(model, options?.reasoningEffort)
 
 			// Build request body for Responses API
 			const requestBody: any = {

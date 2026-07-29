@@ -3,10 +3,11 @@ import OpenAI from "openai"
 
 import type { ModelInfo } from "@roo-code/types"
 
-import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/api"
+import { type ApiHandlerOptions, resolveReasoningSettings } from "../../shared/api"
 import { TagMatcher } from "../../utils/tag-matcher"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { convertToOpenAiMessages } from "../transform/openai-format"
+import { getModelParams } from "../transform/model-params"
 
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata, CompletePromptOptions } from "../index"
 import { DEFAULT_HEADERS } from "./constants"
@@ -73,18 +74,24 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		metadata?: ApiHandlerCreateMessageMetadata,
 		requestOptions?: OpenAI.RequestOptions,
 	) {
-		const { id: model, info } = this.getModel()
+		const { id: model, info } = this.getModel(metadata)
+		const requestSettings = resolveReasoningSettings({
+			model: info,
+			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
+		})
 
-		// Centralized cap: clamp to 20% of the context window (unless provider-specific exceptions apply)
-		const max_tokens =
-			getModelMaxOutputTokens({
-				modelId: model,
-				model: info,
-				settings: this.options,
-				format: "openai",
-			}) ?? undefined
+		const modelParams = getModelParams({
+			format: "openai",
+			modelId: model,
+			model: info,
+			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
+			defaultTemperature: this.defaultTemperature,
+		})
 
-		const temperature = this.options.modelTemperature ?? info.defaultTemperature ?? this.defaultTemperature
+		const max_tokens = modelParams.maxTokens
+		const temperature = modelParams.temperature
 
 		const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
 			model,
@@ -96,10 +103,13 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			tools: this.convertToolsForOpenAI(metadata?.tools),
 			tool_choice: metadata?.tool_choice,
 			parallel_tool_calls: metadata?.parallelToolCalls ?? true,
+			...(modelParams.reasoningEffort
+				? { reasoning_effort: modelParams.reasoningEffort as OpenAI.Chat.ChatCompletionCreateParams["reasoning_effort"] }
+				: {}),
 		}
 
 		// Add thinking parameter if reasoning is enabled and model supports it
-		if (this.options.enableReasoningEffort && info.supportsReasoningBinary) {
+		if (requestSettings.enableReasoningEffort && info.supportsReasoningBinary) {
 			;(params as any).thinking = { type: "enabled" }
 		}
 
@@ -183,7 +193,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		}
 
 		if (lastUsage) {
-			yield this.processUsageMetrics(lastUsage, this.getModel().info)
+			yield this.processUsageMetrics(lastUsage, this.getModel(metadata).info)
 		}
 
 		// Process any remaining content
@@ -214,19 +224,40 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 
 	async completePrompt(prompt: string, options?: CompletePromptOptions): Promise<string> {
 		const { id: modelId, info: modelInfo } = this.getModel()
+		const requestSettings = resolveReasoningSettings({
+			model: modelInfo,
+			settings: this.options,
+			reasoningEffort: options?.reasoningEffort,
+		})
+		const modelParams = getModelParams({
+			format: "openai",
+			modelId,
+			model: modelInfo,
+			settings: this.options,
+			reasoningEffort: options?.reasoningEffort,
+			defaultTemperature: this.defaultTemperature,
+		})
 
 		const params: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
 			model: modelId,
 			messages: [{ role: "user", content: prompt }],
+			max_tokens: modelParams.maxTokens,
+			temperature: modelParams.temperature,
+			...(modelParams.reasoningEffort
+				? { reasoning_effort: modelParams.reasoningEffort as OpenAI.Chat.ChatCompletionCreateParams["reasoning_effort"] }
+				: {}),
 		}
 
 		// Add thinking parameter if reasoning is enabled and model supports it
-		if (this.options.enableReasoningEffort && modelInfo.supportsReasoningBinary) {
+		if (requestSettings.enableReasoningEffort && modelInfo.supportsReasoningBinary) {
 			;(params as any).thinking = { type: "enabled" }
 		}
 
 		try {
-			const response = await this.client.chat.completions.create(params)
+			const response = await this.client.chat.completions.create(
+				params,
+				options?.abortSignal ? { signal: options.abortSignal } : undefined,
+			)
 
 			// Check for provider-specific error responses (e.g., MiniMax base_resp)
 			const responseAny = response as any
@@ -242,7 +273,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		}
 	}
 
-	override getModel() {
+	override getModel(_metadata?: ApiHandlerCreateMessageMetadata) {
 		const id =
 			this.options.apiModelId && this.options.apiModelId in this.providerModels
 				? (this.options.apiModelId as ModelName)

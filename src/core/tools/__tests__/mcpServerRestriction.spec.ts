@@ -16,13 +16,14 @@ import { getModeBySlug } from "../../../shared/modes"
 
 const toolError = (error: string) => `ERR:${error}`
 
-function makeTask(state: any): Task {
+function makeTask(state: any, taskMode = state.mode): Task {
 	return {
 		providerRef: {
 			deref: () => ({
 				getState: vi.fn().mockResolvedValue(state),
 			}),
 		},
+		getTaskMode: vi.fn().mockResolvedValue(taskMode),
 		consecutiveMistakeCount: 0,
 		didToolFailInCurrentTurn: false,
 		recordToolError: vi.fn(),
@@ -62,6 +63,20 @@ describe("getAllowedMcpServersForTask", () => {
 		} as any)
 		const task = makeTask({ mode: "code", customModes: [] })
 		await expect(getAllowedMcpServersForTask(task)).resolves.toEqual(["srv-a"])
+	})
+
+	it("uses a background task's mode instead of the focused task's picker mode", async () => {
+		vi.mocked(getModeBySlug).mockReturnValue({
+			slug: "architect",
+			name: "Architect",
+			roleDefinition: "",
+			groups: ["mcp"],
+			allowedMcpServers: ["architect-server"],
+		} as any)
+		const task = makeTask({ mode: "code", customModes: [] }, "architect")
+
+		await expect(getAllowedMcpServersForTask(task)).resolves.toEqual(["architect-server"])
+		expect(getModeBySlug).toHaveBeenCalledWith("architect", [])
 	})
 
 	it("returns undefined when the mode does not restrict servers", async () => {

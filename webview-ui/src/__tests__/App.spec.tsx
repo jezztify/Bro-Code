@@ -25,15 +25,28 @@ vi.mock("@src/utils/TelemetryClient", () => ({
 	},
 }))
 
-vi.mock("@src/components/chat/ChatView", () => ({
+// AppShell (rail + routed pane + persistent chat dock) is unit-tested on its own in
+// src/components/shell/__tests__/AppShell.spec.tsx (and Rail/ChatDock have their own specs).
+// Here it's mocked down to "which tab is active, and what pane content did App.tsx route into
+// it" so these tests stay focused on App.tsx's own routing/gating logic.
+vi.mock("@src/components/shell/AppShell", () => ({
 	__esModule: true,
-	default: function ChatView({ isHidden }: { isHidden: boolean }) {
+	default: React.forwardRef(function MockAppShell(
+		{ activeTab, isChatMaximized, onChatMaximizedChange, children }: any,
+		_ref: any,
+	) {
 		return (
-			<div data-testid="chat-view" data-hidden={isHidden}>
-				Chat View
+			<div
+				data-testid="app-shell"
+				data-active-tab={activeTab ?? ""}
+				data-chat-maximized={String(isChatMaximized)}>
+				<button data-testid="restore-chat" onClick={() => onChatMaximizedChange(false)}>
+					restore
+				</button>
+				{children}
 			</div>
 		)
-	},
+	}),
 }))
 
 vi.mock("@src/components/settings/SettingsView", () => ({
@@ -54,12 +67,12 @@ vi.mock("@src/components/welcome/WelcomeViewProvider", () => ({
 	},
 }))
 
-vi.mock("@src/components/history/HistoryView", () => ({
+vi.mock("@src/components/board/TaskBoardView", () => ({
 	__esModule: true,
-	default: function HistoryView({ onDone }: { onDone: () => void }) {
+	default: function TaskBoardView({ onDone }: { onDone: () => void }) {
 		return (
-			<div data-testid="history-view" onClick={onDone}>
-				History View
+			<div data-testid="board-view" onClick={onDone}>
+				Board View
 			</div>
 		)
 	},
@@ -197,12 +210,11 @@ describe("App", () => {
 		telemetrySetting: "enabled",
 	})
 
-	it("shows chat view by default", () => {
+	it("shows the shell routed to the board pane by default", () => {
 		render(<AppWithProviders />)
 
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView).toBeInTheDocument()
-		expect(chatView.getAttribute("data-hidden")).toBe("false")
+		expect(screen.getByTestId("app-shell")).toHaveAttribute("data-active-tab", "board")
+		expect(screen.getByTestId("board-view")).toBeInTheDocument()
 	}, 10000)
 
 	it("shows welcome view when setup is incomplete", () => {
@@ -230,9 +242,8 @@ describe("App", () => {
 
 		const settingsView = await screen.findByTestId("settings-view")
 		expect(settingsView).toBeInTheDocument()
-
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView.getAttribute("data-hidden")).toBe("true")
+		expect(screen.getByTestId("app-shell")).toHaveAttribute("data-active-tab", "settings")
+		expect(screen.queryByTestId("board-view")).not.toBeInTheDocument()
 	})
 
 	it.each([
@@ -258,7 +269,7 @@ describe("App", () => {
 		expect(screen.queryByTestId("welcome-view")).not.toBeInTheDocument()
 	})
 
-	it("keeps history behind the welcome gate while setup is incomplete", () => {
+	it("keeps board behind the welcome gate while setup is incomplete", () => {
 		mockUseExtensionState.mockReturnValue({
 			didHydrateState: true,
 			showWelcome: true,
@@ -271,16 +282,16 @@ describe("App", () => {
 		render(<AppWithProviders />)
 
 		act(() => {
-			triggerMessage("historyButtonClicked")
+			triggerMessage("boardButtonClicked")
 		})
 
 		expect(screen.getByTestId("welcome-view")).toBeInTheDocument()
-		expect(screen.queryByTestId("history-view")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("board-view")).not.toBeInTheDocument()
 	})
 
 	it.each([
 		{ label: "chat", action: undefined },
-		{ label: "history", action: "historyButtonClicked" },
+		{ label: "board", action: "boardButtonClicked" },
 	])("redirects to providers settings when an import fires from the $label tab", async ({ action }) => {
 		const state = {
 			...createSetupIncompleteState(),
@@ -297,7 +308,7 @@ describe("App", () => {
 			})
 		}
 
-		if (action === "historyButtonClicked") {
+		if (action === "boardButtonClicked") {
 			expect(screen.getByTestId("welcome-view")).toBeInTheDocument()
 		}
 
@@ -316,10 +327,10 @@ describe("App", () => {
 			nextAction: undefined,
 		},
 		{
-			label: "settings before switching to history",
+			label: "settings before switching to board",
 			action: "settingsButtonClicked",
 			viewId: "settings-view",
-			nextAction: "historyButtonClicked",
+			nextAction: "boardButtonClicked",
 		},
 		{
 			label: "marketplace before returning to chat",
@@ -328,10 +339,10 @@ describe("App", () => {
 			nextAction: undefined,
 		},
 		{
-			label: "marketplace before switching to history",
+			label: "marketplace before switching to board",
 			action: "marketplaceButtonClicked",
 			viewId: "marketplace-view",
-			nextAction: "historyButtonClicked",
+			nextAction: "boardButtonClicked",
 		},
 	])(
 		"consumes imported settings without a later redirect when already on $label",
@@ -395,21 +406,24 @@ describe("App", () => {
 		expect(screen.queryByTestId("settings-view")).not.toBeInTheDocument()
 	})
 
-	it("switches to history view when receiving historyButtonClicked action", async () => {
+	it("switches to board view when receiving boardButtonClicked action", async () => {
 		render(<AppWithProviders />)
 
 		act(() => {
-			triggerMessage("historyButtonClicked")
+			triggerMessage("settingsButtonClicked")
+		})
+		await screen.findByTestId("settings-view")
+
+		act(() => {
+			triggerMessage("boardButtonClicked")
 		})
 
-		const historyView = await screen.findByTestId("history-view")
-		expect(historyView).toBeInTheDocument()
-
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView.getAttribute("data-hidden")).toBe("true")
+		const boardView = await screen.findByTestId("board-view")
+		expect(boardView).toBeInTheDocument()
+		expect(screen.getByTestId("app-shell")).toHaveAttribute("data-active-tab", "board")
 	})
 
-	it("returns to chat view when clicking done in settings view", async () => {
+	it("routes to no pane (chat) when clicking done in settings view, while the shell (and its persistent dock) stays mounted", async () => {
 		render(<AppWithProviders />)
 
 		act(() => {
@@ -422,27 +436,9 @@ describe("App", () => {
 			settingsView.click()
 		})
 
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView.getAttribute("data-hidden")).toBe("false")
+		expect(screen.getByTestId("app-shell")).toHaveAttribute("data-active-tab", "")
 		expect(screen.queryByTestId("settings-view")).not.toBeInTheDocument()
-	})
-
-	it.each(["history"])("returns to chat view when clicking done in %s view", async (view) => {
-		render(<AppWithProviders />)
-
-		act(() => {
-			triggerMessage(`${view}ButtonClicked`)
-		})
-
-		const viewElement = await screen.findByTestId(`${view}-view`)
-
-		act(() => {
-			viewElement.click()
-		})
-
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView.getAttribute("data-hidden")).toBe("false")
-		expect(screen.queryByTestId(`${view}-view`)).not.toBeInTheDocument()
+		expect(screen.queryByTestId("board-view")).not.toBeInTheDocument()
 	})
 
 	it("switches to marketplace view when receiving marketplaceButtonClicked action", async () => {
@@ -454,12 +450,10 @@ describe("App", () => {
 
 		const marketplaceView = await screen.findByTestId("marketplace-view")
 		expect(marketplaceView).toBeInTheDocument()
-
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView.getAttribute("data-hidden")).toBe("true")
+		expect(screen.getByTestId("app-shell")).toHaveAttribute("data-active-tab", "marketplace")
 	})
 
-	it("returns to chat view when clicking done in marketplace view", async () => {
+	it("returns to no pane (chat) when clicking done in marketplace view", async () => {
 		render(<AppWithProviders />)
 
 		act(() => {
@@ -472,8 +466,60 @@ describe("App", () => {
 			marketplaceView.click()
 		})
 
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView.getAttribute("data-hidden")).toBe("false")
+		expect(screen.getByTestId("app-shell")).toHaveAttribute("data-active-tab", "")
 		expect(screen.queryByTestId("marketplace-view")).not.toBeInTheDocument()
+	})
+
+	it("maximizes the dock over the board instead of leaving it when chatButtonClicked is received", async () => {
+		render(<AppWithProviders />)
+
+		expect(screen.getByTestId("board-view")).toBeInTheDocument()
+
+		act(() => {
+			triggerMessage("chatButtonClicked")
+		})
+
+		// The board tab stays selected, so restoring the dock brings the board straight back.
+		expect(screen.getByTestId("app-shell")).toHaveAttribute("data-active-tab", "board")
+		expect(screen.getByTestId("app-shell")).toHaveAttribute("data-chat-maximized", "true")
+
+		act(() => {
+			screen.getByTestId("restore-chat").click()
+		})
+
+		expect(screen.getByTestId("app-shell")).toHaveAttribute("data-chat-maximized", "false")
+		expect(screen.getByTestId("board-view")).toBeInTheDocument()
+	})
+
+	it("clears the routed pane when chatButtonClicked arrives from a pane other than the board", async () => {
+		render(<AppWithProviders />)
+
+		act(() => {
+			triggerMessage("settingsButtonClicked")
+		})
+		await screen.findByTestId("settings-view")
+
+		act(() => {
+			triggerMessage("chatButtonClicked")
+		})
+
+		expect(screen.getByTestId("app-shell")).toHaveAttribute("data-active-tab", "")
+		expect(screen.queryByTestId("settings-view")).not.toBeInTheDocument()
+	})
+
+	it("stops the maximized dock from covering a pane the user navigates to", async () => {
+		render(<AppWithProviders />)
+
+		act(() => {
+			triggerMessage("chatButtonClicked")
+		})
+		expect(screen.getByTestId("app-shell")).toHaveAttribute("data-chat-maximized", "true")
+
+		act(() => {
+			triggerMessage("settingsButtonClicked")
+		})
+
+		expect(await screen.findByTestId("settings-view")).toBeInTheDocument()
+		expect(screen.getByTestId("app-shell")).toHaveAttribute("data-chat-maximized", "false")
 	})
 })

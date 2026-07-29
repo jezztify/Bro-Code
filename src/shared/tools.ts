@@ -83,8 +83,13 @@ export const toolParamNames = [
 	"line_ranges",
 	// new_task parameter for per-step difficulty-tier model routing
 	"tier",
-	// new_task parameter linking a delegated subtask to a kanban board todo item
+	// new_task parameter linking a delegated subtask to a todo item
 	"todoId",
+	// create_board_task parameters
+	"description",
+	"stage",
+	"task_id",
+	"clear_description",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]
@@ -119,6 +124,24 @@ export type NativeToolArgs = {
 	}
 	codebase_search: { query: string; path?: string }
 	generate_image: GenerateImageParams
+	create_board_task: {
+		title: string
+		description: string | null
+		stage: import("@roo-code/types").BoardStage
+	}
+	read_board_task: {
+		task_id: string | null
+	}
+	update_board_task: {
+		task_id: string
+		title: string | null
+		description: string | null
+		stage: import("@roo-code/types").BoardStage | null
+		clear_description: boolean
+	}
+	delete_board_task: {
+		task_id: string
+	}
 	run_slash_command: { command: string; args?: string }
 	skill: { skill: string; args?: string }
 	search_files: { path: string; regex: string; file_pattern?: string | null }
@@ -299,6 +322,10 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	run_slash_command: "run slash command",
 	skill: "load skill",
 	generate_image: "generate images",
+	create_board_task: "create board tasks",
+	read_board_task: "read board tasks",
+	update_board_task: "update board tasks",
+	delete_board_task: "delete board tasks",
 	custom_tool: "use custom tools",
 } as const
 
@@ -320,6 +347,9 @@ export const TOOL_GROUPS: Record<ToolGroup, ToolGroupConfig> = {
 	modes: {
 		tools: ["switch_mode", "new_task"],
 		alwaysAvailable: true,
+	},
+	board: {
+		tools: ["create_board_task", "read_board_task", "update_board_task", "delete_board_task"],
 	},
 }
 

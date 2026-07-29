@@ -1,6 +1,11 @@
 import { type ModelInfo, type ProviderSettings, ANTHROPIC_DEFAULT_MAX_TOKENS } from "@roo-code/types"
 
-import { getModelMaxOutputTokens, shouldUseReasoningBudget, shouldUseReasoningEffort } from "../api"
+import {
+	getModelMaxOutputTokens,
+	resolveReasoningSettings,
+	shouldUseReasoningBudget,
+	shouldUseReasoningEffort,
+} from "../api"
 
 describe("getModelMaxOutputTokens", () => {
 	const mockModel: ModelInfo = {
@@ -683,5 +688,85 @@ describe("shouldUseReasoningEffort", () => {
 		}
 		expect(shouldUseReasoningEffort({ model, settings: { reasoningEffort: "none" as any } })).toBe(true)
 		expect(shouldUseReasoningEffort({ model, settings: { reasoningEffort: "minimal" as any } })).toBe(true)
+	})
+})
+
+describe("resolveReasoningSettings", () => {
+	const baseSettings: ProviderSettings = {
+		apiProvider: "openai",
+		enableReasoningEffort: false,
+		reasoningEffort: "low",
+	}
+
+	const effortModel: ModelInfo = {
+		contextWindow: 100_000,
+		supportsPromptCache: false,
+		supportsReasoningEffort: ["none", "low", "medium", "high", "disable"],
+	}
+
+	test("preserves the original profile when no task override is provided", () => {
+		expect(resolveReasoningSettings({ model: effortModel, settings: baseSettings })).toBe(baseSettings)
+	})
+
+	test("applies a supported named effort without mutating the profile", () => {
+		const resolved = resolveReasoningSettings({
+			model: effortModel,
+			settings: baseSettings,
+			reasoningEffort: "high",
+		})
+
+		expect(resolved).toEqual({ ...baseSettings, enableReasoningEffort: true, reasoningEffort: "high" })
+		expect(baseSettings).toEqual({
+			apiProvider: "openai",
+			enableReasoningEffort: false,
+			reasoningEffort: "low",
+		})
+	})
+
+	test("keeps enabled none distinct from Off", () => {
+		const enabled = resolveReasoningSettings({
+			model: effortModel,
+			settings: {},
+			reasoningEffort: "none",
+		})
+		const disabled = resolveReasoningSettings({
+			model: effortModel,
+			settings: {},
+			reasoningEffort: "disable",
+		})
+
+		expect(enabled).toMatchObject({ enableReasoningEffort: true, reasoningEffort: "none" })
+		expect(disabled).toMatchObject({ enableReasoningEffort: false, reasoningEffort: "disable" })
+	})
+
+	test("requires exact membership for explicit capability arrays", () => {
+		const model: ModelInfo = { ...effortModel, supportsReasoningEffort: ["low", "high"] }
+
+		expect(resolveReasoningSettings({ model, settings: {}, reasoningEffort: "medium" })).toEqual({})
+		expect(resolveReasoningSettings({ model, settings: {}, reasoningEffort: "disable" })).toEqual({})
+	})
+
+	test("allows Off for optional budget-only and binary-only models", () => {
+		for (const model of [
+			{ ...effortModel, supportsReasoningEffort: undefined, supportsReasoningBudget: true },
+			{ ...effortModel, supportsReasoningEffort: undefined, supportsReasoningBinary: true },
+		]) {
+			expect(resolveReasoningSettings({ model, settings: {}, reasoningEffort: "disable" })).toMatchObject({
+				enableReasoningEffort: false,
+				reasoningEffort: "disable",
+		})
+		}
+	})
+
+	test("rejects Off for required reasoning models", () => {
+		const requiredEffortModel: ModelInfo = { ...effortModel, requiredReasoningEffort: true }
+		const requiredBudgetModel: ModelInfo = {
+			...effortModel,
+			supportsReasoningEffort: undefined,
+			requiredReasoningBudget: true,
+		}
+
+		expect(resolveReasoningSettings({ model: requiredEffortModel, settings: {}, reasoningEffort: "disable" })).toEqual({})
+		expect(resolveReasoningSettings({ model: requiredBudgetModel, settings: {}, reasoningEffort: "disable" })).toEqual({})
 	})
 })

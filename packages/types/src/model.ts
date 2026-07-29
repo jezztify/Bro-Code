@@ -30,6 +30,14 @@ export const reasoningEffortExtendedSchema = z.enum(reasoningEffortsExtended)
 export type ReasoningEffortExtended = z.infer<typeof reasoningEffortExtendedSchema>
 
 /**
+ * A transient per-task reasoning selection. `disable` is a control value and
+ * must not be sent as an ordinary provider effort.
+ */
+export const reasoningEffortOverrideSchema = z.union([reasoningEffortExtendedSchema, z.literal("disable")])
+
+export type ReasoningEffortOverride = z.infer<typeof reasoningEffortOverrideSchema>
+
+/**
  * Reasoning Effort user setting (includes "disable")
  */
 export const reasoningEffortSettingValues = [

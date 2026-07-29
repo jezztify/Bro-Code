@@ -5,14 +5,14 @@ import type { ApiHandlerOptions } from "../../shared/api"
 import { getModelParams } from "../transform/model-params"
 
 import { GeminiHandler } from "./gemini"
-import { SingleCompletionHandler } from "../index"
+import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 
 export class VertexHandler extends GeminiHandler implements SingleCompletionHandler {
 	constructor(options: ApiHandlerOptions) {
 		super({ ...options, isVertex: true })
 	}
 
-	override getModel() {
+	override getModel(metadata?: ApiHandlerCreateMessageMetadata) {
 		const modelId = this.options.apiModelId
 		const id = modelId && modelId in vertexModels ? (modelId as VertexModelId) : vertexDefaultModelId
 		let info: ModelInfo = vertexModels[id]
@@ -21,6 +21,7 @@ export class VertexHandler extends GeminiHandler implements SingleCompletionHand
 			modelId: id,
 			model: info,
 			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
 			defaultTemperature: info.defaultTemperature ?? 1,
 		})
 

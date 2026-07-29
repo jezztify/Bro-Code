@@ -106,11 +106,6 @@ export class UpdateTodoListTool extends BaseTool<"update_todo_list"> {
 
 			await setTodoListForTask(task, normalizedTodos)
 
-			const provider = task.providerRef.deref()
-			if (provider) {
-				void provider.broadcastKanbanBoardIfWatched(task.rootTaskId ?? task.taskId)
-			}
-
 			if (isTodoListChanged) {
 				const md = todoListToMarkdown(normalizedTodos)
 				pushToolResult(formatResponse.toolResult("User edits todo:\n\n" + md))

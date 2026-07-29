@@ -1,16 +1,5 @@
 {
 	"greeting": "Welcome to Zoo Code!",
-	"kanban": {
-		"title": "Board",
-		"loading": "Loading board...",
-		"noActiveTask": "No active task. Start or open a task to see its plan here.",
-		"columns": {
-			"notDone": "Not Done",
-			"inProgress": "In Progress",
-			"testing": "Testing",
-			"done": "Done"
-		}
-	},
 	"task": {
 		"title": "Task",
 		"expand": "Expand task",
@@ -32,7 +21,7 @@
 		"waitingOnSubtask": "Waiting on subtask",
 		"goToSubtask": "Go to subtask",
 		"tokenBreakdown": "View token breakdown by model or provider profile",
-		"openKanbanBoard": "Board"
+		"openBoard": "Board"
 	},
 	"tokenBreakdownModal": {
 		"titleByModel": "Tokens by Model",
@@ -168,6 +157,19 @@
 	},
 	"selectMode": "Select mode for interaction",
 	"selectApiConfig": "Select API configuration",
+	"thinkingEffort": {
+		"title": "Thinking effort",
+		"description": "Choose how much reasoning the next request should use.",
+		"default": "Default",
+		"disable": "Off",
+		"none": "None",
+		"minimal": "Minimal",
+		"low": "Low",
+		"medium": "Medium",
+		"high": "High",
+		"xhigh": "Extra high",
+		"max": "Maximum"
+	},
 	"lockApiConfigAcrossModes": "Lock API configuration across all modes in this workspace",
 	"unlockApiConfigAcrossModes": "API configuration is locked across all modes in this workspace (click to unlock)",
 	"enhancePrompt": "Enhance prompt with additional context",
@@ -515,5 +517,21 @@
 		"title": "Zoo Code",
 		"newTask": "New task",
 		"reconnecting": "Reconnecting..."
+	},
+	"boardTasks": {
+		"wantsToCreate": "Zoo wants to create a board task:",
+		"didCreate": "Zoo created a board task:",
+		"wantsToRead": "Zoo wants to read the board:",
+		"didRead": "Zoo read the board:",
+		"wantsToUpdate": "Zoo wants to update a board task:",
+		"didUpdate": "Zoo updated a board task:",
+		"wantsToDelete": "Zoo wants to delete a board task:",
+		"didDelete": "Zoo deleted a board task:",
+		"card": "Card",
+		"title": "Title",
+		"description": "Description",
+		"stage": "Stage",
+		"cleared": "(cleared)",
+		"allCards": "All cards in the selected workspace"
 	}
 }

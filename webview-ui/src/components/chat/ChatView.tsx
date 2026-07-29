@@ -18,6 +18,7 @@ import type {
 	AudioType,
 	SuggestionItem,
 	TokenUsage,
+	ReasoningEffortOverride,
 } from "@roo-code/types"
 import { getCompletionCheckpoint, getSuggestionMode, isRetiredProvider } from "@roo-code/types"
 
@@ -58,6 +59,16 @@ export interface ChatViewProps {
 	isHidden: boolean
 	showAnnouncement: boolean
 	hideAnnouncement: () => void
+	/**
+	 * "standalone" (default) is today's behavior: a full-viewport view, toggled via `isHidden`,
+	 * with the RooHero/RooTips/HistoryPreview welcome screen when no task is active.
+	 * "docked" is used by ChatDock (webview-ui/src/components/shell/ChatDock.tsx) to render the
+	 * same message-thread/input logic inside a bounded-height persistent dock instead: it fills
+	 * its flex parent rather than pinning to the viewport, and skips the full welcome screen
+	 * (redundant with the always-available task Board) in favor of just the input area that's
+	 * already rendered unconditionally at the bottom.
+	 */
+	variant?: "standalone" | "docked"
 }
 
 export interface ChatViewRef {
@@ -74,7 +85,7 @@ const CHAT_VIEWPORT_BUFFER = {
 const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0
 
 const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewProps> = (
-	{ isHidden, showAnnouncement, hideAnnouncement },
+	{ isHidden, showAnnouncement, hideAnnouncement, variant = "standalone" },
 	ref,
 ) => {
 	const [audioBaseUri] = useState(() => {
@@ -88,6 +99,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		clineMessages: messages,
 		currentTaskItem,
 		currentTaskTodos,
+		currentTaskId,
+		currentTaskReasoningEffort,
 		taskHistory,
 		apiConfiguration,
 		organizationAllowList,
@@ -167,6 +180,21 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
 	const [sendingDisabled, setSendingDisabled] = useState(false)
 	const [selectedImages, setSelectedImages] = useState<string[]>([])
+	const [composerReasoningEffort, setComposerReasoningEffort] = useState<ReasoningEffortOverride | null>(null)
+	const [composerTaskId, setComposerTaskId] = useState<string | undefined>(undefined)
+
+	// Keep a no-task selection local until the first request creates a task. For
+	// an active task, the extension-host snapshot is authoritative except while
+	// an optimistic picker update is waiting for that snapshot to arrive.
+	useEffect(() => {
+		setComposerTaskId(currentTaskId)
+		setComposerReasoningEffort(currentTaskId ? (currentTaskReasoningEffort ?? null) : null)
+	}, [currentTaskId, currentTaskReasoningEffort])
+
+	const selectedReasoningEffort =
+		composerTaskId === currentTaskId && (currentTaskId !== undefined || composerTaskId === undefined)
+			? composerReasoningEffort
+			: (currentTaskReasoningEffort ?? null)
 
 	// We need to hold on to the ask because useEffect > lastMessage will always
 	// let us know when an ask comes in and handle it, but by the time
@@ -624,12 +652,26 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		setInputValue("")
 		setSendingDisabled(true)
 		setSelectedImages([])
+		setComposerTaskId(undefined)
+		setComposerReasoningEffort(null)
 		setClineAsk(undefined)
 		setEnableButtons(false)
 		// Do not reset mode here as it should persist.
 		// setPrimaryButtonText(undefined)
 		// setSecondaryButtonText(undefined)
 	}, [])
+
+	const handleReasoningEffortChange = useCallback(
+		(value: ReasoningEffortOverride | null) => {
+			setComposerTaskId(currentTaskId)
+			setComposerReasoningEffort(value)
+
+			if (currentTaskId) {
+				vscode.postMessage({ type: "setTaskReasoningEffort", reasoningEffort: value })
+			}
+		},
+		[currentTaskId],
+	)
 
 	/**
 	 * Handles sending messages to the extension
@@ -661,7 +703,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				) {
 					try {
 						console.log("queueMessage", text, images)
-						vscode.postMessage({ type: "queueMessage", text, images })
+						vscode.postMessage({ type: "queueMessage", text, images, reasoningEffort: selectedReasoningEffort })
 						setInputValue("")
 						setSelectedImages([])
 					} catch (error) {
@@ -677,7 +719,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				userRespondedRef.current = true
 
 				if (messagesRef.current.length === 0) {
-					vscode.postMessage({ type: "newTask", text, images })
+					vscode.postMessage({ type: "newTask", text, images, reasoningEffort: selectedReasoningEffort })
 				} else if (clineAskRef.current) {
 					if (clineAskRef.current === "followup") {
 						markFollowUpAsAnswered()
@@ -700,13 +742,20 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 								askResponse: "messageResponse",
 								text,
 								images,
+								reasoningEffort: selectedReasoningEffort,
 							})
 							break
 						// There is no other case that a textfield should be enabled.
 					}
 				} else {
 					// This is a new message in an ongoing task.
-					vscode.postMessage({ type: "askResponse", askResponse: "messageResponse", text, images })
+					vscode.postMessage({
+						type: "askResponse",
+						askResponse: "messageResponse",
+						text,
+						images,
+						reasoningEffort: selectedReasoningEffort,
+					})
 				}
 
 				handleChatReset()
@@ -719,6 +768,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			isStreaming,
 			messageQueue.length,
 			apiConfiguration?.apiProvider,
+			selectedReasoningEffort,
 		], // messagesRef and clineAskRef are stable
 	)
 
@@ -739,6 +789,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	const startNewTask = useCallback(() => {
 		setShowRetiredProviderWarning(false)
+		setComposerTaskId(undefined)
+		setComposerReasoningEffort(null)
 		vscode.postMessage({ type: "clearTask" })
 	}, [])
 
@@ -756,11 +808,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				type: "queueMessage",
 				text,
 				images: selectedImages,
+				reasoningEffort: selectedReasoningEffort,
 			})
 			setInputValue("")
 			setSelectedImages([])
 		}
-	}, [inputValue, selectedImages])
+	}, [inputValue, selectedImages, selectedReasoningEffort])
 
 	// Resets the approval button UI to its hidden/disabled state. Shared by the
 	// manual click handlers and by the backend-driven clearApprovalButtons
@@ -797,12 +850,17 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							askResponse: "yesButtonClicked",
 							text: trimmedInput,
 							images: images,
+							reasoningEffort: selectedReasoningEffort,
 						})
 						// Clear input state after sending
 						setInputValue("")
 						setSelectedImages([])
 					} else {
-						vscode.postMessage({ type: "askResponse", askResponse: "yesButtonClicked" })
+						vscode.postMessage({
+							type: "askResponse",
+							askResponse: "yesButtonClicked",
+							reasoningEffort: selectedReasoningEffort,
+						})
 					}
 					break
 				case "resume_task":
@@ -823,12 +881,17 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 								askResponse: "yesButtonClicked",
 								text: trimmedInput,
 								images: images,
+								reasoningEffort: selectedReasoningEffort,
 							})
 							// Clear input state after sending
 							setInputValue("")
 							setSelectedImages([])
 						} else {
-							vscode.postMessage({ type: "askResponse", askResponse: "yesButtonClicked" })
+							vscode.postMessage({
+								type: "askResponse",
+								askResponse: "yesButtonClicked",
+								reasoningEffort: selectedReasoningEffort,
+							})
 						}
 					}
 					break
@@ -846,7 +909,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 			clearApprovalButtons()
 		},
-		[clineAsk, startNewTask, currentTaskItem?.parentTaskId, clearApprovalButtons],
+		[clineAsk, startNewTask, currentTaskItem?.parentTaskId, clearApprovalButtons, selectedReasoningEffort],
 	)
 
 	const handleSecondaryButtonClick = useCallback(
@@ -878,13 +941,18 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							askResponse: "noButtonClicked",
 							text: trimmedInput,
 							images: images,
+							reasoningEffort: selectedReasoningEffort,
 						})
 						// Clear input state after sending
 						setInputValue("")
 						setSelectedImages([])
 					} else {
 						// Responds to the API with a "This operation failed" and lets it try again
-						vscode.postMessage({ type: "askResponse", askResponse: "noButtonClicked" })
+						vscode.postMessage({
+							type: "askResponse",
+							askResponse: "noButtonClicked",
+							reasoningEffort: selectedReasoningEffort,
+						})
 					}
 					break
 				case "command_output":
@@ -893,7 +961,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			}
 			clearApprovalButtons()
 		},
-		[clineAsk, startNewTask, isStreaming, setDidClickCancel, clearApprovalButtons],
+		[clineAsk, startNewTask, isStreaming, setDidClickCancel, clearApprovalButtons, selectedReasoningEffort],
 	)
 
 	const { info: model } = useSelectedModel(apiConfiguration)
@@ -1469,8 +1537,13 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	const handleBatchFileResponse = useCallback((response: { [key: string]: boolean }) => {
 		// Handle batch file response, e.g., for file uploads
-		vscode.postMessage({ type: "askResponse", askResponse: "objectResponse", text: JSON.stringify(response) })
-	}, [])
+		vscode.postMessage({
+			type: "askResponse",
+			askResponse: "objectResponse",
+			text: JSON.stringify(response),
+			reasoningEffort: selectedReasoningEffort,
+		})
+	}, [selectedReasoningEffort])
 
 	// Cancel backend auto-approval timeout when FollowUpSuggest's countdown effect cleans up.
 	// This is called when auto-approve is toggled off, a suggestion is clicked, or the component unmounts.
@@ -1616,7 +1689,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			// Special case: during command_output, queue the message instead of
 			// triggering the primary button action (which would lose the message)
 			if (clineAskRef.current === "command_output" && hasInput) {
-				vscode.postMessage({ type: "queueMessage", text: inputValue.trim(), images: selectedImages })
+				vscode.postMessage({
+					type: "queueMessage",
+					text: inputValue.trim(),
+					images: selectedImages,
+					reasoningEffort: selectedReasoningEffort,
+				})
 				setInputValue("")
 				setSelectedImages([])
 				return
@@ -1644,7 +1722,13 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	return (
 		<div
 			data-testid="chat-view"
-			className={isHidden ? "hidden" : "fixed top-0 left-0 right-0 bottom-0 flex flex-col overflow-hidden"}>
+			className={
+				isHidden
+					? "hidden"
+					: variant === "docked"
+						? "flex flex-1 min-h-0 flex-col overflow-hidden"
+						: "fixed top-0 left-0 right-0 bottom-0 flex flex-col overflow-hidden"
+			}>
 			{telemetrySetting === "unset" && <TelemetryBanner />}
 			{(showAnnouncement || showAnnouncementModal) && (
 				<Announcement
@@ -1718,7 +1802,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						</div>
 					)}
 				</>
-			) : (
+			) : variant === "docked" ? null : (
 				<div className="flex flex-col h-full p-6 min-h-0 overflow-y-auto gap-4 relative">
 					<div className="flex flex-col items-start gap-2 my-auto min-[400px]:px-6">
 						<VersionIndicator
@@ -1739,7 +1823,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 			{task && (
 				<>
-					<div className="grow flex" ref={scrollContainerRef}>
+					{/* min-h-0 is load-bearing: without it this flex child keeps its
+					min-content height (the full virtualized list), so it pushes the
+					composer below the viewport instead of scrolling internally. */}
+					<div className="grow flex min-h-0" ref={scrollContainerRef}>
 						<Virtuoso
 							ref={virtuosoRef}
 							key={task.ts}
@@ -1871,30 +1958,36 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					/>
 				</div>
 			)}
-			<ChatTextArea
-				ref={textAreaRef}
-				inputValue={inputValue}
-				setInputValue={setInputValue}
-				sendingDisabled={sendingDisabled || isProfileDisabled}
-				selectApiConfigDisabled={sendingDisabled && clineAsk !== "api_req_failed"}
-				placeholderText={placeholderText}
-				selectedImages={selectedImages}
-				setSelectedImages={setSelectedImages}
-				onSend={() => handleSendMessage(inputValue, selectedImages)}
-				onSelectImages={selectImages}
-				shouldDisableImages={shouldDisableImages}
-				onHeightChange={() => {
-					if (isAtBottomRef.current && scrollPhaseRef.current !== "USER_BROWSING_HISTORY") {
-						scrollToBottomAuto()
-					}
-				}}
-				mode={mode}
-				setMode={setMode}
-				modeShortcutText={modeShortcutText}
-				isStreaming={isStreaming}
-				onStop={handleStopTask}
-				onEnqueueMessage={handleEnqueueCurrentMessage}
-			/>
+			{/* shrink-0 keeps the composer at its natural height so it stays pinned to
+				the bottom rather than being squeezed by anything above it. */}
+			<div className="shrink-0">
+				<ChatTextArea
+					ref={textAreaRef}
+					inputValue={inputValue}
+					setInputValue={setInputValue}
+					sendingDisabled={sendingDisabled || isProfileDisabled}
+					selectApiConfigDisabled={sendingDisabled && clineAsk !== "api_req_failed"}
+					placeholderText={placeholderText}
+					selectedImages={selectedImages}
+					setSelectedImages={setSelectedImages}
+					onSend={() => handleSendMessage(inputValue, selectedImages)}
+					onSelectImages={selectImages}
+					shouldDisableImages={shouldDisableImages}
+					onHeightChange={() => {
+						if (isAtBottomRef.current && scrollPhaseRef.current !== "USER_BROWSING_HISTORY") {
+							scrollToBottomAuto()
+						}
+					}}
+					mode={mode}
+					setMode={setMode}
+					modeShortcutText={modeShortcutText}
+					isStreaming={isStreaming}
+					onStop={handleStopTask}
+					onEnqueueMessage={handleEnqueueCurrentMessage}
+					reasoningEffort={selectedReasoningEffort}
+					onReasoningEffortChange={handleReasoningEffortChange}
+				/>
+			</div>
 
 			{isProfileDisabled && (
 				<div className="px-3">

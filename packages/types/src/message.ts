@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { reasoningEffortOverrideSchema } from "./model.js"
+
 /**
  * ClineAsk
  */
@@ -388,6 +390,8 @@ export const queuedMessageSchema = z.object({
 	id: z.string(),
 	text: z.string(),
 	images: z.array(z.string()).optional(),
+	/** Captured when the message is queued; omitted for Default/Auto. */
+	reasoningEffort: reasoningEffortOverrideSchema.optional(),
 })
 
 export type QueuedMessage = z.infer<typeof queuedMessageSchema>

@@ -121,17 +121,8 @@ const TaskHeader = ({
 	// Determine if this is a subtask (has a parent)
 	const isSubtask = !!parentTaskId
 
-	const handleOpenKanbanBoard = () => {
-		if (!currentTaskItem) {
-			return
-		}
-		// Opens in its own editor tab rather than replacing the current chat view - the board
-		// always shows the root task's plan, even when opened from a subtask's header.
-		vscode.postMessage({
-			type: "openKanbanBoardInEditor",
-			text: currentTaskItem.rootTaskId ?? currentTaskItem.id,
-		})
-	}
+	// Opens the workspace board in its own editor tab rather than replacing the current chat view.
+	const handleOpenBoard = () => vscode.postMessage({ type: "openBoardInEditor" })
 
 	const handleBackToParent = () => {
 		if (parentTaskId) {
@@ -180,10 +171,10 @@ const TaskHeader = ({
 					<Button
 						variant="ghost"
 						size="sm"
-						onClick={handleOpenKanbanBoard}
+						onClick={handleOpenBoard}
 						className="flex items-center gap-1.5 text-xs text-vscode-descriptionForeground hover:text-vscode-foreground">
 						<LayoutGrid className="size-3" />
-						{t("chat:task.openKanbanBoard")}
+						{t("chat:task.openBoard")}
 					</Button>
 				</div>
 			)}

@@ -320,6 +320,10 @@
 			"label": "Subtaken",
 			"description": "Subtaken aanmaken en afronden zonder goedkeuring"
 		},
+		"boardTasks": {
+			"label": "Board tasks",
+			"description": "Allow reading, creating, updating, and deleting Tasks board cards without requiring approval"
+		},
 		"followupQuestions": {
 			"label": "Vraag",
 			"description": "Selecteer automatisch het eerste voorgestelde antwoord voor vervolgvragen na de geconfigureerde time-out",

@@ -1,6 +1,7 @@
 // npx vitest run core/prompts/tools/__tests__/filter-tools-for-mode.spec.ts
 
 import type OpenAI from "openai"
+import type { ModeConfig } from "@roo-code/types"
 
 import { filterNativeToolsForMode } from "../filter-tools-for-mode"
 
@@ -87,6 +88,35 @@ describe("filterNativeToolsForMode - disabledTools", () => {
 		const resultNames = result.map((t) => (t as any).function.name)
 		expect(resultNames).not.toContain("search_and_replace")
 		expect(resultNames).not.toContain("edit")
+	})
+})
+
+describe("filterNativeToolsForMode - board tool grants", () => {
+	const boardToolNames = ["create_board_task", "read_board_task", "update_board_task", "delete_board_task"]
+	const nativeTools: OpenAI.Chat.ChatCompletionTool[] = [makeTool("read_file"), ...boardToolNames.map(makeTool)]
+	const boardMode: ModeConfig = {
+		slug: "board-planner",
+		name: "Board planner",
+		roleDefinition: "Plans work on the selected board.",
+		groups: ["read", "board"],
+	}
+	const readOnlyMode: ModeConfig = {
+		slug: "read-only",
+		name: "Read only",
+		roleDefinition: "Reads code only.",
+		groups: ["read"],
+	}
+
+	it("includes board operations only when a custom mode grants the board group", () => {
+		const boardTools = filterNativeToolsForMode(nativeTools, "board-planner", [boardMode], undefined)
+		const readOnlyTools = filterNativeToolsForMode(nativeTools, "read-only", [readOnlyMode], undefined)
+		const boardToolResults = boardTools.map((tool) => (tool as any).function.name)
+		const readOnlyToolResults = readOnlyTools.map((tool) => (tool as any).function.name)
+
+		for (const toolName of boardToolNames) {
+			expect(boardToolResults).toContain(toolName)
+			expect(readOnlyToolResults).not.toContain(toolName)
+		}
 	})
 })
 

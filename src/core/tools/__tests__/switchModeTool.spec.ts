@@ -33,12 +33,14 @@ describe("SwitchModeTool", () => {
 	let mockCallbacks: ToolCallbacks
 	let mockHandleModeSwitch: ReturnType<typeof vi.fn>
 	let mockGetState: ReturnType<typeof vi.fn>
+	let mockGetTaskMode: ReturnType<typeof vi.fn>
 
 	beforeEach(() => {
 		vi.clearAllMocks()
 
 		mockHandleModeSwitch = vi.fn().mockResolvedValue(undefined)
 		mockGetState = vi.fn().mockResolvedValue({ mode: "code", customModes: [] })
+		mockGetTaskMode = vi.fn().mockResolvedValue("code")
 
 		mockTask = {
 			consecutiveMistakeCount: 0,
@@ -46,6 +48,7 @@ describe("SwitchModeTool", () => {
 			didToolFailInCurrentTurn: false,
 			sayAndCreateMissingParamError: vi.fn().mockResolvedValue("Missing parameter error"),
 			ask: vi.fn().mockResolvedValue({}),
+			getTaskMode: mockGetTaskMode,
 			providerRef: {
 				deref: vi.fn().mockReturnValue({
 					getState: mockGetState,
@@ -116,7 +119,7 @@ describe("SwitchModeTool", () => {
 	// ===== Already in mode tests =====
 
 	it("should handle switching to the same mode", async () => {
-		// Current mode is "code" (from mockGetState)
+		// The task's own mode is "code" (from mockGetTaskMode)
 		const block = createBlock({ mode_slug: "code", reason: "already here" })
 
 		await switchModeTool.handle(mockTask, block, mockCallbacks)
@@ -166,7 +169,7 @@ describe("SwitchModeTool", () => {
 		)
 
 		// Should have called handleModeSwitch with the target slug
-		expect(mockHandleModeSwitch).toHaveBeenCalledWith("architect")
+		expect(mockHandleModeSwitch).toHaveBeenCalledWith("architect", mockTask)
 
 		// Should have pushed success result
 		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
@@ -184,7 +187,7 @@ describe("SwitchModeTool", () => {
 			JSON.stringify({ tool: "switchMode", mode: "ask", reason: "" }),
 		)
 
-		expect(mockHandleModeSwitch).toHaveBeenCalledWith("ask")
+		expect(mockHandleModeSwitch).toHaveBeenCalledWith("ask", mockTask)
 
 		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith("Successfully switched from Code mode to Ask mode.")
 	})
@@ -218,14 +221,14 @@ describe("SwitchModeTool", () => {
 
 	// ===== Edge case: getState returns null =====
 
-	it("should use defaultModeSlug when getState returns null", async () => {
+	it("should still switch when getState returns null", async () => {
+		// getState is only consulted for customModes; the current mode comes from the task.
 		mockGetState.mockResolvedValue(null)
 
 		const block = createBlock({ mode_slug: "architect", reason: "test" })
 
 		await switchModeTool.handle(mockTask, block, mockCallbacks)
 
-		// Should fall back to defaultModeSlug ("code") and succeed
 		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
 			"Successfully switched from Code mode to Architect mode because: test.",
 		)
@@ -244,7 +247,7 @@ describe("SwitchModeTool", () => {
 		// Should have asked for approval first
 		expect(mockCallbacks.askApproval).toHaveBeenCalled()
 		// Should have called handleModeSwitch (which throws)
-		expect(mockHandleModeSwitch).toHaveBeenCalledWith("architect")
+		expect(mockHandleModeSwitch).toHaveBeenCalledWith("architect", mockTask)
 		// Error should be caught and reported
 		expect(mockCallbacks.handleError).toHaveBeenCalledWith("switching mode", switchError)
 	})
@@ -303,7 +306,7 @@ describe("SwitchModeTool", () => {
 		await switchModeTool.handle(mockTask, block, mockCallbacks)
 
 		expect(mockCallbacks.askApproval).toHaveBeenCalled()
-		expect(mockHandleModeSwitch).toHaveBeenCalledWith("custom-mode")
+		expect(mockHandleModeSwitch).toHaveBeenCalledWith("custom-mode", mockTask)
 		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
 			"Successfully switched from Code mode to Custom Mode mode because: testing custom modes.",
 		)
@@ -325,33 +328,44 @@ describe("SwitchModeTool", () => {
 		expect(mockCallbacks.askApproval).toHaveBeenCalledWith("tool", expectedMessage)
 	})
 
-	// ===== getState with custom modes =====
+	// ===== Current mode is the calling task's, not the provider's =====
 
-	it("should read current mode from providerRef state", async () => {
-		// Set current mode to "architect"
-		mockGetState.mockResolvedValue({ mode: "architect", customModes: [] })
+	it("should read the current mode from the calling task", async () => {
+		mockGetTaskMode.mockResolvedValue("architect")
 
 		const block = createBlock({ mode_slug: "code", reason: "switching back" })
 
 		await switchModeTool.handle(mockTask, block, mockCallbacks)
 
-		expect(mockHandleModeSwitch).toHaveBeenCalledWith("code")
+		expect(mockHandleModeSwitch).toHaveBeenCalledWith("code", mockTask)
 		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
 			"Successfully switched from Architect mode to Code mode because: switching back.",
 		)
 	})
 
-	it("should use defaultModeSlug when getState returns no mode", async () => {
-		mockGetState.mockResolvedValue({})
+	// Several tasks run at once while the provider's global `mode` tracks only the focused
+	// one, so reading the global mode here would let a sibling task veto this switch.
+	it("should not treat a sibling task's mode as this task's mode", async () => {
+		mockGetTaskMode.mockResolvedValue("architect")
+		mockGetState.mockResolvedValue({ mode: "code", customModes: [] })
+
+		const block = createBlock({ mode_slug: "code", reason: "test" })
+
+		await switchModeTool.handle(mockTask, block, mockCallbacks)
+
+		expect(mockCallbacks.pushToolResult).not.toHaveBeenCalledWith("Already in Code mode.")
+		expect(mockHandleModeSwitch).toHaveBeenCalledWith("code", mockTask)
+	})
+
+	it("should report a genuine no-op even when the global mode differs", async () => {
+		mockGetTaskMode.mockResolvedValue("ask")
+		mockGetState.mockResolvedValue({ mode: "code", customModes: [] })
 
 		const block = createBlock({ mode_slug: "ask", reason: "test" })
 
 		await switchModeTool.handle(mockTask, block, mockCallbacks)
 
-		// defaultModeSlug is "code" (from mock)
-		// Should report switching from Code mode
-		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
-			"Successfully switched from Code mode to Ask mode because: test.",
-		)
+		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith("Already in Ask mode.")
+		expect(mockHandleModeSwitch).not.toHaveBeenCalled()
 	})
 })

@@ -12,7 +12,12 @@ import {
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import { shouldUseReasoningBudget, shouldUseReasoningEffort, type ApiHandlerOptions } from "../../shared/api"
+import {
+	resolveReasoningSettings,
+	shouldUseReasoningBudget,
+	shouldUseReasoningEffort,
+	type ApiHandlerOptions,
+} from "../../shared/api"
 
 import { convertToAiSdkMessages, convertToolsForAiSdk, processAiSdkStreamPart } from "../transform/ai-sdk"
 import { ApiStream } from "../transform/stream"
@@ -59,8 +64,13 @@ export class PoeHandler extends BaseProvider implements SingleCompletionHandler 
 		const openAiTools = this.convertToolsForOpenAI(metadata?.tools)
 		const aiSdkTools = convertToolsForAiSdk(openAiTools) as ToolSet | undefined
 
-		const useBudget = shouldUseReasoningBudget({ model: info, settings: this.options })
-		const useEffort = !useBudget && shouldUseReasoningEffort({ model: info, settings: this.options })
+		const requestSettings = resolveReasoningSettings({
+			model: info,
+			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
+		})
+		const useBudget = shouldUseReasoningBudget({ model: info, settings: requestSettings })
+		const useEffort = !useBudget && shouldUseReasoningEffort({ model: info, settings: requestSettings })
 
 		// Only pass temperature when the user explicitly configured it.
 		let temperature: number | undefined = this.options.modelTemperature ?? undefined
@@ -79,7 +89,7 @@ export class PoeHandler extends BaseProvider implements SingleCompletionHandler 
 			}
 			temperature = 1.0
 		} else if (useEffort) {
-			let effort = (this.options.reasoningEffort ?? info.reasoningEffort ?? "medium") as ReasoningEffortExtended
+			let effort = (requestSettings.reasoningEffort ?? info.reasoningEffort ?? "medium") as ReasoningEffortExtended
 			// Validate that the effort level is actually supported by the current model
 			const supportedEfforts = info.supportsReasoningEffort
 			if (Array.isArray(supportedEfforts) && !supportedEfforts.includes(effort as any)) {
@@ -139,11 +149,42 @@ export class PoeHandler extends BaseProvider implements SingleCompletionHandler 
 	}
 
 	async completePrompt(prompt: string, options?: CompletePromptOptions): Promise<string> {
-		const { id } = this.getModel()
+		const { id, info } = this.getModel()
 		try {
+			const requestSettings = resolveReasoningSettings({
+				model: info,
+				settings: this.options,
+				reasoningEffort: options?.reasoningEffort,
+			})
+			const useBudget = shouldUseReasoningBudget({ model: info, settings: requestSettings })
+			const useEffort = !useBudget && shouldUseReasoningEffort({ model: info, settings: requestSettings })
+			let temperature: number | undefined = this.options.modelTemperature ?? undefined
+			let maxOutputTokens: number | undefined
+			const providerOptions: NonNullable<Parameters<typeof generateText>[0]["providerOptions"]> & {
+				poe?: PoeScopedProviderOptions
+			} = {}
+
+			if (useBudget) {
+				const requestedBudget = this.options.modelMaxThinkingTokens ?? DEFAULT_THINKING_BUDGET
+				maxOutputTokens = this.options.modelMaxTokens ?? Math.max(0, (info.maxTokens ?? 0) - requestedBudget)
+				providerOptions.poe = { reasoningBudgetTokens: requestedBudget }
+				temperature = 1.0
+			} else if (useEffort) {
+				let effort = (requestSettings.reasoningEffort ?? info.reasoningEffort ?? "medium") as ReasoningEffortExtended
+				const supportedEfforts = info.supportsReasoningEffort
+				if (Array.isArray(supportedEfforts) && !supportedEfforts.includes(effort as any)) {
+					effort = (info.reasoningEffort as ReasoningEffortExtended) ?? "medium"
+				}
+				providerOptions.poe = { reasoningEffort: effort, reasoningSummary: "auto" }
+				maxOutputTokens = this.options.modelMaxTokens || undefined
+			}
+
 			const { text } = await generateText({
 				model: this.poe(id),
 				prompt,
+				temperature,
+				maxOutputTokens,
+				...(Object.keys(providerOptions).length > 0 && { providerOptions }),
 			})
 			return text
 		} catch (error) {

@@ -407,6 +407,71 @@ describe("ClineProvider - Sticky Mode", () => {
 			expect(mockTask.emit).toHaveBeenCalledWith("taskModeSwitched", mockTask.taskId, "architect")
 		})
 
+		// Tasks run in parallel while only one holds UI focus, so a switch requested by a
+		// background task must land on that task alone — not on whatever the user is viewing.
+		describe("when a background task requests the switch", () => {
+			const makeTask = (taskId: string) =>
+				({
+					taskId,
+					_taskMode: "code",
+					emit: vi.fn(),
+					saveClineMessages: vi.fn(),
+					clineMessages: [],
+					apiConversationHistory: [],
+					updateApiConfiguration: vi.fn(),
+				}) as any
+
+			let background: any
+			let focused: any
+			let updateTaskHistorySpy: ReturnType<typeof vi.spyOn>
+
+			beforeEach(async () => {
+				background = makeTask("background-task-id")
+				focused = makeTask("focused-task-id")
+
+				await provider.addClineToStack(background)
+				await provider.addClineToStack(focused)
+
+				vi.spyOn(provider as any, "getGlobalState").mockReturnValue([
+					{ id: background.taskId, ts: Date.now(), task: "Background", number: 1 },
+					{ id: focused.taskId, ts: Date.now(), task: "Focused", number: 2 },
+				])
+				updateTaskHistorySpy = vi
+					.spyOn(provider, "updateTaskHistory")
+					.mockImplementation(() => Promise.resolve([]))
+				vi.mocked(mockContext.globalState.update).mockClear()
+
+				await provider.handleModeSwitch("architect", background)
+			})
+
+			it("switches only the calling task's mode", () => {
+				expect(background._taskMode).toBe("architect")
+				expect(focused._taskMode).toBe("code")
+			})
+
+			it("persists the mode against the calling task's history entry", () => {
+				expect(updateTaskHistorySpy).toHaveBeenCalledWith(
+					expect.objectContaining({ id: background.taskId, mode: "architect" }),
+				)
+				expect(updateTaskHistorySpy).not.toHaveBeenCalledWith(
+					expect.objectContaining({ id: focused.taskId }),
+				)
+			})
+
+			it("emits the switch under the calling task", () => {
+				expect(background.emit).toHaveBeenCalledWith("taskModeSwitched", background.taskId, "architect")
+				expect(focused.emit).not.toHaveBeenCalledWith("taskModeSwitched", focused.taskId, "architect")
+			})
+
+			it("leaves the provider-wide mode on the focused task's mode", () => {
+				expect(mockContext.globalState.update).not.toHaveBeenCalledWith("mode", "architect")
+			})
+
+			it("does not rebuild the focused task's API handler", () => {
+				expect(focused.updateApiConfiguration).not.toHaveBeenCalled()
+			})
+		})
+
 		it("should update task history with new mode when active task exists", async () => {
 			// Create a mock task with history
 			const mockTask = new Task({

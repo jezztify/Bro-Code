@@ -37,6 +37,10 @@ import { generateImageTool } from "../tools/GenerateImageTool"
 import { applyDiffTool as applyDiffToolClass } from "../tools/ApplyDiffTool"
 import { isValidToolName, validateToolUse } from "../tools/validateToolUse"
 import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
+import { createBoardTaskTool } from "../tools/CreateBoardTaskTool"
+import { deleteBoardTaskTool } from "../tools/DeleteBoardTaskTool"
+import { readBoardTaskTool } from "../tools/ReadBoardTaskTool"
+import { updateBoardTaskTool } from "../tools/UpdateBoardTaskTool"
 import { NativeToolCallParser } from "./NativeToolCallParser"
 
 import { formatResponse } from "../prompts/responses"
@@ -613,9 +617,15 @@ export async function presentAssistantMessage(cline: Task) {
 							{} as Record<string, boolean>,
 						) ?? {}
 
+					// Validate against the task's own mode, not the provider's globally
+					// selected one. The tool list handed to the model is built from
+					// Task#getTaskMode(), so checking a different mode here can reject a
+					// tool the model was just offered. The two only diverge for a task
+					// created with `initialMode` — such as a board card's refinement chat —
+					// which deliberately does not mutate the global mode selection.
 					validateToolUse(
 						block.name as ToolName,
-						mode ?? defaultModeSlug,
+						(await cline.getTaskMode?.()) ?? mode ?? defaultModeSlug,
 						customModes ?? [],
 						toolRequirements,
 						block.params,
@@ -768,6 +778,34 @@ export async function presentAssistantMessage(cline: Task) {
 					break
 				case "codebase_search":
 					await codebaseSearchTool.handle(cline, block as ToolUse<"codebase_search">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+					})
+					break
+				case "create_board_task":
+					await createBoardTaskTool.handle(cline, block as ToolUse<"create_board_task">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+					})
+					break
+				case "read_board_task":
+					await readBoardTaskTool.handle(cline, block as ToolUse<"read_board_task">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+					})
+					break
+				case "update_board_task":
+					await updateBoardTaskTool.handle(cline, block as ToolUse<"update_board_task">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+					})
+					break
+				case "delete_board_task":
+					await deleteBoardTaskTool.handle(cline, block as ToolUse<"delete_board_task">, {
 						askApproval,
 						handleError,
 						pushToolResult,

@@ -1,6 +1,7 @@
 import {
 	type ModelInfo,
 	type ProviderSettings,
+	type ReasoningEffortOverride,
 	type DynamicProvider,
 	type LocalProvider,
 	ANTHROPIC_DEFAULT_MAX_TOKENS,
@@ -29,6 +30,53 @@ export type ApiHandlerOptions = Omit<ProviderSettings, "apiProvider"> & {
 
 export type RouterName = DynamicProvider | LocalProvider
 
+/**
+ * Resolve a task-local reasoning choice against the selected model. The
+ * returned object is a shallow request snapshot: the persistent provider
+ * profile remains untouched.
+ *
+ * Unsupported task values intentionally become a no-op so callers can safely
+ * handle stale history or a provider failover with different capabilities.
+ */
+export const resolveReasoningSettings = ({
+	model,
+	settings,
+	reasoningEffort,
+}: {
+	model: ModelInfo
+	settings: ProviderSettings
+	reasoningEffort?: ReasoningEffortOverride
+}): ProviderSettings => {
+	if (reasoningEffort === undefined) {
+		return settings
+	}
+
+	// Required reasoning cannot be disabled by an optional task control.
+	if (reasoningEffort === "disable" && (model.requiredReasoningEffort || model.requiredReasoningBudget)) {
+		return settings
+	}
+
+	const capability = model.supportsReasoningEffort
+	const supportsEffort =
+		reasoningEffort === "disable"
+			? capability === true ||
+				(Array.isArray(capability) && capability.includes("disable")) ||
+				(!capability && (!!model.supportsReasoningBudget || !!model.supportsReasoningBinary))
+			: Array.isArray(capability)
+				? capability.includes(reasoningEffort)
+				: capability === true
+
+	if (!supportsEffort) {
+		return settings
+	}
+
+	return {
+		...settings,
+		enableReasoningEffort: reasoningEffort === "disable" ? false : true,
+		reasoningEffort,
+	}
+}
+
 export const isRouterName = (value: string): value is RouterName => isDynamicProvider(value) || isLocalProvider(value)
 
 export function toRouterName(value?: string): RouterName {
@@ -56,6 +104,10 @@ export const shouldUseReasoningEffort = ({
 	model: ModelInfo
 	settings?: ProviderSettings
 }): boolean => {
+	// Required effort models must remain enabled even if an older profile has
+	// `enableReasoningEffort` set to false.
+	if (model.requiredReasoningEffort) return true
+
 	// Explicit off switch
 	if (settings?.enableReasoningEffort === false) return false
 

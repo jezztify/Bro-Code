@@ -34,6 +34,7 @@ import {
 	type HistoryItem,
 	type CreateTaskOptions,
 	type ModelInfo,
+	type ReasoningEffortOverride,
 	type ClineApiReqCancelReason,
 	type ClineApiReqInfo,
 	RooCodeEventName,
@@ -74,7 +75,7 @@ import { getApiMetrics, hasTokenUsageChanged, hasToolUsageChanged } from "../../
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
 import { DiffStrategy, type ToolUse, type ToolParamName, toolParamNames } from "../../shared/tools"
-import { getModelMaxOutputTokens } from "../../shared/api"
+import { getModelMaxOutputTokens, resolveReasoningSettings } from "../../shared/api"
 
 // services
 import { McpHub } from "../../services/mcp/McpHub"
@@ -213,6 +214,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * @see {@link waitForModeInitialization} - To ensure initialization is complete
 	 */
 	private _taskMode: string | undefined
+
+	/** Transient per-task reasoning selection; undefined means Default/Auto. */
+	private _reasoningEffort: ReasoningEffortOverride | undefined
 
 	/**
 	 * Promise that resolves when the task mode has been initialized.
@@ -491,6 +495,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		initialTodos,
 		workspacePath,
 		initialStatus,
+		initialMode,
+		initialReasoningEffort,
 		rateLimitClock,
 		diffFuzzyThreshold,
 	}: TaskOptions) {
@@ -556,6 +562,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.parentTask = parentTask
 		this.taskNumber = taskNumber
 		this.initialStatus = initialStatus
+		this._reasoningEffort = historyItem?.reasoningEffort ?? initialReasoningEffort
 
 		// Store the task's mode and API config name when it's created.
 		// For history items, use the stored values; for new tasks, we'll set them
@@ -567,10 +574,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.taskApiConfigReady = Promise.resolve()
 			TelemetryService.instance.captureTaskRestarted(this.taskId)
 		} else {
-			// For new tasks, don't set the mode/apiConfigName yet - wait for async initialization.
-			this._taskMode = undefined
+			// Scoped callers (such as board cards) may assign a mode without mutating
+			// the provider's global mode selection.
+			this._taskMode = initialMode
 			this._taskApiConfigName = undefined
-			this.taskModeReady = this.initializeTaskMode(provider)
+			this.taskModeReady = initialMode ? Promise.resolve() : this.initializeTaskMode(provider)
 			this.taskApiConfigReady = this.initializeTaskApiConfigName(provider)
 			TelemetryService.instance.captureTaskCreated(this.taskId)
 		}
@@ -646,6 +654,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				throw new Error("Either historyItem or task/images must be provided")
 			}
 		}
+	}
+
+	public get reasoningEffort(): ReasoningEffortOverride | undefined {
+		return this._reasoningEffort
+	}
+
+	/** Update the current task's transient reasoning selection without touching the provider profile. */
+	public async setReasoningEffort(value: ReasoningEffortOverride | null): Promise<void> {
+		this._reasoningEffort = value ?? undefined
+		await this.saveClineMessages()
+		await this.providerRef.deref()?.postStateToWebviewWithoutTaskHistory()
 	}
 
 	/**
@@ -737,8 +756,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		this.providerProfileChangeListener = async () => {
 			try {
+				// Provider profiles are global UI state, but tasks can now continue running
+				// in the background. Only the focused task may adopt a profile change.
+				if (provider.getCurrentTask()?.taskId !== this.taskId) {
+					return
+				}
+
 				const newState = await provider.getState()
-				if (newState?.apiConfiguration) {
+				if (provider.getCurrentTask()?.taskId === this.taskId && newState?.apiConfiguration) {
 					this.updateApiConfiguration(newState.apiConfiguration)
 				}
 			} catch (error) {
@@ -1113,9 +1138,24 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 	}
 
+	/**
+	 * Whether this task is the one the webview is currently rendering. Tasks keep
+	 * running after they lose focus, so anything pushed straight at the webview (as
+	 * opposed to task-scoped events) has to check first — otherwise a background
+	 * task's stream lands in the chat of whatever task the user is looking at.
+	 */
+	private get isFocusedInWebview(): boolean {
+		const provider = this.providerRef.deref()
+		return provider?.getCurrentTask()?.taskId === this.taskId
+	}
+
 	private async updateClineMessage(message: ClineMessage) {
 		const provider = this.providerRef.deref()
-		await provider?.postMessageToWebview({ type: "messageUpdated", clineMessage: message })
+
+		if (this.isFocusedInWebview) {
+			await provider?.postMessageToWebview({ type: "messageUpdated", clineMessage: message })
+		}
+
 		this.emit(RooCodeEventName.Message, { action: "updated", message })
 
 		// Check if we should sync to cloud and haven't already synced this message
@@ -1155,6 +1195,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				mode: this._taskMode || defaultModeSlug, // Use the task's own mode, not the current provider mode.
 				apiConfigName: this._taskApiConfigName, // Use the task's own provider profile, not the current provider profile.
 				initialStatus: this.initialStatus,
+				reasoningEffort: this._reasoningEffort,
 			})
 
 			// Emit token/tool usage updates using debounced function
@@ -1165,8 +1206,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.debouncedEmitTokenUsage(tokenUsage, this.toolUsage)
 
 			const provider = this.providerRef.deref()
-			const existingStatus = provider?.taskHistoryStore.get(this.taskId)?.status
-			await provider?.updateTaskHistory(existingStatus ? { ...historyItem, status: existingStatus } : historyItem)
+			const existingHistoryItem = provider?.taskHistoryStore.get(this.taskId)
+			const existingStatus = existingHistoryItem?.status
+			await provider?.updateTaskHistory(
+				existingStatus ? { ...historyItem, status: existingStatus } : historyItem,
+				{ removeReasoningEffort: this._reasoningEffort === undefined },
+			)
 			return true
 		} catch (error) {
 			console.error("Failed to save Roo messages:", error)
@@ -1358,10 +1403,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						if (message) {
 							this.interactiveAsk = message
 							this.emit(RooCodeEventName.TaskInteractive, this.taskId)
-							/* v8 ignore next 3 -- fires inside 2s timer after ask() resolves; not reachable in unit tests */
-							void provider?.postMessageToWebview({ type: "interactionRequired" }).catch((error) => {
-								console.error("[Task#ask] postMessageToWebview interactionRequired failed:", error)
-							})
+
+							// A background task waiting on input must not badge the chat the
+							// user is currently in; TaskInteractive above still surfaces it.
+							if (this.isFocusedInWebview) {
+								/* v8 ignore next 3 -- fires inside 2s timer after ask() resolves; not reachable in unit tests */
+								void provider?.postMessageToWebview({ type: "interactionRequired" }).catch((error) => {
+									console.error("[Task#ask] postMessageToWebview interactionRequired failed:", error)
+								})
+							}
 						}
 					}, statusMutationTimeout),
 				)
@@ -1396,11 +1446,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				if (type === "tool" || type === "command" || type === "use_mcp_server") {
 					// For tool approvals, we need to approve first, then send
 					// the message if there's text/images.
-					this.handleWebviewAskResponse("yesButtonClicked", message.text, message.images)
+					this.handleWebviewAskResponse("yesButtonClicked", message.text, message.images, message.reasoningEffort)
 				} else {
 					// For other ask types (like followup or command_output), fulfill the ask
 					// directly.
-					this.handleWebviewAskResponse("messageResponse", message.text, message.images)
+					this.handleWebviewAskResponse("messageResponse", message.text, message.images, message.reasoningEffort)
 				}
 			}
 		}
@@ -1421,9 +1471,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						// If this is a tool approval ask, we need to approve first (yesButtonClicked)
 						// and include any queued text/images.
 						if (type === "tool" || type === "command" || type === "use_mcp_server") {
-							this.handleWebviewAskResponse("yesButtonClicked", message.text, message.images)
+							this.handleWebviewAskResponse("yesButtonClicked", message.text, message.images, message.reasoningEffort)
 						} else {
-							this.handleWebviewAskResponse("messageResponse", message.text, message.images)
+							this.handleWebviewAskResponse("messageResponse", message.text, message.images, message.reasoningEffort)
 						}
 					}
 				}
@@ -1465,13 +1515,21 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		return result
 	}
 
-	handleWebviewAskResponse(askResponse: ClineAskResponse, text?: string, images?: string[]) {
+	handleWebviewAskResponse(
+		askResponse: ClineAskResponse,
+		text?: string,
+		images?: string[],
+		reasoningEffort?: ReasoningEffortOverride | null,
+	) {
 		// Clear any pending auto-approval timeout when user responds
 		this.cancelAutoApprovalTimeout()
 
 		this.askResponse = askResponse
 		this.askResponseText = text
 		this.askResponseImages = images
+		if (reasoningEffort !== undefined) {
+			this._reasoningEffort = reasoningEffort ?? undefined
+		}
 
 		// Create a checkpoint whenever the user sends a message.
 		// Use allowEmpty=true to ensure a checkpoint is recorded even if there are no file changes.
@@ -1556,6 +1614,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		images?: string[],
 		mode?: string,
 		providerProfile?: string,
+		reasoningEffort?: ReasoningEffortOverride | null,
 	): Promise<void> {
 		try {
 			text = (text ?? "").trim()
@@ -1588,7 +1647,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// Handle the message directly instead of routing through the webview.
 				// This avoids a race condition where the webview's message state hasn't
 				// hydrated yet, causing it to interpret the message as a new task request.
-				this.handleWebviewAskResponse("messageResponse", text, images)
+				this.handleWebviewAskResponse("messageResponse", text, images, reasoningEffort)
 			} else {
 				console.error("[Task#submitUserMessage] Provider reference lost")
 			}
@@ -1615,6 +1674,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	public async condenseContext(): Promise<void> {
+		const reasoningEffort = this._reasoningEffort
+
 		// CRITICAL: Flush any pending tool results before condensing
 		// to ensure tool_use/tool_result pairs are complete in history
 		await this.flushPendingToolResultsToHistory()
@@ -1624,7 +1685,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Get condensing configuration
 		const state = await this.providerRef.deref()?.getState()
 		const customCondensingPrompt = state?.customSupportPrompts?.CONDENSE
-		const { mode, apiConfiguration } = state ?? {}
+		const { apiConfiguration } = state ?? {}
+		const mode = await this.getTaskMode()
 
 		const { contextTokens: prevContextTokens } = this.getTokenUsage()
 
@@ -1651,6 +1713,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const metadata: ApiHandlerCreateMessageMetadata = {
 			mode,
 			taskId: this.taskId,
+			reasoningEffort,
 			...(this.currentRequestAbortController?.signal
 				? {
 						abortSignal: this.currentRequestAbortController.signal,
@@ -2528,9 +2591,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			includeFileDetails: boolean
 			retryAttempt?: number
 			userMessageWasRemoved?: boolean // Track if user message was removed due to empty response
+			reasoningEffort?: ReasoningEffortOverride
 		}
 
-		const stack: StackItem[] = [{ userContent, includeFileDetails, retryAttempt: 0 }]
+		const stack: StackItem[] = [
+			{ userContent, includeFileDetails, retryAttempt: 0, reasoningEffort: this._reasoningEffort },
+		]
 
 		while (stack.length > 0) {
 			const currentItem = stack.pop()!
@@ -2616,7 +2682,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const showRooIgnoredFiles = state?.showRooIgnoredFiles ?? false
 			const includeDiagnosticMessages = state?.includeDiagnosticMessages ?? true
 			const maxDiagnosticMessages = state?.maxDiagnosticMessages ?? 50
-			const currentMode = state?.mode ?? defaultModeSlug
+			const currentMode = await this.getTaskMode()
 
 			const { content: parsedUserContent, mode: slashCommandMode } = await processUserContentMentions({
 				userContent: currentUserContent,
@@ -2637,7 +2703,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					const state = await provider.getState()
 					const targetMode = getModeBySlug(slashCommandMode, state?.customModes)
 					if (targetMode) {
-						await provider.handleModeSwitch(slashCommandMode)
+						await provider.handleModeSwitch(slashCommandMode, this)
 					}
 				}
 			}
@@ -2810,7 +2876,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// Yields only if the first chunk is successful, otherwise will
 				// allow the user to retry the request (most likely due to rate
 				// limit error, which gets thrown on the first chunk).
-				const stream = this.attemptApiRequest(currentItem.retryAttempt ?? 0, { skipProviderRateLimit: true })
+				const stream = this.attemptApiRequest(currentItem.retryAttempt ?? 0, {
+					skipProviderRateLimit: true,
+					reasoningEffort: currentItem.reasoningEffort,
+					reasoningEffortCaptured: true,
+				})
 				let assistantMessage = ""
 				let reasoningMessage = ""
 				const pendingGroundingSources: GroundingSource[] = []
@@ -3332,6 +3402,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								userContent: currentUserContent,
 								includeFileDetails: false,
 								retryAttempt: (currentItem.retryAttempt ?? 0) + 1,
+								reasoningEffort: currentItem.reasoningEffort,
 							})
 
 							// Continue to retry the request
@@ -3671,6 +3742,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						stack.push({
 							userContent: [...this.userMessageContent], // Create a copy to avoid mutation issues
 							includeFileDetails: false, // Subsequent iterations don't need file details
+							reasoningEffort: this._reasoningEffort,
 						})
 
 						// Add periodic yielding to prevent blocking
@@ -3731,6 +3803,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							includeFileDetails: false,
 							retryAttempt: (currentItem.retryAttempt ?? 0) + 1,
 							userMessageWasRemoved: true,
+							reasoningEffort: currentItem.reasoningEffort,
 						})
 
 						// Continue to retry the request
@@ -3750,6 +3823,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								userContent: currentUserContent,
 								includeFileDetails: false,
 								retryAttempt: (currentItem.retryAttempt ?? 0) + 1,
+								reasoningEffort: currentItem.reasoningEffort,
 							})
 
 							// Continue to retry the request
@@ -3818,9 +3892,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const rooIgnoreInstructions = this.rooIgnoreController?.getInstructions()
 
 		const state = await this.providerRef.deref()?.getState()
+		const taskMode = await this.getTaskMode()
 
 		const {
-			mode,
 			customModes,
 			customModePrompts,
 			customInstructions,
@@ -3845,7 +3919,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				false,
 				mcpHub,
 				this.diffStrategy,
-				mode ?? defaultModeSlug,
+				taskMode,
 				customModePrompts,
 				customModes,
 				customInstructions,
@@ -3892,18 +3966,26 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 	}
 
-	private async handleContextWindowExceededError(): Promise<void> {
+	private async handleContextWindowExceededError(
+		reasoningEffort: ReasoningEffortOverride | undefined = this._reasoningEffort,
+	): Promise<void> {
 		const state = await this.providerRef.deref()?.getState()
-		const { profileThresholds = {}, mode, apiConfiguration } = state ?? {}
+		const { profileThresholds = {}, apiConfiguration } = state ?? {}
+		const mode = await this.getTaskMode()
 
 		const { contextTokens } = this.getTokenUsage()
 		await this.safeEnsureModelFetched()
 		const modelInfo = this.api.getModel().info
+		const requestSettings = resolveReasoningSettings({
+			model: modelInfo,
+			settings: this.apiConfiguration,
+			reasoningEffort,
+		})
 
 		const maxTokens = getModelMaxOutputTokens({
 			modelId: this.api.getModel().id,
 			model: modelInfo,
-			settings: this.apiConfiguration,
+			settings: requestSettings,
 		})
 
 		// vscode-lm condenses against its static-table maxInputTokens (not the inflated live window);
@@ -3945,6 +4027,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const metadata: ApiHandlerCreateMessageMetadata = {
 			mode,
 			taskId: this.taskId,
+			reasoningEffort,
 			...(this.currentRequestAbortController?.signal
 				? {
 						abortSignal: this.currentRequestAbortController.signal,
@@ -4069,19 +4152,26 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	public async *attemptApiRequest(
 		retryAttempt: number = 0,
-		options: { skipProviderRateLimit?: boolean } = {},
+		options: {
+			skipProviderRateLimit?: boolean
+			reasoningEffort?: ReasoningEffortOverride
+			reasoningEffortCaptured?: boolean
+		} = {},
 	): ApiStream {
+		const requestReasoningEffort = options.reasoningEffortCaptured
+			? options.reasoningEffort
+			: this._reasoningEffort
 		const state = await this.providerRef.deref()?.getState()
 
 		const {
 			apiConfiguration,
 			autoApprovalEnabled,
 			requestDelaySeconds,
-			mode,
 			autoCondenseContext = true,
 			autoCondenseContextPercent = 100,
 			profileThresholds = {},
 		} = state ?? {}
+		const mode = await this.getTaskMode()
 
 		// Get condensing configuration for automatic triggers.
 		const customCondensingPrompt = state?.customSupportPrompts?.CONDENSE
@@ -4105,11 +4195,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		if (contextTokens) {
 			await this.safeEnsureModelFetched()
 			const modelInfo = this.api.getModel().info
+			const requestSettings = resolveReasoningSettings({
+				model: modelInfo,
+				settings: this.apiConfiguration,
+				reasoningEffort: requestReasoningEffort,
+			})
 
 			const maxTokens = getModelMaxOutputTokens({
 				modelId: this.api.getModel().id,
 				model: modelInfo,
-				settings: this.apiConfiguration,
+				settings: requestSettings,
 			})
 
 			// vscode-lm condenses against its static-table maxInputTokens (not the inflated live window);
@@ -4177,6 +4272,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const contextMgmtMetadata: ApiHandlerCreateMessageMetadata = {
 				mode,
 				taskId: this.taskId,
+				reasoningEffort: requestReasoningEffort,
 				...(this.currentRequestAbortController?.signal
 					? {
 							abortSignal: this.currentRequestAbortController.signal,
@@ -4352,6 +4448,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const metadata: ApiHandlerCreateMessageMetadata = {
 			mode: mode,
 			taskId: this.taskId,
+			reasoningEffort: requestReasoningEffort,
 			suppressPreviousResponseId: this.skipPrevResponseIdOnce,
 			abortSignal,
 			// Include tools whenever they are present.
@@ -4429,9 +4526,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						`Retry attempt ${retryAttempt + 1}/${MAX_CONTEXT_WINDOW_RETRIES}. ` +
 						`Attempting automatic truncation...`,
 				)
-				await this.handleContextWindowExceededError()
+				await this.handleContextWindowExceededError(requestReasoningEffort)
 				// Retry the request after handling the context window error
-				yield* this.attemptApiRequest(retryAttempt + 1)
+				yield* this.attemptApiRequest(retryAttempt + 1, {
+					reasoningEffort: requestReasoningEffort,
+				reasoningEffortCaptured: true,
+			})
 				return
 			}
 
@@ -4458,7 +4558,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 					// Reset the retry counter so the fallback profile gets its own
 					// same-profile backoff budget before escalating further.
-					yield* this.attemptApiRequest(0)
+					yield* this.attemptApiRequest(0, {
+						reasoningEffort: requestReasoningEffort,
+					reasoningEffortCaptured: true,
+				})
 					return
 				}
 				// No fallback available/remaining: fall through to fail-loud handling.
@@ -4480,7 +4583,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 				// Delegate generator output from the recursive call with
 				// incremented retry count.
-				yield* this.attemptApiRequest(retryAttempt + 1)
+				yield* this.attemptApiRequest(retryAttempt + 1, {
+					reasoningEffort: requestReasoningEffort,
+				reasoningEffortCaptured: true,
+			})
 
 				return
 			} else {
@@ -4512,7 +4618,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				}
 
 				// Delegate generator output from the recursive call.
-				yield* this.attemptApiRequest()
+				yield* this.attemptApiRequest(0, {
+					reasoningEffort: requestReasoningEffort,
+					reasoningEffortCaptured: true,
+				})
 				return
 			}
 		}
@@ -4547,11 +4656,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			return false
 		}
 
-		const mode = state?.mode
-
-		if (!mode) {
-			return false
-		}
+		const mode = await this.getTaskMode()
 
 		const modeConfig = getModeBySlug(mode, state?.customModes)
 		// Honor the user-configured per-mode cap even if the persisted config (e.g.
@@ -4990,7 +5095,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				const queued = this.messageQueueService.dequeueMessage()
 				if (queued) {
 					setTimeout(() => {
-						this.submitUserMessage(queued.text, queued.images).catch((err) =>
+						this.submitUserMessage(queued.text, queued.images, undefined, undefined, queued.reasoningEffort).catch((err) =>
 							console.error(`[Task] Failed to submit queued message:`, err),
 						)
 					}, 0)

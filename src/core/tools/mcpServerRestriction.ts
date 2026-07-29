@@ -23,7 +23,7 @@ export function isMcpServerAllowed(serverName: string, allowedMcpServers?: strin
 }
 
 /**
- * Resolves the current mode's MCP server allowlist from provider state.
+ * Resolves a task's mode-specific MCP server allowlist.
  *
  * Returns `undefined` when the mode does not restrict MCP servers (or when the mode/state
  * cannot be resolved), which the predicate treats as "unrestricted".
@@ -43,7 +43,9 @@ export async function getAllowedMcpServersForTask(task: Task): Promise<string[] 
 
 	try {
 		const state = await provider.getState()
-		const modeSlug = state?.mode ?? defaultModeSlug
+		// Provider state reflects the focused task's picker; a background task must
+		// retain its own restrictions while another task is open.
+		const modeSlug = (await task.getTaskMode()) ?? defaultModeSlug
 		const modeConfig = getModeBySlug(modeSlug, state?.customModes)
 		return modeConfig?.allowedMcpServers
 	} catch {

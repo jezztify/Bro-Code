@@ -485,5 +485,21 @@
 		"title": "供應商不再受支援",
 		"message": "此供應商已不可用。請選擇受支援的供應商以繼續。",
 		"openSettings": "開啟設定"
+	},
+	"boardTasks": {
+		"wantsToCreate": "Zoo wants to create a board task:",
+		"didCreate": "Zoo created a board task:",
+		"wantsToRead": "Zoo wants to read the board:",
+		"didRead": "Zoo read the board:",
+		"wantsToUpdate": "Zoo wants to update a board task:",
+		"didUpdate": "Zoo updated a board task:",
+		"wantsToDelete": "Zoo wants to delete a board task:",
+		"didDelete": "Zoo deleted a board task:",
+		"card": "Card",
+		"title": "Title",
+		"description": "Description",
+		"stage": "Stage",
+		"cleared": "(cleared)",
+		"allCards": "All cards in the selected workspace"
 	}
 }

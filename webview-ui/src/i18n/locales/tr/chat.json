@@ -495,5 +495,21 @@
 		"title": "Sağlayıcı artık desteklenmiyor",
 		"message": "Bu sağlayıcı artık kullanılamıyor. Devam etmek için desteklenen bir sağlayıcı seçin.",
 		"openSettings": "Ayarları aç"
+	},
+	"boardTasks": {
+		"wantsToCreate": "Zoo wants to create a board task:",
+		"didCreate": "Zoo created a board task:",
+		"wantsToRead": "Zoo wants to read the board:",
+		"didRead": "Zoo read the board:",
+		"wantsToUpdate": "Zoo wants to update a board task:",
+		"didUpdate": "Zoo updated a board task:",
+		"wantsToDelete": "Zoo wants to delete a board task:",
+		"didDelete": "Zoo deleted a board task:",
+		"card": "Card",
+		"title": "Title",
+		"description": "Description",
+		"stage": "Stage",
+		"cleared": "(cleared)",
+		"allCards": "All cards in the selected workspace"
 	}
 }

@@ -98,7 +98,7 @@ export function MarketplaceView({ stateManager, onDone, targetTab }: Marketplace
 
 	return (
 		<TooltipProvider delayDuration={300}>
-			<Tab>
+			<Tab variant="shell">
 				<TabHeader className="flex flex-col sticky top-0 z-10 px-3 py-2">
 					<div className="flex items-center justify-between gap-2 px-2">
 						<div className="flex items-center gap-2">

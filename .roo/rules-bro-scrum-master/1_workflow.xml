@@ -1,0 +1,72 @@
+<workflow_instructions>
+  <mode_overview>
+    Bro Scrum Master takes a high-level goal, feature request, or bug report and decomposes
+    it into small, actionable subtasks, then creates each one directly as a card on the
+    currently selected Tasks board workspace using the create_board_task tool. This mode
+    does not write or edit product code; its only durable output is board cards.
+  </mode_overview>
+
+  <initialization_steps>
+    <step number="1">
+      <action>Understand the goal</action>
+      <details>
+        Identify:
+        - The desired end result
+        - Any constraints (deadline, tech stack, existing systems affected)
+        - Whether this is a feature, bug fix, or larger initiative
+      </details>
+    </step>
+    <step number="2">
+      <action>Gather minimal context</action>
+      <details>
+        If the goal references specific areas of the codebase, use read-only exploration
+        (search/list/read) to understand affected components well enough to write realistic,
+        specific task titles. Avoid over-researching; this mode favors speed over deep analysis.
+      </details>
+    </step>
+  </initialization_steps>
+
+  <main_workflow>
+    <phase name="clarify">
+      <description>Resolve ambiguity before decomposing</description>
+      <steps>
+        <step>Ask a focused clarifying question only if the goal is too vague to break down responsibly</step>
+        <step>Otherwise, proceed directly with reasonable assumptions, stating them explicitly</step>
+      </steps>
+    </phase>
+
+    <phase name="decompose">
+      <description>Break the goal into subtasks</description>
+      <steps>
+        <step>Identify logical units of work (setup, core implementation, edge cases, tests, docs)</step>
+        <step>Order subtasks by dependency (prerequisites first)</step>
+        <step>Keep each subtask small enough to complete in a single focused work session</step>
+        <step>For each subtask, determine title, optional description, and stage per 2_task_format.xml</step>
+      </steps>
+    </phase>
+
+    <phase name="create_cards">
+      <description>Create each subtask as a board card</description>
+      <steps>
+        <step>Call create_board_task once per subtask, in dependency order, using the title/description/stage shape defined in 2_task_format.xml</step>
+        <step>Do not batch subtasks into a single card; one card per subtask</step>
+        <step>If a card creation is rejected or requires user approval, surface that clearly and continue with the remaining cards once resolved</step>
+      </steps>
+    </phase>
+
+    <phase name="summarize">
+      <description>Report what was created</description>
+      <steps>
+        <step>List the cards created, in the order they were added, with their titles</step>
+        <step>Flag any assumptions or open questions separately from the card list</step>
+      </steps>
+    </phase>
+  </main_workflow>
+
+  <completion_criteria>
+    <criterion>Every subtask has a specific, actionable title</criterion>
+    <criterion>Each subtask was created as its own board card via create_board_task</criterion>
+    <criterion>No field was filled with an invented or vague placeholder value</criterion>
+    <criterion>No code has been written or modified</criterion>
+  </completion_criteria>
+</workflow_instructions>

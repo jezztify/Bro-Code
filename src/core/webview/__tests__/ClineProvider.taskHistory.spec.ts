@@ -847,4 +847,372 @@ describe("ClineProvider Task History Synchronization", () => {
 			expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("[onTaskCompleted] Failed to write"))
 		})
 	})
+
+	describe("board task execution", () => {
+		function makeFakeTask(taskId: string) {
+			const listeners: Record<string, ((...args: unknown[]) => unknown)[]> = {}
+			return {
+				taskId,
+				on: (event: string, fn: (...args: unknown[]) => unknown) => {
+					listeners[event] = listeners[event] ?? []
+					listeners[event].push(fn)
+				},
+				emit: async (event: string, ...args: unknown[]) => {
+					await Promise.all((listeners[event] ?? []).map((fn) => Promise.resolve(fn(...args))))
+				},
+			}
+		}
+
+		async function createBoardCard(title = "Board task") {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title })
+			return provider.boardStore.getSnapshot().tasks[0]!
+		}
+
+		it("creates exactly one execution task for concurrent starts", async () => {
+			const card = await createBoardCard()
+			let releaseCreate!: () => void
+			const createStarted = new Promise<void>((resolve) => {
+				releaseCreate = resolve
+			})
+			const createTask = vi.spyOn(provider, "createTask").mockImplementation(
+				async () =>
+					await new Promise<any>((resolve) => {
+						createStarted.then(() => resolve({ taskId: "execution-1" }))
+					}),
+			)
+
+			const firstStart = provider.startBoardTask(card.id)
+			const secondStart = provider.startBoardTask(card.id)
+			await Promise.resolve()
+			expect(createTask).toHaveBeenCalledTimes(1)
+			releaseCreate()
+			await Promise.all([firstStart, secondStart])
+
+			expect(provider.boardStore.getSnapshot().tasks[0]?.linkedHistoryTaskId).toBe("execution-1")
+		})
+
+		it("leaves the card unlinked when execution task creation fails", async () => {
+			const card = await createBoardCard()
+			vi.spyOn(provider, "createTask").mockRejectedValueOnce(new Error("creation failed"))
+
+			await expect(provider.startBoardTask(card.id)).rejects.toThrow("creation failed")
+			expect(provider.boardStore.getSnapshot().tasks[0]?.linkedHistoryTaskId).toBeUndefined()
+		})
+
+		it("starts a card in the mode assigned to its column", async () => {
+			const card = await createBoardCard()
+			await provider.boardStore.updateTask(card.id, { stage: "approved" })
+			await provider.boardStore.setColumnMode(card.workspaceId, "approved", "code")
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "execution-mode" } as any)
+
+			await provider.startBoardTask(card.id)
+
+			expect(createTask).toHaveBeenCalledWith("Board task", undefined, undefined, { initialMode: "code" })
+		})
+
+		it("starts a card in the current mode when its column has none", async () => {
+			const card = await createBoardCard()
+			await provider.boardStore.updateTask(card.id, { stage: "approved" })
+			await provider.boardStore.setColumnMode(card.workspaceId, "backlog", "architect")
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "execution-mode" } as any)
+
+			await provider.startBoardTask(card.id)
+
+			expect(createTask).toHaveBeenCalledWith("Board task", undefined, undefined, {})
+		})
+
+		it("carries the refined description into the execution task", async () => {
+			const card = await createBoardCard("Add a dark mode toggle")
+			await provider.boardStore.linkRefinementTask(card.id, "refine-1")
+			await provider.boardStore.updateTask(card.id, {
+				description: "Add a toggle to the settings panel.\n\nDone when: the theme persists across reloads.",
+			})
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "execution-1" } as any)
+
+			await provider.startBoardTask(card.id)
+
+			const prompt = createTask.mock.calls[0]![0] as string
+			expect(prompt).toContain("Add a dark mode toggle")
+			expect(prompt).toContain("Add a toggle to the settings panel.")
+			expect(prompt).toContain("Done when: the theme persists across reloads.")
+			expect(prompt).toMatch(/agreed while refining/i)
+		})
+
+		it("starts an unrefined card from its title alone", async () => {
+			const card = await createBoardCard("Quick fix")
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "execution-1" } as any)
+
+			await provider.startBoardTask(card.id)
+
+			expect(createTask.mock.calls[0]![0]).toBe("Quick fix")
+		})
+
+		it("passes a hand-written description without claiming it was refined", async () => {
+			const card = await createBoardCard("Hand written")
+			await provider.boardStore.updateTask(card.id, { description: "Some notes I typed myself." })
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "execution-1" } as any)
+
+			await provider.startBoardTask(card.id)
+
+			const prompt = createTask.mock.calls[0]![0] as string
+			expect(prompt).toContain("Some notes I typed myself.")
+			expect(prompt).not.toMatch(/agreed while refining/i)
+		})
+
+		it("moves only the card linked to a completed execution task", async () => {
+			const firstCard = await createBoardCard("First")
+			const workspaceId = firstCard.workspaceId
+			await provider.boardStore.createTask({ workspaceId, title: "Second" })
+			const secondCard = provider.boardStore.getSnapshot().tasks[1]!
+			await provider.boardStore.linkTaskToHistory(firstCard.id, "execution-1")
+			await provider.boardStore.linkTaskToHistory(secondCard.id, "execution-2")
+
+			const fakeTask = makeFakeTask("execution-1")
+			;(provider as any).taskCreationCallback(fakeTask)
+			await fakeTask.emit(RooCodeEventName.TaskCompleted, "execution-1", {}, {})
+
+			const cards = provider.boardStore.getSnapshot().tasks
+			expect(cards.find((card) => card.id === firstCard.id)?.stage).toBe("done")
+			// Linking moves a card to in progress; only the completed one advances to done.
+			expect(cards.find((card) => card.id === secondCard.id)?.stage).toBe("in_progress")
+		})
+
+		it("moves a started card into the in progress column", async () => {
+			const card = await createBoardCard()
+			vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "execution-1" } as any)
+
+			await provider.startBoardTask(card.id)
+
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({
+				stage: "in_progress",
+				linkedHistoryTaskId: "execution-1",
+			})
+		})
+	})
+
+	describe("board task refinement", () => {
+		async function createBoardCard(title = "Board task") {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title })
+			return provider.boardStore.getSnapshot().tasks[0]!
+		}
+
+		it("refines a card in the mode assigned to its column", async () => {
+			const card = await createBoardCard()
+			await provider.boardStore.setColumnMode(card.workspaceId, "backlog", "architect")
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "refine-1" } as any)
+
+			await provider.refineBoardTask(card.id)
+
+			expect(createTask.mock.calls[0]![3]).toEqual({ initialMode: "architect" })
+		})
+
+		it("creates a refinement chat in board-refine mode seeded with the card", async () => {
+			const card = await createBoardCard("Add dark mode")
+			await provider.boardStore.updateTask(card.id, { description: "Follow the VS Code theme" })
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "refine-1" } as any)
+
+			await provider.refineBoardTask(card.id)
+
+			expect(createTask).toHaveBeenCalledTimes(1)
+			const [prompt, images, parent, options] = createTask.mock.calls[0]!
+			expect(options).toEqual({ initialMode: "board-refine" })
+			expect(images).toBeUndefined()
+			expect(parent).toBeUndefined()
+			// The card id is what lets update_board_task target the right card, and the
+			// description is dropped by the execution path but must reach the refiner.
+			expect(prompt).toContain(card.id)
+			expect(prompt).toContain("Add dark mode")
+			expect(prompt).toContain("Follow the VS Code theme")
+			expect(provider.boardStore.getSnapshot().tasks[0]?.linkedRefinementTaskId).toBe("refine-1")
+		})
+
+		it("tells the refiner to investigate the codebase before asking questions", async () => {
+			const card = await createBoardCard()
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "refine-1" } as any)
+
+			await provider.refineBoardTask(card.id)
+
+			const prompt = createTask.mock.calls[0]![0] as string
+			expect(prompt).toMatch(/investigate the codebase first/i)
+			expect(prompt).toMatch(/prior art/i)
+			// It must not start editing or scope the card before we have agreed.
+			expect(prompt).toMatch(/do not write or edit product code or tests/i)
+			expect(prompt).toMatch(/do not call `update_board_task` yet/i)
+		})
+
+		it("gives the refiner the card's workspace and execution mode as context", async () => {
+			await provider.boardStore.createWorkspace("Planning", "/repo/zoo")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title: "Board task" })
+			// Execution runs out of the approved column, so that is the mode a card will run in.
+			await provider.boardStore.setColumnMode(workspaceId, "approved", "code")
+			const card = provider.boardStore.getSnapshot().tasks[0]!
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "refine-1" } as any)
+
+			await provider.refineBoardTask(card.id)
+
+			const prompt = createTask.mock.calls[0]![0] as string
+			expect(prompt).toContain("Planning")
+			expect(prompt).toContain("/repo/zoo")
+			expect(prompt).toContain("code")
+		})
+
+		it("marks an empty description rather than leaving the refiner a blank field", async () => {
+			const card = await createBoardCard()
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "refine-1" } as any)
+
+			await provider.refineBoardTask(card.id)
+
+			expect(createTask.mock.calls[0]![0] as string).toContain("only a title so far")
+		})
+
+		it("reopens the existing refinement chat instead of creating a second one", async () => {
+			const card = await createBoardCard()
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "refine-1" } as any)
+			await provider.refineBoardTask(card.id)
+			createTask.mockClear()
+			const showTaskWithId = vi.spyOn(provider, "showTaskWithId").mockResolvedValue(undefined as any)
+
+			await provider.refineBoardTask(card.id)
+
+			expect(createTask).not.toHaveBeenCalled()
+			expect(showTaskWithId).toHaveBeenCalledWith("refine-1")
+		})
+
+		it("creates exactly one refinement chat for concurrent clicks", async () => {
+			const card = await createBoardCard()
+			let releaseCreate!: () => void
+			const createStarted = new Promise<void>((resolve) => {
+				releaseCreate = resolve
+			})
+			const createTask = vi.spyOn(provider, "createTask").mockImplementation(
+				async () =>
+					await new Promise<any>((resolve) => {
+						createStarted.then(() => resolve({ taskId: "refine-1" }))
+					}),
+			)
+
+			const first = provider.refineBoardTask(card.id)
+			const second = provider.refineBoardTask(card.id)
+			await Promise.resolve()
+			expect(createTask).toHaveBeenCalledTimes(1)
+			releaseCreate()
+			await Promise.all([first, second])
+
+			expect(provider.boardStore.getSnapshot().tasks[0]?.linkedRefinementTaskId).toBe("refine-1")
+		})
+
+		it("refuses to refine a card with no title", async () => {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId })
+			const card = provider.boardStore.getSnapshot().tasks[0]!
+
+			await expect(provider.refineBoardTask(card.id)).rejects.toThrow(/needs a title/)
+		})
+	})
+
+	describe("board task stop and approve", () => {
+		async function createStartedCard() {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title: "Board task", stage: "approved" })
+			const card = provider.boardStore.getSnapshot().tasks[0]!
+			await provider.boardStore.linkTaskToHistory(card.id, "execution-1")
+			return card
+		}
+
+		it("cancels the running execution task and returns the card to approved", async () => {
+			const card = await createStartedCard()
+			vi.spyOn((provider as any).taskRegistry, "hasRunning").mockReturnValue(true)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "execution-1" } as any)
+			const cancelTask = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
+
+			await provider.stopBoardTask(card.id)
+
+			expect(cancelTask).toHaveBeenCalledTimes(1)
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({ stage: "approved" })
+			expect(provider.boardStore.getSnapshot().tasks[0]?.linkedHistoryTaskId).toBeUndefined()
+		})
+
+		it("focuses the linked task before cancelling when another task is current", async () => {
+			const card = await createStartedCard()
+			vi.spyOn((provider as any).taskRegistry, "hasRunning").mockReturnValue(true)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "other-task" } as any)
+			const setCurrent = vi.spyOn((provider as any).taskRegistry, "setCurrent").mockReturnValue(undefined)
+			const cancelTask = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
+
+			await provider.stopBoardTask(card.id)
+
+			expect(setCurrent).toHaveBeenCalledWith("execution-1")
+			expect(cancelTask).toHaveBeenCalledTimes(1)
+		})
+
+		it("still resets the card when the execution task is no longer running", async () => {
+			const card = await createStartedCard()
+			vi.spyOn((provider as any).taskRegistry, "hasRunning").mockReturnValue(false)
+			const cancelTask = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
+
+			await provider.stopBoardTask(card.id)
+
+			expect(cancelTask).not.toHaveBeenCalled()
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({ stage: "approved" })
+		})
+
+		it("moves an in-progress card to done when its execution task reports completion", async () => {
+			const card = await createStartedCard()
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({ stage: "in_progress" })
+
+			await provider.markBoardTaskCompleted("execution-1")
+
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({
+				stage: "done",
+				linkedHistoryTaskId: "execution-1",
+			})
+			expect(card.id).toBe(provider.boardStore.getSnapshot().tasks[0]?.id)
+		})
+
+		it("ignores completion of a task that is not an execution run for any card", async () => {
+			await createStartedCard()
+			const cardId = provider.boardStore.getSnapshot().tasks[0]!.id
+			await provider.boardStore.linkRefinementTask(cardId, "refine-1")
+
+			// A refinement chat completing must not retire the card it was planning, and
+			// this card is already past backlog so it must not be dragged back either.
+			await provider.markBoardTaskCompleted("refine-1")
+			await provider.markBoardTaskCompleted("some-unrelated-task")
+
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({ stage: "in_progress" })
+		})
+
+		it("moves a refined backlog card to scoped when its refinement chat completes", async () => {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title: "Add dark mode", stage: "backlog" })
+			const cardId = provider.boardStore.getSnapshot().tasks[0]!.id
+			await provider.boardStore.linkRefinementTask(cardId, "refine-1")
+
+			await provider.markBoardTaskCompleted("refine-1")
+
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({
+				stage: "scoped",
+				linkedRefinementTaskId: "refine-1",
+			})
+		})
+
+		it("advances a scoped card to approved", async () => {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title: "Board task", stage: "scoped" })
+			const card = provider.boardStore.getSnapshot().tasks[0]!
+
+			await provider.approveBoardTask(card.id)
+
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({ stage: "approved" })
+		})
+	})
 })

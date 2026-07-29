@@ -10,6 +10,7 @@ import { NativeToolCallParser } from "../../core/assistant-message/NativeToolCal
 import { TagMatcher } from "../../utils/tag-matcher"
 
 import { convertToOpenAiMessages } from "../transform/openai-format"
+import { getModelParams } from "../transform/model-params"
 import { ApiStream } from "../transform/stream"
 
 import { BaseProvider } from "./base-provider"
@@ -42,6 +43,16 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
+		const { id: model, info } = this.getModel()
+		const modelParams = getModelParams({
+			format: "openai",
+			modelId: model,
+			model: info,
+			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
+			defaultTemperature: LMSTUDIO_DEFAULT_TEMPERATURE,
+		})
+
 		const openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
 			{ role: "system", content: systemPrompt },
 			...convertToOpenAiMessages(messages),
@@ -84,13 +95,18 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 
 		try {
 			const params: OpenAI.Chat.ChatCompletionCreateParamsStreaming & { draft_model?: string } = {
-				model: this.getModel().id,
+				model,
 				messages: openAiMessages,
 				temperature: this.options.modelTemperature ?? LMSTUDIO_DEFAULT_TEMPERATURE,
 				stream: true,
 				tools: this.convertToolsForOpenAI(metadata?.tools),
 				tool_choice: metadata?.tool_choice,
 				parallel_tool_calls: metadata?.parallelToolCalls ?? true,
+				...(modelParams.reasoningEffort
+					? {
+							reasoning_effort: modelParams.reasoningEffort as OpenAI.Chat.ChatCompletionCreateParams["reasoning_effort"],
+						}
+					: {}),
 			}
 
 			if (this.options.lmStudioSpeculativeDecodingEnabled && this.options.lmStudioDraftModelId) {
@@ -383,12 +399,23 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 
 	async completePrompt(prompt: string, options?: CompletePromptOptions): Promise<string> {
 		try {
+			const { id: model, info } = this.getModel()
+			const modelParams = getModelParams({
+				format: "openai",
+				modelId: model,
+				model: info,
+				settings: this.options,
+				reasoningEffort: options?.reasoningEffort,
+				defaultTemperature: LMSTUDIO_DEFAULT_TEMPERATURE,
+			})
+
 			// Create params object with optional draft model
 			const params: any = {
-				model: this.getModel().id,
+				model,
 				messages: [{ role: "user", content: prompt }],
 				temperature: this.options.modelTemperature ?? LMSTUDIO_DEFAULT_TEMPERATURE,
 				stream: false,
+				...(modelParams.reasoningEffort ? { reasoning_effort: modelParams.reasoningEffort } : {}),
 			}
 
 			// Add draft model if speculative decoding is enabled and a draft model is specified

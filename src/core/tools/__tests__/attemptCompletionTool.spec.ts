@@ -802,5 +802,79 @@ describe("attemptCompletionTool", () => {
 				expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("<user_message>"))
 			})
 		})
+
+		describe("board card retirement", () => {
+			const completionBlock: AttemptCompletionToolUse = {
+				type: "tool_use",
+				name: "attempt_completion",
+				params: { result: "Shipped it" },
+				nativeArgs: { result: "Shipped it" },
+				partial: false,
+			}
+
+			const makeCallbacks = (): AttemptCompletionCallbacks => ({
+				askApproval: mockAskApproval,
+				handleError: mockHandleError,
+				pushToolResult: mockPushToolResult,
+				askFinishSubTaskApproval: mockAskFinishSubTaskApproval,
+				toolDescription: mockToolDescription,
+			})
+
+			it("moves the linked board card to done without waiting for the completion button", async () => {
+				const mockProvider = { log: vi.fn(), markBoardTaskCompleted: vi.fn().mockResolvedValue(undefined) }
+				Object.assign(mockTask, {
+					taskId: "execution-1",
+					providerRef: { deref: () => mockProvider },
+					// The top-level completion ask renders "Start New Task", which posts
+					// clearTask and never resolves this ask as an acceptance.
+					ask: vi.fn().mockResolvedValue({ response: "messageResponse", text: "", images: [] }),
+				})
+
+				await attemptCompletionTool.handle(mockTask as Task, completionBlock, makeCallbacks())
+
+				expect(mockProvider.markBoardTaskCompleted).toHaveBeenCalledWith("execution-1")
+				expect(mockHandleError).not.toHaveBeenCalled()
+			})
+
+			it("does not retire a card when completion is rejected before the result is produced", async () => {
+				const mockProvider = { log: vi.fn(), markBoardTaskCompleted: vi.fn().mockResolvedValue(undefined) }
+				Object.assign(mockTask, {
+					taskId: "execution-1",
+					providerRef: { deref: () => mockProvider },
+					didToolFailInCurrentTurn: true,
+				})
+
+				await attemptCompletionTool.handle(mockTask as Task, completionBlock, makeCallbacks())
+
+				expect(mockProvider.markBoardTaskCompleted).not.toHaveBeenCalled()
+			})
+
+			it("completes normally when board bookkeeping fails", async () => {
+				const mockProvider = {
+					log: vi.fn(),
+					markBoardTaskCompleted: vi.fn().mockRejectedValue(new Error("board write failed")),
+				}
+				Object.assign(mockTask, {
+					taskId: "execution-1",
+					providerRef: { deref: () => mockProvider },
+					ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked", text: "", images: [] }),
+				})
+
+				await attemptCompletionTool.handle(mockTask as Task, completionBlock, makeCallbacks())
+
+				expect(mockProvider.log).toHaveBeenCalledWith(expect.stringContaining("board write failed"))
+				// The failure is swallowed, so the task still completes.
+				expect(mockHandleError).not.toHaveBeenCalled()
+				expect(mockCaptureTaskCompleted).toHaveBeenCalled()
+			})
+
+			it("completes normally when the provider has gone away", async () => {
+				Object.assign(mockTask, { taskId: "execution-1", providerRef: { deref: () => undefined } })
+
+				await attemptCompletionTool.handle(mockTask as Task, completionBlock, makeCallbacks())
+
+				expect(mockHandleError).not.toHaveBeenCalled()
+			})
+		})
 	})
 })

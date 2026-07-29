@@ -1,7 +1,7 @@
 import NodeCache from "node-cache"
 import getFolderSize from "get-folder-size"
 
-import type { ClineMessage, HistoryItem } from "@roo-code/types"
+import type { ClineMessage, HistoryItem, ReasoningEffortOverride } from "@roo-code/types"
 
 import { combineApiRequests } from "../../shared/combineApiRequests"
 import { combineCommandSequences } from "../../shared/combineCommandSequences"
@@ -25,6 +25,8 @@ export type TaskMetadataOptions = {
 	apiConfigName?: string
 	/** Initial status for the task (e.g., "active" for child tasks) */
 	initialStatus?: "active" | "delegated" | "completed" | "interrupted"
+	/** Explicit per-task reasoning selection; omitted for Default/Auto. */
+	reasoningEffort?: ReasoningEffortOverride
 }
 
 export async function taskMetadata({
@@ -38,6 +40,7 @@ export async function taskMetadata({
 	mode,
 	apiConfigName,
 	initialStatus,
+	reasoningEffort,
 }: TaskMetadataOptions) {
 	const taskDir = await getTaskDirectoryPath(globalStoragePath, id)
 
@@ -113,6 +116,7 @@ export async function taskMetadata({
 		workspace,
 		mode,
 		...(typeof apiConfigName === "string" && apiConfigName.length > 0 ? { apiConfigName } : {}),
+		...(reasoningEffort !== undefined ? { reasoningEffort } : {}),
 		...(initialStatus && { status: initialStatus }),
 	}
 

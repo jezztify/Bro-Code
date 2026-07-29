@@ -72,11 +72,12 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 			temperature,
 			info,
 			reasoningBudget,
-		} = this.getModel()
+		} = this.getModel(metadata)
 		const thinking = getAnthropicProviderReasoning({
 			model: info,
 			reasoningBudget,
 			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
 		})
 
 		// Filter out non-Anthropic blocks (reasoning, thoughtSignature, etc.) before sending to the API
@@ -349,7 +350,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 
 		if (inputTokens > 0 || outputTokens > 0 || cacheWriteTokens > 0 || cacheReadTokens > 0) {
 			const { totalCost } = calculateApiCostAnthropic(
-				this.getModel().info,
+				this.getModel(metadata).info,
 				inputTokens,
 				outputTokens,
 				cacheWriteTokens,
@@ -378,7 +379,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 		return anthropicModels[originalId]
 	}
 
-	getModel() {
+	getModel(metadata?: ApiHandlerCreateMessageMetadata) {
 		const modelId = this.options.apiModelId
 		const isKnownModel = modelId !== undefined && modelId in anthropicModels
 
@@ -416,6 +417,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 			modelId: id,
 			model: info,
 			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
 			defaultTemperature: 0,
 		})
 
@@ -432,18 +434,31 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	}
 
 	async completePrompt(prompt: string, options?: CompletePromptOptions) {
-		const { id: model, temperature } = this.getModel()
+		const metadata: ApiHandlerCreateMessageMetadata = {
+			taskId: "completePrompt",
+			reasoningEffort: options?.reasoningEffort,
+		}
+		const { id: model, temperature, info, reasoningBudget } = this.getModel(metadata)
+		const thinking = getAnthropicProviderReasoning({
+			model: info,
+			reasoningBudget,
+			settings: this.options,
+			reasoningEffort: options?.reasoningEffort,
+		})
 
 		let message
 		try {
-			message = await this.client.messages.create({
+			const params = {
 				model,
 				max_tokens: ANTHROPIC_DEFAULT_MAX_TOKENS,
-				thinking: undefined,
+				thinking,
 				temperature,
-				messages: [{ role: "user", content: prompt }],
-				stream: false,
-			})
+				messages: [{ role: "user" as const, content: prompt }],
+				stream: false as const,
+			} as Anthropic.Messages.MessageCreateParamsNonStreaming
+			message = options?.abortSignal
+				? await this.client.messages.create(params, { signal: options.abortSignal })
+				: await this.client.messages.create(params)
 		} catch (error) {
 			TelemetryService.instance.captureException(
 				new ApiProviderError(

@@ -216,7 +216,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
-		const model = this.getModel()
+		const model = this.getModel(metadata)
 		yield* this.handleResponsesApiMessage(model, systemPrompt, messages, metadata)
 	}
 
@@ -247,7 +247,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		}
 
 		// Resolve reasoning effort
-		const reasoningEffort = this.getReasoningEffort(model)
+		const reasoningEffort = this.getReasoningEffort(model, metadata?.reasoningEffort)
 
 		// Format conversation
 		const formattedInput = this.formatFullConversation(systemPrompt, messages)
@@ -1193,8 +1193,11 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		}
 	}
 
-	private getReasoningEffort(model: OpenAiCodexModel): ReasoningEffortExtended | undefined {
-		const selected = (this.options.reasoningEffort as any) ?? (model.info.reasoningEffort as any)
+	private getReasoningEffort(
+		model: OpenAiCodexModel,
+		reasoningEffort?: ReasoningEffortExtended | "disable",
+	): ReasoningEffortExtended | undefined {
+		const selected = reasoningEffort ?? (this.options.reasoningEffort as any) ?? (model.info.reasoningEffort as any)
 		return selected && selected !== "disable" && selected !== "none" ? (selected as any) : undefined
 	}
 
@@ -1219,7 +1222,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		}
 	}
 
-	override getModel() {
+	override getModel(metadata?: ApiHandlerCreateMessageMetadata) {
 		const modelId = this.options.apiModelId
 
 		const id = modelId && modelId in openAiCodexModels ? (modelId as OpenAiCodexModelId) : openAiCodexDefaultModelId
@@ -1231,6 +1234,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 			modelId: id,
 			model: info,
 			settings: this.options,
+			reasoningEffort: metadata?.reasoningEffort,
 			defaultTemperature: 0,
 		})
 
@@ -1273,7 +1277,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 				)
 			}
 
-			const reasoningEffort = this.getReasoningEffort(model)
+			const reasoningEffort = this.getReasoningEffort(model, options?.reasoningEffort)
 			const serviceTier = getOpenAiCodexServiceTier(this.options)
 
 			const baseRequestBody: any = {

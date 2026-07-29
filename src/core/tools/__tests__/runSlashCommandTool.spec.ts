@@ -21,6 +21,7 @@ describe("runSlashCommandTool", () => {
 		mockTask = {
 			consecutiveMistakeCount: 0,
 			recordToolError: vi.fn(),
+			getTaskMode: vi.fn().mockResolvedValue("code"),
 			sayAndCreateMissingParamError: vi.fn().mockResolvedValue("Missing parameter error"),
 			ask: vi.fn().mockResolvedValue({}),
 			cwd: "/test/project",
@@ -41,6 +42,36 @@ describe("runSlashCommandTool", () => {
 			handleError: vi.fn(),
 			pushToolResult: vi.fn(),
 		}
+	})
+
+	it("uses the background task's mode when resolving a skill fallback", async () => {
+		const block: ToolUse<"run_slash_command"> = {
+			type: "tool_use" as const,
+			name: "run_slash_command" as const,
+			params: {},
+			partial: false,
+			nativeArgs: { command: "task-skill" },
+		}
+		const getSkillContent = vi.fn().mockResolvedValue({
+			name: "task-skill",
+			description: "Task-scoped skill",
+			path: "/mock/.roo/skills/task-skill/SKILL.md",
+			source: "project" as const,
+			instructions: "Use the task mode.",
+		})
+		mockTask.getTaskMode.mockResolvedValue("architect")
+		mockTask.providerRef.deref = vi.fn().mockReturnValue({
+			getState: vi.fn().mockResolvedValue({
+				experiments: { runSlashCommand: true },
+				mode: "code",
+			}),
+			getSkillsManager: vi.fn().mockReturnValue({ getSkillContent }),
+		})
+		vi.mocked(getCommand).mockResolvedValue(undefined)
+
+		await runSlashCommandTool.handle(mockTask as Task, block, mockCallbacks)
+
+		expect(getSkillContent).toHaveBeenCalledWith("task-skill", "architect")
 	})
 
 	it("should handle missing command parameter", async () => {
@@ -471,7 +502,7 @@ Deploy application to production`,
 
 		await runSlashCommandTool.handle(mockTask as Task, block, mockCallbacks)
 
-		expect(mockHandleModeSwitch).toHaveBeenCalledWith("debug")
+		expect(mockHandleModeSwitch).toHaveBeenCalledWith("debug", mockTask)
 		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
 			`Command: /debug-app
 Description: Debug the application

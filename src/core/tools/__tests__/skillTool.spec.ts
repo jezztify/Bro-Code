@@ -21,6 +21,7 @@ describe("skillTool", () => {
 			consecutiveMistakeCount: 0,
 			recordToolError: vi.fn(),
 			didToolFailInCurrentTurn: false,
+			getTaskMode: vi.fn().mockResolvedValue("code"),
 			sayAndCreateMissingParamError: vi.fn().mockResolvedValue("Missing parameter error"),
 			ask: vi.fn().mockResolvedValue({}),
 			providerRef: {
@@ -36,6 +37,21 @@ describe("skillTool", () => {
 			handleError: vi.fn(),
 			pushToolResult: vi.fn(),
 		}
+	})
+
+	it("resolves skills using the background task's mode instead of the focused picker mode", async () => {
+		const block: ToolUse<"skill"> = {
+			type: "tool_use" as const,
+			name: "skill" as const,
+			params: {},
+			partial: false,
+			nativeArgs: { skill: "task-skill" },
+		}
+		mockTask.getTaskMode.mockResolvedValue("architect")
+
+		await skillTool.handle(mockTask as Task, block, mockCallbacks)
+
+		expect(mockSkillsManager.getSkillContent).toHaveBeenCalledWith("task-skill", "architect")
 	})
 
 	it("should handle missing skill parameter", async () => {

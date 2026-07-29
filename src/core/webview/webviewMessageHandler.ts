@@ -23,6 +23,12 @@ import {
 	checkoutRestorePayloadSchema,
 	getCompletionCheckpoint,
 	providerIdentifiers,
+	boardStageSchema,
+	createBoardTaskInputSchema,
+	createBoardWorkspaceInputSchema,
+	setBoardColumnModeInputSchema,
+	updateBoardTaskInputSchema,
+	updateBoardWorkspaceInputSchema,
 } from "@roo-code/types"
 import { customToolRegistry } from "@roo-code/core"
 import { CloudService } from "@roo-code/cloud"
@@ -649,16 +655,15 @@ export const webviewMessageHandler = async (
 			provider.isViewLaunched = true
 			break
 		case "newTask":
-			// Initializing new instance of Cline will make sure that any
-			// agentically running promises in old instance don't affect our new
-			// task. This essentially creates a fresh slate for the new task.
+			// The new instance gets a fresh slate. Any task already open keeps running
+			// in the background under its own instance and simply loses focus.
 			try {
 				const resolved = await resolveIncomingImages({ text: message.text, images: message.images })
 				await provider.createTask(
 					resolved.text,
 					resolved.images,
 					undefined,
-					{ taskId: message.taskId },
+					{ taskId: message.taskId, initialReasoningEffort: message.reasoningEffort ?? undefined },
 					message.taskConfiguration,
 				)
 				// Task created successfully - notify the UI to reset
@@ -681,8 +686,16 @@ export const webviewMessageHandler = async (
 				const resolved = await resolveIncomingImages({ text: message.text, images: message.images })
 				provider
 					.getCurrentTask()
-					?.handleWebviewAskResponse(message.askResponse!, resolved.text, resolved.images)
+					?.handleWebviewAskResponse(
+						message.askResponse!,
+						resolved.text,
+						resolved.images,
+						message.reasoningEffort,
+					)
 			}
+			break
+		case "setTaskReasoningEffort":
+			await provider.getCurrentTask()?.setReasoningEffort(message.reasoningEffort ?? null)
 			break
 
 		case "updateSettings":
@@ -838,20 +851,14 @@ export const webviewMessageHandler = async (
 		case "showTaskWithId":
 			await provider.showTaskWithId(message.text!)
 			break
-		case "kanbanBoardOpened":
-			provider.setKanbanWatchedRootTaskId(message.text!)
-			break
-		case "kanbanBoardClosed":
-			provider.setKanbanWatchedRootTaskId(undefined)
-			break
-		case "openKanbanBoardInEditor": {
+		case "openBoardInEditor": {
 			// Dynamic import: registerCommands.ts imports ClineProvider, which would create a
 			// module cycle if this file imported it statically at the top level.
-			const { openKanbanBoardInNewTab } = await import("../../activate/registerCommands")
-			void openKanbanBoardInNewTab(
-				{ context: provider.context, outputChannel: provider.getOutputChannel() },
-				message.text,
-			).catch((error) => provider.log(`[openKanbanBoardInEditor] openKanbanBoardInNewTab failed: ${error}`))
+			const { openBoardInNewTab } = await import("../../activate/registerCommands")
+			void openBoardInNewTab({
+				context: provider.context,
+				outputChannel: provider.getOutputChannel(),
+			}).catch((error) => provider.log(`[openBoardInEditor] openBoardInNewTab failed: ${error}`))
 			break
 		}
 		case "condenseTaskContextRequest":
@@ -859,6 +866,128 @@ export const webviewMessageHandler = async (
 			break
 		case "deleteTaskWithId":
 			await provider.deleteTaskWithId(message.text!)
+			break
+		case "createBoardWorkspace": {
+			const parsed = createBoardWorkspaceInputSchema.safeParse({
+				name: message.workspaceName,
+				linkedWorkspacePath: message.linkedWorkspacePath,
+			})
+			if (!parsed.success) {
+				provider.log("[createBoardWorkspace] Ignoring malformed message")
+				break
+			}
+			await provider.createBoardWorkspace(parsed.data.name, parsed.data.linkedWorkspacePath)
+			break
+		}
+		case "updateBoardWorkspace": {
+			const parsed = updateBoardWorkspaceInputSchema.safeParse({
+				name: message.workspaceName,
+				linkedWorkspacePath: message.linkedWorkspacePath,
+			})
+			if (typeof message.workspaceId !== "string" || !parsed.success) {
+				provider.log("[updateBoardWorkspace] Ignoring malformed message")
+				break
+			}
+			await provider.updateBoardWorkspace(message.workspaceId, parsed.data)
+			break
+		}
+		case "deleteBoardWorkspace":
+		case "selectBoardWorkspace": {
+			if (typeof message.workspaceId !== "string" || !message.workspaceId) {
+				provider.log(`[${message.type}] Ignoring malformed message`)
+				break
+			}
+			if (message.type === "deleteBoardWorkspace") await provider.deleteBoardWorkspace(message.workspaceId)
+			else await provider.selectBoardWorkspace(message.workspaceId)
+			break
+		}
+		case "setBoardColumnMode": {
+			const parsed = setBoardColumnModeInputSchema.safeParse({
+				workspaceId: message.workspaceId,
+				stage: message.stage,
+				// An absent mode clears the column back to "use current mode".
+				mode: message.mode ?? null,
+			})
+			if (!parsed.success) {
+				provider.log("[setBoardColumnMode] Ignoring malformed message")
+				break
+			}
+			try {
+				await provider.setBoardColumnMode(parsed.data.workspaceId, parsed.data.stage, parsed.data.mode)
+			} catch (error) {
+				const reason = error instanceof Error ? error.message : String(error)
+				provider.log(`[setBoardColumnMode] Failed: ${reason}`)
+				vscode.window.showErrorMessage(reason)
+			}
+			break
+		}
+		case "createBoardTask": {
+			const parsed = createBoardTaskInputSchema.safeParse({
+				workspaceId: message.workspaceId,
+				...message.boardTask,
+			})
+			if (!parsed.success) {
+				provider.log("[createBoardTask] Ignoring malformed message")
+				break
+			}
+			await provider.createBoardTask(parsed.data)
+			break
+		}
+		case "updateBoardTask": {
+			const parsed = updateBoardTaskInputSchema.safeParse(message.boardTask)
+			if (typeof message.taskId !== "string" || !message.taskId || !parsed.success) {
+				provider.log("[updateBoardTask] Ignoring malformed message")
+				break
+			}
+			await provider.updateBoardTask(message.taskId, parsed.data)
+			break
+		}
+		case "deleteBoardTask":
+		case "startBoardTask":
+		case "refineBoardTask":
+		case "stopBoardTask":
+		case "approveBoardTask": {
+			if (typeof message.taskId !== "string" || !message.taskId) {
+				provider.log(`[${message.type}] Ignoring malformed message`)
+				break
+			}
+			// These actions reject on real user-facing conditions (missing title,
+			// deleted mode, broken link). Without this the rejection escapes as an
+			// unhandled promise and the card button silently does nothing.
+			try {
+				switch (message.type) {
+					case "deleteBoardTask":
+						await provider.deleteBoardTask(message.taskId)
+						break
+					case "startBoardTask":
+						await provider.startBoardTask(message.taskId)
+						break
+					case "refineBoardTask":
+						await provider.refineBoardTask(message.taskId)
+						break
+					case "stopBoardTask":
+						await provider.stopBoardTask(message.taskId)
+						break
+					case "approveBoardTask":
+						await provider.approveBoardTask(message.taskId)
+						break
+				}
+			} catch (error) {
+				const reason = error instanceof Error ? error.message : String(error)
+				provider.log(`[${message.type}] Failed: ${reason}`)
+				vscode.window.showErrorMessage(reason)
+			}
+			break
+		}
+		case "startBoardPlanning":
+			if (typeof message.workspaceId !== "string" || !message.workspaceId) {
+				provider.log("[startBoardPlanning] Ignoring malformed message")
+				break
+			}
+			await provider.startBoardPlanning(message.workspaceId)
+			break
+		case "approveBoardPlanning":
+			await provider.approveBoardPlanning()
 			break
 		case "abandonSubtaskWithId":
 			provider
@@ -3830,7 +3959,9 @@ export const webviewMessageHandler = async (
 
 		case "queueMessage": {
 			const resolved = await resolveIncomingImages({ text: message.text, images: message.images })
-			provider.getCurrentTask()?.messageQueueService.addMessage(resolved.text, resolved.images)
+			provider
+				.getCurrentTask()
+				?.messageQueueService.addMessage(resolved.text, resolved.images, message.reasoningEffort ?? undefined)
 			break
 		}
 		case "removeQueuedMessage": {

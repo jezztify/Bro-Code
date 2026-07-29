@@ -60,22 +60,16 @@ vi.mock("@src/components/welcome/WelcomeViewProvider", () => ({
 	},
 }))
 
-vi.mock("@src/components/history/HistoryView", () => ({
+vi.mock("@src/components/board/TaskBoardView", () => ({
 	__esModule: true,
-	default: function HistoryView() {
-		return <div data-testid="history-view">History View</div>
+	default: function TaskBoardView() {
+		return <div data-testid="board-view">Board View</div>
 	},
 }))
 
 vi.mock("@src/components/marketplace/MarketplaceView", () => ({
 	MarketplaceView: function MarketplaceView() {
 		return <div data-testid="marketplace-view">Marketplace View</div>
-	},
-}))
-
-vi.mock("@src/components/kanban/KanbanBoardView", () => ({
-	KanbanBoardView: function KanbanBoardView() {
-		return <div data-testid="kanban-view">Kanban View</div>
 	},
 }))
 
@@ -156,12 +150,12 @@ describe("App in mobile mode (window.ZOO_MOBILE_MODE)", () => {
 		expect(chatView.getAttribute("data-hidden")).toBe("false")
 	})
 
-	it("never mounts the Settings/History/Marketplace/Kanban tab chrome, even when messaged to switch tabs", () => {
+	it("never mounts the Settings/Board/Marketplace tab chrome, even when messaged to switch tabs", () => {
 		render(<AppWithProviders />)
 
 		for (const action of [
 			"settingsButtonClicked",
-			"historyButtonClicked",
+			"boardButtonClicked",
 			"marketplaceButtonClicked",
 			"kanbanButtonClicked",
 		]) {
@@ -169,9 +163,8 @@ describe("App in mobile mode (window.ZOO_MOBILE_MODE)", () => {
 		}
 
 		expect(screen.queryByTestId("settings-view")).not.toBeInTheDocument()
-		expect(screen.queryByTestId("history-view")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("board-view")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("marketplace-view")).not.toBeInTheDocument()
-		expect(screen.queryByTestId("kanban-view")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("welcome-view")).not.toBeInTheDocument()
 
 		// ChatView is still the only thing on screen, still full-screen.

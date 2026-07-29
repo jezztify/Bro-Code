@@ -13,7 +13,7 @@ const HistoryPreview = () => {
 	const { t } = useAppTranslation()
 
 	const handleViewAllHistory = () => {
-		vscode.postMessage({ type: "switchTab", tab: "history" })
+		vscode.postMessage({ type: "switchTab", tab: "board" })
 	}
 
 	// Show up to 4 groups (parent + subtasks count as 1 block)

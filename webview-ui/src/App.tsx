@@ -13,12 +13,13 @@ import { telemetryClient } from "./utils/TelemetryClient"
 import { initializeSourceMaps, exposeSourceMapsForDebugging } from "./utils/sourceMapInitializer"
 import { ExtensionStateContextProvider, useExtensionState } from "./context/ExtensionStateContext"
 import MobileApp from "./components/mobile/MobileApp"
-import ChatView, { ChatViewRef } from "./components/chat/ChatView"
-import HistoryView from "./components/history/HistoryView"
-import { KanbanBoardView } from "./components/kanban/KanbanBoardView"
+import { ChatViewRef } from "./components/chat/ChatView"
+import TaskBoardView from "./components/board/TaskBoardView"
 import SettingsView, { SettingsViewRef } from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeViewProvider"
 import { MarketplaceView } from "./components/marketplace/MarketplaceView"
+import AppShell from "./components/shell/AppShell"
+import type { RailTab } from "./components/shell/Rail"
 import { CheckpointRestoreDialog } from "./components/chat/CheckpointRestoreDialog"
 import { DeleteMessageDialog, EditMessageDialog } from "./components/chat/MessageModificationConfirmationDialog"
 import ErrorBoundary from "./components/ErrorBoundary"
@@ -26,7 +27,7 @@ import { useAddNonInteractiveClickListener } from "./components/ui/hooks/useNonI
 import { TooltipProvider } from "./components/ui/tooltip"
 import { STANDARD_TOOLTIP_DELAY } from "./components/ui/standard-tooltip"
 
-type Tab = "settings" | "history" | "chat" | "marketplace" | "kanban"
+type Tab = "settings" | "board" | "chat" | "marketplace"
 
 interface DeleteMessageDialogState {
 	isOpen: boolean
@@ -49,7 +50,7 @@ const MemoizedCheckpointRestoreDialog = React.memo(CheckpointRestoreDialog)
 const tabsByMessageAction: Partial<Record<NonNullable<ExtensionMessage["action"]>, Tab>> = {
 	chatButtonClicked: "chat",
 	settingsButtonClicked: "settings",
-	historyButtonClicked: "history",
+	boardButtonClicked: "board",
 	marketplaceButtonClicked: "marketplace",
 }
 
@@ -72,7 +73,8 @@ const App = () => {
 	const marketplaceStateManager = useMemo(() => new MarketplaceViewStateManager(), [])
 
 	const [showAnnouncement, setShowAnnouncement] = useState(false)
-	const [tab, setTab] = useState<Tab>("chat")
+	const [tab, setTab] = useState<Tab>("board")
+	const [isChatMaximized, setIsChatMaximized] = useState(false)
 	const handledImportRef = useRef<number | undefined>(undefined)
 
 	const [deleteMessageDialogState, setDeleteMessageDialogState] = useState<DeleteMessageDialogState>({
@@ -102,6 +104,9 @@ const App = () => {
 
 			setCurrentSection(undefined)
 			setCurrentMarketplaceTab(undefined)
+			// Navigating to a pane means the user wants to see it, so a dock left
+			// maximized over the previous pane must not keep covering this one.
+			setIsChatMaximized(false)
 
 			if (settingsRef.current?.checkUnsaveChanges) {
 				settingsRef.current.checkUnsaveChanges(() => setTab(newTab))
@@ -114,7 +119,6 @@ const App = () => {
 
 	const [currentSection, setCurrentSection] = useState<string | undefined>(undefined)
 	const [currentMarketplaceTab, setCurrentMarketplaceTab] = useState<string | undefined>(undefined)
-	const [kanbanRootTaskId, setKanbanRootTaskId] = useState<string | undefined>(undefined)
 
 	const onMessage = useCallback(
 		(e: MessageEvent) => {
@@ -129,14 +133,19 @@ const App = () => {
 					const targetSection = message.values?.section as string | undefined
 					setCurrentSection(targetSection)
 					setCurrentMarketplaceTab(undefined)
-					setKanbanRootTaskId(message.values?.rootTaskId as string | undefined)
 				} else {
 					// Handle other actions using the mapping
 					const newTab = tabsByMessageAction[message.action]
 					const section = message.values?.section as string | undefined
 					const marketplaceTab = message.values?.marketplaceTab as string | undefined
 
-					if (newTab) {
+					if (newTab === "chat" && tab === "board") {
+						// Opening a task from a board card (or refining one) shows it in the
+						// dock that is already on screen. Maximizing the dock over the board
+						// keeps the board a single restore click away, where switching to the
+						// paneless chat tab would strand the user in a separate window.
+						setIsChatMaximized(true)
+					} else if (newTab) {
 						switchTab(newTab)
 						setCurrentSection(section)
 						setCurrentMarketplaceTab(marketplaceTab)
@@ -166,17 +175,20 @@ const App = () => {
 				chatViewRef.current?.acceptInput()
 			}
 		},
-		[switchTab],
+		[switchTab, tab],
 	)
 
 	useEvent("message", onMessage)
 
 	useEffect(() => {
-		if (shouldShowAnnouncement && tab === "chat") {
+		// The announcement banner renders inside the persistent ChatDock (see AppShell), which is
+		// mounted regardless of which pane `tab` selects - not just when tab === "chat" as it was
+		// when ChatView was one of several full-screen siblings. No tab gating needed here anymore.
+		if (shouldShowAnnouncement) {
 			setShowAnnouncement(true)
 			vscode.postMessage({ type: "didShowAnnouncement" })
 		}
-	}, [shouldShowAnnouncement, tab])
+	}, [shouldShowAnnouncement])
 
 	useEffect(() => {
 		const isRecoverableTab = tab === "settings" || tab === "marketplace"
@@ -234,7 +246,7 @@ const App = () => {
 		return null
 	}
 
-	// Mobile mode skips the Settings/History/MCP/Marketplace tab shell entirely
+	// Mobile mode skips the Settings/Board/MCP/Marketplace tab shell entirely
 	// in favor of a dedicated full-screen chat shell - there's no equivalent UI
 	// chrome to switch tabs into on a phone (see the mobile-server plan's Phase
 	// B). Known v1 limitation: this doesn't special-case `showWelcome` the way
@@ -244,32 +256,32 @@ const App = () => {
 		return <MobileApp />
 	}
 
-	// Do not conditionally load ChatView, it's expensive and there's state we
-	// don't want to lose (user input, disableInput, askResponse promise, etc.)
 	const isSetupGatedTab = showWelcome && tab !== "settings" && tab !== "marketplace"
 
 	return isSetupGatedTab ? (
 		<WelcomeView />
 	) : (
 		<>
-			{tab === "history" && <HistoryView onDone={() => switchTab("chat")} />}
-			{tab === "kanban" && <KanbanBoardView rootTaskId={kanbanRootTaskId} onDone={() => switchTab("chat")} />}
-			{tab === "settings" && (
-				<SettingsView ref={settingsRef} onDone={() => setTab("chat")} targetSection={currentSection} />
-			)}
-			{tab === "marketplace" && (
-				<MarketplaceView
-					stateManager={marketplaceStateManager}
-					onDone={() => switchTab("chat")}
-					targetTab={currentMarketplaceTab as "mcp" | "mode" | undefined}
-				/>
-			)}
-			<ChatView
+			<AppShell
 				ref={chatViewRef}
-				isHidden={tab !== "chat"}
+				activeTab={tab === "board" || tab === "settings" || tab === "marketplace" ? tab : undefined}
+				onNavigate={(railTab: RailTab) => switchTab(railTab)}
+				isChatMaximized={isChatMaximized}
+				onChatMaximizedChange={setIsChatMaximized}
 				showAnnouncement={showAnnouncement}
-				hideAnnouncement={() => setShowAnnouncement(false)}
-			/>
+				hideAnnouncement={() => setShowAnnouncement(false)}>
+				{tab === "board" && <TaskBoardView />}
+				{tab === "settings" && (
+					<SettingsView ref={settingsRef} onDone={() => setTab("chat")} targetSection={currentSection} />
+				)}
+				{tab === "marketplace" && (
+					<MarketplaceView
+						stateManager={marketplaceStateManager}
+						onDone={() => switchTab("chat")}
+						targetTab={currentMarketplaceTab as "mcp" | "mode" | undefined}
+					/>
+				)}
+			</AppShell>
 			{deleteMessageDialogState.hasCheckpoint ? (
 				<MemoizedCheckpointRestoreDialog
 					open={deleteMessageDialogState.isOpen}

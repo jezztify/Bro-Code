@@ -54,6 +54,15 @@ export class TaskRegistry {
 		this._currentTaskId = taskId
 	}
 
+	/**
+	 * Drop UI focus without removing anything from the registry. Used when the user
+	 * opens a blank composer ("+"): the previously focused task stays resident and
+	 * running in the background, it just stops being the task the webview renders.
+	 */
+	clearCurrent(): void {
+		this._currentTaskId = undefined
+	}
+
 	getById(id: string): Task | undefined {
 		return this.tasks.get(id)
 	}
