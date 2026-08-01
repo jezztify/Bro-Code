@@ -149,7 +149,11 @@ const ChatDock = forwardRef<ChatViewRef, ChatDockProps>(
 							? "flex h-11 shrink-0 flex-col border-t border-vscode-panel-border bg-vscode-editor-background"
 							: dockHeight !== null
 								? "flex shrink-0 flex-col border-t border-vscode-panel-border bg-vscode-editor-background"
-								: "flex h-[45vh] min-h-[400px] max-h-[560px] shrink-0 flex-col border-t border-vscode-panel-border bg-vscode-editor-background"
+								: // The 400px floor is a desktop floor: on a phone-width viewport it
+									// would leave the routed pane above a uselessly short strip, so the
+									// dock only claims that much once there's a window wide enough to be
+									// a desktop.
+									"flex h-[45vh] min-h-[240px] max-h-[560px] shrink-0 flex-col border-t border-vscode-panel-border bg-vscode-editor-background sm:min-h-[400px]"
 				}
 				style={isResizable && dockHeight !== null ? { height: dockHeight } : undefined}>
 				{isResizable && (

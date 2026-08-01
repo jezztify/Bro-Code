@@ -93,13 +93,5 @@ CONSTRAINTS:
 - The skill list is already filtered for the current mode: "${currentMode}".
 - Mode-specific skills may come from skills-${currentMode}/ with project-level overrides taking precedence over global skills.
 </context_notes>
-
-<internal_verification>
-This section is for internal control only.
-Do NOT include this section in user-facing output.
-
-After completing the evaluation, internally confirm:
-<skill_check_completed>true|false</skill_check_completed>
-</internal_verification>
 `
 }

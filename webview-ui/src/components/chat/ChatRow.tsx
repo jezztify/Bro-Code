@@ -5,6 +5,7 @@ import deepEqual from "fast-deep-equal"
 import { VSCodeBadge } from "@vscode/webview-ui-toolkit/react"
 
 import type {
+	BoardStage,
 	ClineMessage,
 	FollowUpData,
 	SuggestionItem,
@@ -36,6 +37,7 @@ import ErrorRow from "./ErrorRow"
 import WarningRow from "./WarningRow"
 
 import McpResourceRow from "../mcp/McpResourceRow"
+import { STAGE_LABEL_KEYS } from "../board/boardStage"
 
 import { Mention } from "./Mention"
 import { CheckpointSaved } from "./checkpoints/CheckpointSaved"
@@ -72,6 +74,7 @@ import {
 	Split,
 	ArrowRight,
 	Check,
+	Info,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PathTooltip } from "../ui/PathTooltip"
@@ -1633,6 +1636,25 @@ export const ChatRowContent = ({
 								)
 							}
 						/>
+					)
+				}
+				case "board_task_moved": {
+					const move = safeJsonParse<{ from: BoardStage; to: BoardStage }>(message.text || "{}")
+					if (!move?.from || !move?.to) return null
+					// Columns are named exactly as the board's own headers name them, so the
+					// note reads as the board talking about itself.
+					return (
+						<div
+							data-testid="board-task-moved-row"
+							className="flex items-center gap-2 py-2 text-vscode-descriptionForeground">
+							<Info className="size-4 shrink-0" />
+							<span>
+								{t("board:movedNotice", {
+									from: t(STAGE_LABEL_KEYS[move.from]),
+									to: t(STAGE_LABEL_KEYS[move.to]),
+								})}
+							</span>
+						</div>
 					)
 				}
 				default:

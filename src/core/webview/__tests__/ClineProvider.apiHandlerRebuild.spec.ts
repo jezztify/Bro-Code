@@ -109,6 +109,9 @@ vi.mock("../../task/Task", () => ({
 			overwriteClineMessages: vi.fn(),
 			overwriteApiConversationHistory: vi.fn(),
 			taskId: options?.historyItem?.id || "test-task-id",
+			// addClineToStack syncs the global mode from the focused task, so every
+			// mocked Task needs this the way the real one resolves it.
+			getTaskMode: vi.fn().mockResolvedValue(options?.historyItem?.mode || options?.initialMode || "code"),
 			emit: vi.fn(),
 			updateApiConfiguration: vi.fn().mockImplementation(function (this: any, newConfig: any) {
 				this.apiConfiguration = newConfig

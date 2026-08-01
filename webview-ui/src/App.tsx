@@ -12,7 +12,7 @@ import { useMobileMode } from "./utils/useMobileMode"
 import { telemetryClient } from "./utils/TelemetryClient"
 import { initializeSourceMaps, exposeSourceMapsForDebugging } from "./utils/sourceMapInitializer"
 import { ExtensionStateContextProvider, useExtensionState } from "./context/ExtensionStateContext"
-import MobileApp from "./components/mobile/MobileApp"
+import MobileConnectionBanner from "./components/mobile/MobileConnectionBanner"
 import { ChatViewRef } from "./components/chat/ChatView"
 import TaskBoardView from "./components/board/TaskBoardView"
 import SettingsView, { SettingsViewRef } from "./components/settings/SettingsView"
@@ -246,22 +246,22 @@ const App = () => {
 		return null
 	}
 
-	// Mobile mode skips the Settings/Board/MCP/Marketplace tab shell entirely
-	// in favor of a dedicated full-screen chat shell - there's no equivalent UI
-	// chrome to switch tabs into on a phone (see the mobile-server plan's Phase
-	// B). Known v1 limitation: this doesn't special-case `showWelcome` the way
-	// the desktop tab shell below does, since the mobile server is aimed at an
-	// already-configured desktop install.
-	if (isMobileMode) {
-		return <MobileApp />
-	}
-
-	const isSetupGatedTab = showWelcome && tab !== "settings" && tab !== "marketplace"
+	// Mobile renders the same shell as desktop - rail, routed pane (board /
+	// settings / marketplace) and the persistent chat dock - so a phone gets the
+	// whole app rather than the chat-only shell it used to get. The rail is
+	// already a 44px icon strip and the board columns already scroll
+	// horizontally inside TabContent, so no phone-specific layout is needed.
+	//
+	// Welcome gating stays skipped on mobile: the mobile server is aimed at an
+	// already-configured desktop install, and a phone is a poor place to run
+	// first-run provider setup.
+	const isSetupGatedTab = !isMobileMode && showWelcome && tab !== "settings" && tab !== "marketplace"
 
 	return isSetupGatedTab ? (
 		<WelcomeView />
 	) : (
 		<>
+			{isMobileMode && <MobileConnectionBanner />}
 			<AppShell
 				ref={chatViewRef}
 				activeTab={tab === "board" || tab === "settings" || tab === "marketplace" ? tab : undefined}

@@ -24,7 +24,8 @@ const makeTask = (overrides: Partial<BoardTask> = {}): BoardTask => ({
 	...overrides,
 })
 
-const renderCard = (overrides: Partial<BoardTask> = {}) => render(<TaskBoardCard task={makeTask(overrides)} />)
+const renderCard = (overrides: Partial<BoardTask> = {}, isRunning = false) =>
+	render(<TaskBoardCard task={makeTask(overrides)} isRunning={isRunning} />)
 
 const primaryButton = (labelKey: string) => screen.getByRole("button", { name: labelKey })
 
@@ -32,14 +33,15 @@ describe("TaskBoardCard primary action", () => {
 	beforeEach(() => vi.clearAllMocks())
 
 	it.each([
-		["backlog", "board:actions.refine", "refineBoardTask"],
-		["scoped", "board:actions.approve", "approveBoardTask"],
-		["approved", "board:actions.start", "startBoardTask"],
-		["in_progress", "board:actions.stop", "stopBoardTask"],
-	])("shows %s cards a %s button that posts %s", (stage, labelKey, messageType) => {
-		renderCard({ stage: stage as BoardStage })
+		["backlog", "board:actions.refine", "refineBoardTask", false],
+		["scoped", "board:actions.approve", "approveBoardTask", false],
+		["approved", "board:actions.start", "startBoardTask", false],
+		["in_progress", "board:actions.stop", "stopBoardTask", true],
+		["qa_validation", "board:actions.validate", "validateBoardTask", false],
+	])("shows %s cards a %s button that posts %s", (stage, labelKey, messageType, isRunning) => {
+		renderCard({ stage: stage as BoardStage }, isRunning as boolean)
 
-		fireEvent.click(primaryButton(labelKey))
+		fireEvent.click(primaryButton(labelKey as string))
 
 		expect(vscode.postMessage).toHaveBeenCalledWith({ type: messageType, taskId: "task-1" })
 	})
@@ -65,9 +67,25 @@ describe("TaskBoardCard primary action", () => {
 	})
 
 	it("keeps stop enabled on an untitled in-progress card so a run is always cancellable", () => {
-		renderCard({ title: "", stage: "in_progress", linkedHistoryTaskId: "execution-1" })
+		renderCard({ title: "", stage: "in_progress", linkedHistoryTaskId: "execution-1" }, true)
 
 		expect(primaryButton("board:actions.stop")).toBeEnabled()
+	})
+
+	it("offers start on an in-progress card whose run is no longer live", () => {
+		renderCard({ stage: "in_progress", linkedHistoryTaskId: "execution-1" })
+
+		expect(screen.queryByRole("button", { name: "board:actions.stop" })).not.toBeInTheDocument()
+
+		fireEvent.click(primaryButton("board:actions.start"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "startBoardTask", taskId: "task-1" })
+	})
+
+	it("offers start on an in-progress card that was moved there without ever being run", () => {
+		renderCard({ stage: "in_progress" })
+
+		expect(primaryButton("board:actions.start")).toBeEnabled()
 	})
 
 	it("identifies the card by its TASK number", () => {
@@ -98,6 +116,19 @@ describe("TaskBoardCard primary action", () => {
 		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "showTaskWithId", text: "refine-1" })
 	})
 
+	it("prefers the validation chat once a card has been validated", () => {
+		renderCard({
+			stage: "done",
+			linkedRefinementTaskId: "refine-1",
+			linkedHistoryTaskId: "execution-1",
+			linkedValidationTaskId: "validate-1",
+		})
+
+		fireEvent.click(screen.getByTestId("board-task-item-task-1"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "showTaskWithId", text: "validate-1" })
+	})
+
 	it("prefers the execution chat once a refined card has been started", () => {
 		renderCard({ stage: "done", linkedRefinementTaskId: "refine-1", linkedHistoryTaskId: "execution-1" })
 
@@ -115,7 +146,7 @@ describe("TaskBoardCard primary action", () => {
 	})
 
 	it("leaves clicks on the card's own fields and buttons to those controls", () => {
-		renderCard({ stage: "in_progress", linkedHistoryTaskId: "execution-1", number: 142 })
+		renderCard({ stage: "in_progress", linkedHistoryTaskId: "execution-1", number: 142 }, true)
 
 		fireEvent.click(screen.getByLabelText("Task title"))
 		fireEvent.click(screen.getByLabelText("Task description"))

@@ -106,6 +106,12 @@
 				"category": "%configuration.title%"
 			},
 			{
+				"command": "zoo-code.openBoardInNewWindow",
+				"title": "%command.openBoardInNewWindow.title%",
+				"category": "%configuration.title%",
+				"icon": "$(multiple-windows)"
+			},
+			{
 				"command": "zoo-code.explainCode",
 				"title": "%command.explainCode.title%",
 				"category": "%configuration.title%"
@@ -189,6 +195,11 @@
 				"command": "zoo-code.regenerateMobileServerToken",
 				"title": "%command.regenerateMobileServerToken.title%",
 				"category": "%configuration.title%"
+			},
+			{
+				"command": "zoo-code.showMobileServerQrCode",
+				"title": "%command.showMobileServerQrCode.title%",
+				"category": "%configuration.title%"
 			}
 		],
 		"menus": {
@@ -262,6 +273,11 @@
 					"command": "zoo-code.kanbanButtonClicked",
 					"group": "overflow@3",
 					"when": "view == zoo-code.SidebarProvider"
+				},
+				{
+					"command": "zoo-code.openBoardInNewWindow",
+					"group": "overflow@4",
+					"when": "view == zoo-code.SidebarProvider"
 				}
 			],
 			"editor/title": [
@@ -293,6 +309,11 @@
 				{
 					"command": "zoo-code.kanbanButtonClicked",
 					"group": "overflow@3",
+					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
+				},
+				{
+					"command": "zoo-code.openBoardInNewWindow",
+					"group": "overflow@4",
 					"when": "activeWebviewPanelId == zoo-code.TabPanelProvider"
 				}
 			]
@@ -509,7 +530,6 @@
 		"@anthropic-ai/vertex-sdk": "^0.19.0",
 		"@aws-sdk/client-bedrock-runtime": "^3.922.0",
 		"@aws-sdk/credential-providers": "^3.922.0",
-		"@smithy/node-http-handler": "^4.0.0",
 		"@google/genai": "^1.29.1",
 		"@lmstudio/sdk": "^1.1.1",
 		"@mistralai/mistralai": "^1.9.18",
@@ -520,6 +540,7 @@
 		"@roo-code/ipc": "workspace:^",
 		"@roo-code/telemetry": "workspace:^",
 		"@roo-code/types": "workspace:^",
+		"@smithy/node-http-handler": "^4.0.0",
 		"ai-sdk-provider-poe": "2.0.18",
 		"async-mutex": "^0.5.0",
 		"axios": "^1.18.1",
@@ -535,9 +556,9 @@
 		"get-folder-size": "^5.0.0",
 		"global-agent": "^3.0.0",
 		"google-auth-library": "^10.2.0",
+		"gray-matter": "^4.0.3",
 		"http-proxy-agent": "^7.0.0",
 		"https-proxy-agent": "^7.0.0",
-		"gray-matter": "^4.0.3",
 		"i18next": "^25.0.0",
 		"ignore": "^7.0.3",
 		"isbinaryfile": "^5.0.7",
@@ -556,6 +577,7 @@
 		"pretty-bytes": "^7.0.0",
 		"proper-lockfile": "^4.1.2",
 		"ps-tree": "^1.2.0",
+		"qrcode-generator": "^2.0.4",
 		"reconnecting-eventsource": "^1.6.5",
 		"safe-stable-stringify": "^2.5.0",
 		"sanitize-filename": "^1.6.4",

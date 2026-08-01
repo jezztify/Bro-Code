@@ -227,6 +227,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		currentTaskReasoningEffort: null,
 		taskHistory: [],
 		boardState: { version: 1, workspaces: [], tasks: [], migrations: {} },
+		runningTaskIds: [],
 		shouldShowAnnouncement: false,
 		allowedCommands: [],
 		deniedCommands: [],
@@ -511,6 +512,12 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 				}
 				case "boardPlanningUpdated": {
 					setBoardPlanning(message.boardPlanning)
+					break
+				}
+				case "runningTaskIdsUpdated": {
+					// Pushed as tasks start, finish, or are cancelled, so the board's
+					// in-progress cards stop offering Stop for a run that has ended.
+					setState((prevState) => ({ ...prevState, runningTaskIds: message.runningTaskIds ?? [] }))
 					break
 				}
 			}

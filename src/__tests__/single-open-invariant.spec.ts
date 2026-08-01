@@ -170,7 +170,14 @@ describe("Starting a task alongside one already open", () => {
 
 		const removeClineFromStack = vi.fn().mockResolvedValue(undefined)
 		const addClineToStack = vi.fn().mockResolvedValue(undefined)
-		const parentTask = { taskId: "parent-1", abort: false, abandoned: false, taskNumber: 1 }
+		// A subtask inherits its parent's mode, so createTask asks the parent for it.
+		const parentTask = {
+			taskId: "parent-1",
+			abort: false,
+			abandoned: false,
+			taskNumber: 1,
+			getTaskMode: vi.fn().mockResolvedValue("code"),
+		}
 		const registry2 = new TaskRegistry()
 		registry2.push(parentTask as unknown as Task)
 

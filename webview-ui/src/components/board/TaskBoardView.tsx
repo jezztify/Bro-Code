@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from "react"
-import { FolderPlus, LayoutDashboard, Plus } from "lucide-react"
+import { FolderPlus, LayoutDashboard, PictureInPicture2, Plus } from "lucide-react"
 
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
@@ -66,10 +66,13 @@ const WorkspaceCreateForm = ({ onDismiss }: { onDismiss?: () => void }) => {
 
 const TaskBoardView = () => {
 	const { t } = useAppTranslation()
-	const { boardState, boardPlanning, customModes, taskHistory } = useExtensionState()
+	const { boardState, boardPlanning, customModes, taskHistory, runningTaskIds } = useExtensionState()
 	const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false)
 	const [search, setSearch] = useState("")
 	const selectedWorkspace = boardState.workspaces.find((workspace) => workspace.id === boardState.selectedWorkspaceId)
+	// Pushed by the extension host as runs start and end, so an In Progress card whose
+	// run is no longer live re-renders from Stop back to Start without a reload.
+	const runningTaskIdSet = useMemo(() => new Set(runningTaskIds ?? []), [runningTaskIds])
 	// Ordering is per column (see compareBoardTasks), so this only narrows the cards.
 	const tasks = useMemo(() => {
 		const query = search.trim().toLowerCase()
@@ -115,7 +118,12 @@ const TaskBoardView = () => {
 	return (
 		<Tab variant="shell" className="bg-vscode-editor-background">
 			<TabHeader className="flex shrink-0 flex-col gap-3 bg-vscode-sideBar-background px-5 py-3">
-				<div className="flex items-center justify-between gap-3">
+				{/* flex-wrap so a phone-width viewport (the mobile server serves this same
+				board over the LAN) breaks the two groups onto separate lines. Without it
+				the left group's min-w-0 lets it be crushed to a fraction of its content
+				width while its children keep their natural size, so the workspace picker
+				and New workspace button paint straight over the token counts and New task. */}
+				<div className="flex flex-wrap items-center justify-between gap-3">
 					<div className="flex min-w-0 items-center gap-2">
 						<LayoutDashboard className="size-5 shrink-0" />
 						<Select
@@ -150,6 +158,13 @@ const TaskBoardView = () => {
 							<span>↑ {formatLargeNumber(tokenTotals.tokensIn)}</span>
 							<span>↓ {formatLargeNumber(tokenTotals.tokensOut)}</span>
 						</div>
+						<Button
+							variant="secondary"
+							aria-label="Open board in new window"
+							title="Open the board in its own window"
+							onClick={() => vscode.postMessage({ type: "openBoardInWindow" })}>
+							<PictureInPicture2 className="size-4" />
+						</Button>
 						<Button
 							variant="primary"
 							onClick={() =>
@@ -235,6 +250,7 @@ const TaskBoardView = () => {
 							workspaceId={selectedWorkspace.id}
 							customModes={customModes}
 							mode={selectedWorkspace.columnModes?.[column.stage]}
+							runningTaskIds={runningTaskIdSet}
 						/>
 					))}
 				</div>

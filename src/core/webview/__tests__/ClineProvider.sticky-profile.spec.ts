@@ -73,6 +73,9 @@ vi.mock("../../task/Task", () => ({
 			setTaskNumber: vi.fn(),
 			setParentTask: vi.fn(),
 			setRootTask: vi.fn(),
+			// addClineToStack syncs the global mode from the focused task, so every
+			// mocked Task needs this the way the real one resolves it.
+			getTaskMode: vi.fn().mockResolvedValue(options?.historyItem?.mode || options?.initialMode || "code"),
 			emit: vi.fn(),
 			parentTask: options.parentTask,
 			updateApiConfiguration: vi.fn(),
@@ -338,6 +341,11 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 				clineMessages: [],
 				apiConversationHistory: [],
 				updateApiConfiguration: vi.fn(),
+				// addClineToStack syncs the global mode from the focused task; read it off
+				// the stub so a task declaring its own mode is not reported as code.
+				getTaskMode: vi.fn(async function (this: { taskMode?: string }) {
+					return this.taskMode ?? "code"
+				}),
 			}
 
 			// Add task to provider stack
@@ -399,6 +407,11 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 				clineMessages: [],
 				apiConversationHistory: [],
 				updateApiConfiguration: vi.fn(),
+				// addClineToStack syncs the global mode from the focused task; read it off
+				// the stub so a task declaring its own mode is not reported as code.
+				getTaskMode: vi.fn(async function (this: { taskMode?: string }) {
+					return this.taskMode ?? "code"
+				}),
 			}
 
 			// Add task to provider stack
@@ -457,6 +470,11 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 				clineMessages: [],
 				apiConversationHistory: [],
 				updateApiConfiguration: vi.fn(),
+				// addClineToStack syncs the global mode from the focused task; read it off
+				// the stub so a task declaring its own mode is not reported as code.
+				getTaskMode: vi.fn(async function (this: { taskMode?: string }) {
+					return this.taskMode ?? "code"
+				}),
 			}
 
 			await provider.addClineToStack(mockTask as any)
@@ -741,6 +759,11 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 				clineMessages: [],
 				apiConversationHistory: [],
 				updateApiConfiguration: vi.fn(),
+				// addClineToStack syncs the global mode from the focused task; read it off
+				// the stub so a task declaring its own mode is not reported as code.
+				getTaskMode: vi.fn(async function (this: { taskMode?: string }) {
+					return this.taskMode ?? "code"
+				}),
 			}
 
 			// Populate the store so persistStickyProviderProfileToCurrentTask finds the task
@@ -804,6 +827,11 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 				clineMessages: [],
 				apiConversationHistory: [],
 				updateApiConfiguration: vi.fn(),
+				// addClineToStack syncs the global mode from the focused task; read it off
+				// the stub so a task declaring its own mode is not reported as code.
+				getTaskMode: vi.fn(async function (this: { taskMode?: string }) {
+					return this.taskMode ?? "code"
+				}),
 			}
 
 			// Create task 2 with profile B
@@ -818,6 +846,11 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 				clineMessages: [],
 				apiConversationHistory: [],
 				updateApiConfiguration: vi.fn(),
+				// addClineToStack syncs the global mode from the focused task; read it off
+				// the stub so a task declaring its own mode is not reported as code.
+				getTaskMode: vi.fn(async function (this: { taskMode?: string }) {
+					return this.taskMode ?? "code"
+				}),
 			}
 
 			// Add task 1 to stack
@@ -905,6 +938,11 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 				clineMessages: [],
 				apiConversationHistory: [],
 				updateApiConfiguration: vi.fn(),
+				// addClineToStack syncs the global mode from the focused task; read it off
+				// the stub so a task declaring its own mode is not reported as code.
+				getTaskMode: vi.fn(async function (this: { taskMode?: string }) {
+					return this.taskMode ?? "code"
+				}),
 			}
 
 			// Add task to provider stack

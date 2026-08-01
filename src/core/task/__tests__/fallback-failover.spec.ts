@@ -205,12 +205,17 @@ describe("Task - per-mode fallback API provider failover", () => {
 		}
 	})
 
-	const createTask = () =>
+	// Fallbacks are configured per mode and looked up against the *task's* mode, not
+	// the mode on the state object passed in. mockProvider is a real ClineProvider, so
+	// without pinning this the task would inherit whatever mode ambient state happens
+	// to carry and never match the custom mode these tests define.
+	const createTask = (initialMode = "code") =>
 		new Task({
 			provider: mockProvider,
 			apiConfiguration: mockApiConfig,
 			task: "test task",
 			startTask: false,
+			initialMode,
 		})
 
 	describe("tryFailoverToNextProfile", () => {

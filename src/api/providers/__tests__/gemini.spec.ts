@@ -336,14 +336,17 @@ describe("GeminiHandler", () => {
 			const result = await handler.completePrompt("Test prompt")
 			expect(result).toBe("Test response")
 
-			// Verify the call to generateContent
+			// Verify the call to generateContent. `config` also carries model-derived
+			// fields (maxOutputTokens, thinkingConfig) that belong to the model's own
+			// metadata rather than to this call, so match on what completePrompt itself
+			// is responsible for instead of pinning the whole object.
 			expect(handler["client"].models.generateContent).toHaveBeenCalledWith({
 				model: GEMINI_MODEL_NAME,
 				contents: [{ role: "user", parts: [{ text: "Test prompt" }] }],
-				config: {
+				config: expect.objectContaining({
 					httpOptions: undefined,
 					temperature: 1,
-				},
+				}),
 			})
 		})
 

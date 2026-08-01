@@ -7,8 +7,11 @@ import { ChatRowContent } from "../ChatRow"
 
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
-		t: (key: string) => {
+		t: (key: string, options?: Record<string, unknown>) => {
 			const translations: Record<string, string> = {
+				"board:movedNotice": `This task was moved from ${options?.from} to ${options?.to}`,
+				"board:columns.inProgress": "In Progress",
+				"board:columns.qaValidation": "QA Validation",
 				"chat:boardTasks.wantsToCreate": "Zoo wants to create a board task:",
 				"chat:boardTasks.wantsToRead": "Zoo wants to read the board:",
 				"chat:boardTasks.wantsToUpdate": "Zoo wants to update a board task:",
@@ -34,20 +37,12 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 
 const queryClient = new QueryClient()
 
-const renderRow = (type: "ask", tool: Record<string, unknown>) =>
+const renderMessage = (message: Record<string, unknown>) =>
 	render(
 		<ExtensionStateContextProvider>
 			<QueryClientProvider client={queryClient}>
 				<ChatRowContent
-					message={
-						{
-							type,
-							...(type === "ask" ? { ask: "tool" } : { say: "tool" }),
-							ts: Date.now(),
-							text: JSON.stringify(tool),
-							partial: false,
-						} as never
-					}
+					message={{ ts: Date.now(), partial: false, ...message } as never}
 					isExpanded={false}
 					isLast={false}
 					isStreaming={false}
@@ -60,6 +55,9 @@ const renderRow = (type: "ask", tool: Record<string, unknown>) =>
 			</QueryClientProvider>
 		</ExtensionStateContextProvider>,
 	)
+
+const renderRow = (type: "ask", tool: Record<string, unknown>) =>
+	renderMessage({ type, ask: "tool", text: JSON.stringify(tool) })
 
 describe("ChatRow - board task tools", () => {
 	beforeEach(() => vi.clearAllMocks())
@@ -115,5 +113,26 @@ describe("ChatRow - board task tools", () => {
 
 		expect(screen.getByText("Zoo wants to read the board:")).toBeInTheDocument()
 		expect(screen.getByText("All cards in the selected workspace")).toBeInTheDocument()
+	})
+})
+
+describe("ChatRow - board task moved", () => {
+	beforeEach(() => vi.clearAllMocks())
+
+	const renderMove = (move: Record<string, unknown>) =>
+		renderMessage({ type: "say", say: "board_task_moved", text: JSON.stringify(move) })
+
+	it("names the columns the card moved between the way the board's headers do", () => {
+		renderMove({ from: "in_progress", to: "qa_validation" })
+
+		expect(screen.getByTestId("board-task-moved-row")).toHaveTextContent(
+			"This task was moved from In Progress to QA Validation",
+		)
+	})
+
+	it("renders nothing rather than a half-written sentence when the move is unreadable", () => {
+		renderMove({ from: "in_progress" })
+
+		expect(screen.queryByTestId("board-task-moved-row")).not.toBeInTheDocument()
 	})
 })

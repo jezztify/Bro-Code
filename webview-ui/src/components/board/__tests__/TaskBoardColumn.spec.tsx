@@ -31,7 +31,16 @@ vi.mock("@/components/ui/select", () => ({
 const approved = COLUMNS.find((column) => column.stage === "approved")!
 
 const renderColumn = (mode?: string) =>
-	render(<TaskBoardColumn column={approved} tasks={[]} workspaceId="workspace-1" customModes={[]} mode={mode} />)
+	render(
+		<TaskBoardColumn
+			column={approved}
+			tasks={[]}
+			workspaceId="workspace-1"
+			customModes={[]}
+			mode={mode}
+			runningTaskIds={new Set()}
+		/>,
+	)
 
 describe("TaskBoardColumn mode", () => {
 	beforeEach(() => {
@@ -78,6 +87,46 @@ describe("TaskBoardColumn mode", () => {
 	})
 })
 
+describe("TaskBoardColumn running state", () => {
+	beforeEach(() => vi.clearAllMocks())
+
+	const inProgress = COLUMNS.find((column) => column.stage === "in_progress")!
+	const now = Date.now()
+	const card = {
+		id: "task-1",
+		workspaceId: "workspace-1",
+		title: "Add dark mode",
+		stage: "in_progress" as const,
+		position: 0,
+		createdAt: now,
+		updatedAt: now,
+		linkedHistoryTaskId: "execution-1",
+	}
+
+	const renderInProgress = (runningTaskIds: Set<string>) =>
+		render(
+			<TaskBoardColumn
+				column={inProgress}
+				tasks={[card]}
+				workspaceId="workspace-1"
+				customModes={[]}
+				runningTaskIds={runningTaskIds}
+			/>,
+		)
+
+	it("offers stop while the card's execution task is live", () => {
+		renderInProgress(new Set(["execution-1"]))
+
+		expect(screen.getByRole("button", { name: "board:actions.stop" })).toBeInTheDocument()
+	})
+
+	it("offers start once the card's execution task is gone", () => {
+		renderInProgress(new Set(["some-other-task"]))
+
+		expect(screen.getByRole("button", { name: "board:actions.start" })).toBeInTheDocument()
+	})
+})
+
 describe("TaskBoardColumn as a drop target", () => {
 	beforeEach(() => vi.clearAllMocks())
 
@@ -118,8 +167,7 @@ describe("TaskBoardColumn as a drop target", () => {
 
 	// A dragover is "accepted" by calling preventDefault, which dispatchEvent reports
 	// back as false; without it the browser never fires a drop at all.
-	const dragOver = (types: string[]) =>
-		!fireEvent.dragOver(column(), { dataTransfer: { types, dropEffect: "none" } })
+	const dragOver = (types: string[]) => !fireEvent.dragOver(column(), { dataTransfer: { types, dropEffect: "none" } })
 
 	it("accepts the drag only while a board card is over it", () => {
 		renderColumn()

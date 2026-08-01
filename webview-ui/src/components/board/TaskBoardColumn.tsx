@@ -21,6 +21,7 @@ const TaskBoardColumn = ({
 	workspaceId,
 	customModes,
 	mode,
+	runningTaskIds,
 }: {
 	column: BoardColumn
 	tasks: BoardTask[]
@@ -28,6 +29,8 @@ const TaskBoardColumn = ({
 	customModes: ModeConfig[]
 	/** The mode every card in this column runs in; undefined uses the current mode. */
 	mode?: string
+	/** Execution tasks live in the extension host right now (see `ExtensionState.runningTaskIds`). */
+	runningTaskIds: ReadonlySet<string>
 }) => {
 	const { t } = useAppTranslation()
 	const modes = useMemo(() => {
@@ -71,7 +74,9 @@ const TaskBoardColumn = ({
 			}}
 			className={cn(
 				"flex h-full w-[272px] shrink-0 flex-col overflow-hidden rounded-xl border bg-vscode-sideBar-background",
-				isDropTarget ? "border-vscode-focusBorder ring-1 ring-vscode-focusBorder" : "border-vscode-panel-border",
+				isDropTarget
+					? "border-vscode-focusBorder ring-1 ring-vscode-focusBorder"
+					: "border-vscode-panel-border",
 			)}>
 			<div className="flex flex-col gap-2 border-b border-vscode-panel-border px-3 py-3">
 				<div className="flex items-center justify-between">
@@ -118,7 +123,11 @@ const TaskBoardColumn = ({
 			</div>
 			<div className="flex min-h-[40px] flex-1 flex-col gap-2 overflow-y-auto p-2.5">
 				{tasks.map((task) => (
-					<TaskBoardCard key={task.id} task={task} />
+					<TaskBoardCard
+						key={task.id}
+						task={task}
+						isRunning={!!task.linkedHistoryTaskId && runningTaskIds.has(task.linkedHistoryTaskId)}
+					/>
 				))}
 			</div>
 		</div>

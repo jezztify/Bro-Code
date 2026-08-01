@@ -2,7 +2,7 @@ import type OpenAI from "openai"
 
 const stage = {
 	type: "string",
-	enum: ["backlog", "scoped", "approved", "in_progress", "done"],
+	enum: ["backlog", "scoped", "approved", "in_progress", "qa_validation", "done"],
 } as const
 
 export const createBoardTaskTool = {

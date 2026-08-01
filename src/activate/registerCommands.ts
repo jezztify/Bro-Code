@@ -1,8 +1,7 @@
 import * as vscode from "vscode"
 import delay from "delay"
-import pWaitFor from "p-wait-for"
 
-import type { CommandId } from "@roo-code/types"
+import type { CommandId, WebviewMessage } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { Package } from "../shared/package"
@@ -133,6 +132,11 @@ const getCommandsMap = ({
 		return openClineInNewTab({ context, outputChannel })
 	},
 	openInNewTab: () => openClineInNewTab({ context, outputChannel }),
+	openBoardInNewWindow: () => {
+		TelemetryService.instance.captureTitleButtonClicked("boardWindow")
+
+		return openBoardInNewWindow({ context, outputChannel })
+	},
 	settingsButtonClicked: () => {
 		const visibleProvider = getVisibleProviderOrLog(outputChannel)
 
@@ -261,6 +265,9 @@ const getCommandsMap = ({
 			outputChannel.appendLine(`[stopMobileServer] failed: ${error instanceof Error ? error.message : error}`)
 		})
 	},
+	showMobileServerQrCode: () => {
+		mobileServer.showQrCode()
+	},
 	regenerateMobileServerToken: async () => {
 		await mobileServer.regenerateToken().catch((error) => {
 			outputChannel.appendLine(
@@ -270,10 +277,18 @@ const getCommandsMap = ({
 	},
 })
 
-export const openClineInNewTab = async ({
-	context,
-	outputChannel,
-}: Omit<RegisterCommandOptions, "provider" | "mobileServer">) => {
+export type OpenPanelOptions = Omit<RegisterCommandOptions, "provider" | "mobileServer"> & {
+	/** Tab the panel lands on once its webview boots. Defaults to the usual chat view. */
+	initialTab?: NonNullable<WebviewMessage["tab"]>
+	/**
+	 * Detach the panel into its own OS-level window (an "auxiliary window") instead of leaving it
+	 * as an editor tab. Extensions can't create windows directly; the panel is created as a tab
+	 * and then moved out, which is how the built-in floating editor windows work.
+	 */
+	newWindow?: boolean
+}
+
+export const openClineInNewTab = async ({ context, outputChannel, initialTab, newWindow }: OpenPanelOptions) => {
 	// (This example uses webviewProvider activation event which is necessary to
 	// deserialize cached webview, but since we use retainContextWhenHidden, we
 	// don't need to use that event).
@@ -291,6 +306,10 @@ export const openClineInNewTab = async ({
 	}
 
 	const tabProvider = new ClineProvider(context, outputChannel, "editor", contextProxy, mdmService)
+	// Set before resolveWebviewView so the webview's first `webviewDidLaunch` already sees it;
+	// the handler replays it on every launch, so a later reload (e.g. the move to a new window
+	// below) lands on the same tab instead of falling back to chat.
+	tabProvider.initialTab = initialTab
 	const visibleEditors = vscode.window.visibleTextEditors
 
 	// With editors open, put the panel in its own group to the right of them. With none open
@@ -341,7 +360,23 @@ export const openClineInNewTab = async ({
 		context.subscriptions, // Also register dispose listener
 	)
 
-	// Lock the editor group so clicking on files doesn't open them over the panel.
+	if (newWindow) {
+		// `moveEditorToNewWindow` acts on the active editor group, which is the group the panel
+		// was just created in, so this has to run before anything else can steal focus. A failure
+		// (older VS Code, command unavailable) is non-fatal: the panel simply stays a tab.
+		await delay(100)
+
+		try {
+			await vscode.commands.executeCommand("workbench.action.moveEditorToNewWindow")
+		} catch (error) {
+			outputChannel.appendLine(
+				`[openClineInNewTab] moveEditorToNewWindow failed, leaving panel as a tab: ${error}`,
+			)
+		}
+	}
+
+	// Lock the editor group so clicking on files doesn't open them over the panel. After a move
+	// the active group is the auxiliary window's, which is the one we want locked.
 	await delay(100)
 	await vscode.commands.executeCommand("workbench.action.lockEditorGroup")
 
@@ -350,29 +385,18 @@ export const openClineInNewTab = async ({
 
 /**
  * Open the workspace board in its own editor tab, rather than switching the tab within whichever
- * panel (sidebar or an existing editor tab) triggered it. Reuses openClineInNewTab for the panel
- * itself, then routes it straight to the board tab.
+ * panel (sidebar or an existing editor tab) triggered it.
+ *
+ * The board tab is requested via `initialTab` instead of a `postMessageToWebview` after the fact:
+ * the new panel's webview (React app) hasn't booted at this point and only signals readiness with
+ * `webviewDidLaunch`, so an immediate post would be dropped by a webview with no listener yet.
  */
-export const openBoardInNewTab = async (options: Omit<RegisterCommandOptions, "provider" | "mobileServer">) => {
-	const tabProvider = await openClineInNewTab(options)
+export const openBoardInNewTab = (options: Omit<OpenPanelOptions, "initialTab" | "newWindow">) =>
+	openClineInNewTab({ ...options, initialTab: "board" })
 
-	// The new panel's webview (React app) hasn't booted yet at this point - it signals
-	// readiness with a "webviewDidLaunch" message once its bundle has loaded and mounted (see
-	// the "webviewDidLaunch" case in webviewMessageHandler.ts, which flips isViewLaunched).
-	// postMessageToWebview before that point is silently dropped (no listener registered yet
-	// on the webview side), so switchTab would land on nothing and the panel would just show
-	// its default chat/welcome view. Same fix API#resumeTask already needs for this exact race.
-	const launched = await pWaitFor(() => tabProvider.viewLaunched, { timeout: 5_000, interval: 50 }).then(
-		() => true,
-		() => false,
-	)
-
-	if (!launched) {
-		options.outputChannel.appendLine("[openBoardInNewTab] webview did not launch within 5000ms; board not opened")
-		return tabProvider
-	}
-
-	await tabProvider.postMessageToWebview({ type: "action", action: "switchTab", tab: "board" })
-
-	return tabProvider
-}
+/**
+ * Open the workspace board in its own OS-level window, independent of the editor's tabs, so it can
+ * live on a second monitor while you work. Same panel as openBoardInNewTab, just detached.
+ */
+export const openBoardInNewWindow = (options: Omit<OpenPanelOptions, "initialTab" | "newWindow">) =>
+	openClineInNewTab({ ...options, initialTab: "board", newWindow: true })

@@ -12,10 +12,10 @@
     <tool name="create_board_task">
       <purpose>Create one board task per decomposed subtask</purpose>
       <usage>
-        Call once per subtask with a specific, action-oriented title. Only pass a description
-        if concrete details are already known; omit it otherwise (leave blank, do not invent
-        content). Set stage appropriately (typically the backlog/default stage) if the tool
-        supports it.
+        Call once per subtask with a title following the "Phase &lt;#&gt; - Task &lt;#&gt; - Title"
+        format defined in naming_guidance below. Only pass a description if concrete details
+        are already known; omit it otherwise (leave blank, do not invent content). Set stage
+        appropriately (typically the backlog/default stage) if the tool supports it.
       </usage>
     </tool>
     <tool name="read_board_task">
@@ -46,14 +46,19 @@
   </sizing_guidance>
 
   <naming_guidance>
-    <rule>Titles must be specific enough to act on without additional context (avoid vague titles like "Fix stuff")</rule>
-    <rule>Use action-oriented phrasing (verb + object), e.g., "Add validation to signup form"</rule>
-    <good_example>"Add rate limiting middleware to /api/login"</good_example>
+    <rule>Every task title must follow the exact format: "Phase &lt;#&gt; - Task &lt;#&gt; - Title", where &lt;#&gt; are the 1-based phase and task numbers determined during decomposition (per 1_workflow.xml) and "Title" is the specific, action-oriented description of the work</rule>
+    <rule>Phase numbers restart at 1 for the first phase of this decomposition; task numbers restart at 1 within each phase</rule>
+    <rule>The "Title" portion must be specific enough to act on without additional context (avoid vague titles like "Fix stuff")</rule>
+    <rule>Use action-oriented phrasing (verb + object) for the "Title" portion, e.g., "Add validation to signup form"</rule>
+    <good_example>"Phase 1 - Task 1 - Add rate limiting middleware to /api/login"</good_example>
+    <good_example>"Phase 2 - Task 3 - Write integration tests for checkout flow"</good_example>
     <bad_example>"Login improvements"</bad_example>
+    <bad_example>"Task 3 - Login improvements" (missing phase number)</bad_example>
   </naming_guidance>
 
   <output_wrapping>
     <rule>After creating the board tasks, summarize what was created in a short list (titles only) in the chat response</rule>
+    <rule>Alongside the list, include a fenced ```mermaid diagram (flowchart grouped by phase, or a Gantt chart) visualizing the phase/task structure and dependency order, so the plan is visually scannable</rule>
     <rule>Note assumptions and open questions in a separate section after the summary, not embedded within task titles</rule>
   </output_wrapping>
 </task_format_guidelines>

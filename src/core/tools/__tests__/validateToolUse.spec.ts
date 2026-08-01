@@ -2,7 +2,7 @@
 
 import type { ModeConfig } from "@roo-code/types"
 
-import { modes } from "../../../shared/modes"
+import { getGroupName, modes } from "../../../shared/modes"
 import { TOOL_GROUPS } from "../../../shared/tools"
 
 import { validateToolUse, isToolAllowedForMode } from "../validateToolUse"
@@ -15,9 +15,13 @@ describe("mode-validator", () => {
 	describe("isToolAllowedForMode", () => {
 		describe("code mode", () => {
 			it("allows all code mode tools", () => {
-				// Code mode has all groups
-				Object.entries(TOOL_GROUPS).forEach(([_, config]) => {
-					config.tools.forEach((tool: string) => {
+				// Only the groups code mode actually carries. It no longer has every
+				// group in TOOL_GROUPS - the board group is not one of its own - so
+				// iterating all of them would assert tools code mode is deliberately
+				// not given.
+				const codeModeGroups = modes.find((mode) => mode.slug === codeMode)!.groups
+				codeModeGroups.forEach((group) => {
+					TOOL_GROUPS[getGroupName(group)].tools.forEach((tool: string) => {
 						expect(isToolAllowedForMode(tool, codeMode, [])).toBe(true)
 					})
 				})

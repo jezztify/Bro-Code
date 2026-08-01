@@ -20,14 +20,17 @@
 		"refine": "Refine",
 		"approve": "Approve",
 		"start": "Start task",
+		"validate": "Validate",
 		"stop": "Stop",
 		"open": "Open task"
 	},
+	"movedNotice": "This task was moved from {{from}} to {{to}}",
 	"columns": {
 		"backlog": "Backlog",
 		"scoped": "Scoped",
 		"approved": "Approved",
 		"inProgress": "In Progress",
+		"qaValidation": "QA Validation",
 		"done": "Done"
 	}
 }

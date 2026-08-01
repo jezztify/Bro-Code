@@ -1,10 +1,14 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest"
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi, type Mock } from "vitest"
 import * as fsp from "fs/promises"
 import * as os from "os"
 import * as path from "path"
 import { WebSocket as WsClient } from "ws"
 
+import type { ExtensionMessage } from "@roo-code/types"
+
 import { MobileServer } from "../MobileServer"
+import { WebviewHub, type HubProvider } from "../../../core/webview/WebviewHub"
+import { webviewMessageHandler } from "../../../core/webview/webviewMessageHandler"
 import { allowNetConnect } from "../../../vitest.setup"
 
 // Deterministic LAN address so this test never depends on the host machine's
@@ -34,17 +38,69 @@ vi.mock("../../../core/webview/webviewMessageHandler", () => ({
 // initialized before the (hoisted) `vi.mock("vscode", ...)` factory ever runs.
 const configState = vi.hoisted(() => ({ tokenMode: undefined as string | undefined }))
 
+type StubStatusBarItem = {
+	text: string
+	tooltip: string
+	command: { title: string; command: string } | undefined
+	show: Mock
+	dispose: Mock
+}
+
+/** Webview panel stub, plus hooks to fire the listeners the panel registers. */
+type StubWebviewPanel = {
+	viewColumn: number
+	webview: { html: string; postMessage: Mock; onDidReceiveMessage: Mock }
+	reveal: Mock
+	dispose: Mock
+	onDidDispose: Mock
+	emitMessage?: (message: unknown) => unknown
+	emitDispose?: () => void
+}
+
+/**
+ * Captures the last status bar item and webview panel handed out by the mocked
+ * `vscode.window`, so tests can assert on what the QR/pairing UI was wired to.
+ */
+const uiState = vi.hoisted(() => ({
+	statusBarItem: undefined as StubStatusBarItem | undefined,
+	panel: undefined as StubWebviewPanel | undefined,
+}))
+
 vi.mock("vscode", () => ({
 	window: {
 		showInformationMessage: vi.fn().mockResolvedValue(undefined),
 		showErrorMessage: vi.fn().mockResolvedValue(undefined),
-		createStatusBarItem: vi.fn(() => ({
-			text: "",
-			tooltip: "",
-			command: undefined,
-			show: vi.fn(),
-			dispose: vi.fn(),
-		})),
+		createStatusBarItem: vi.fn(() => {
+			uiState.statusBarItem = {
+				text: "",
+				tooltip: "",
+				command: undefined,
+				show: vi.fn(),
+				dispose: vi.fn(),
+			}
+			return uiState.statusBarItem
+		}),
+		createWebviewPanel: vi.fn(() => {
+			const panel: StubWebviewPanel = {
+				viewColumn: 1,
+				webview: {
+					html: "",
+					postMessage: vi.fn().mockResolvedValue(true),
+					onDidReceiveMessage: vi.fn((listener: (message: unknown) => void) => {
+						panel.emitMessage = listener
+						return { dispose: vi.fn() }
+					}),
+				},
+				reveal: vi.fn(),
+				onDidDispose: vi.fn((listener: () => void) => {
+					panel.emitDispose = listener
+					return { dispose: vi.fn() }
+				}),
+				dispose: vi.fn(() => panel.emitDispose?.()),
+			}
+			uiState.panel = panel
+			return panel
+		}),
 	},
 	workspace: {
 		getConfiguration: vi.fn(() => ({
@@ -53,6 +109,11 @@ vi.mock("vscode", () => ({
 		})),
 	},
 	StatusBarAlignment: { Left: 1, Right: 2 },
+	ViewColumn: { Active: -1, Beside: -2, One: 1 },
+	// Must be defined: MobileServer compares `context.extensionMode` against
+	// `ExtensionMode.Development` to decide whether to proxy to Vite. Leaving both
+	// undefined would make that comparison true and switch the dev proxy on here.
+	ExtensionMode: { Production: 1, Development: 2, Test: 3 },
 	env: { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } },
 	Disposable: class {
 		constructor(private readonly callOnDispose?: () => void) {}
@@ -75,19 +136,37 @@ function createMockOutputChannel() {
 	} as unknown as import("vscode").OutputChannel
 }
 
-function createStubProvider(extensionPath: string) {
-	let capturedListener: ((message: unknown) => void) | undefined
+/**
+ * Stands in for a `ClineProvider`. Registers with the real `WebviewHub` (which
+ * has no VS Code dependencies), so tests exercise the same fan-out path
+ * production uses rather than a bespoke listener stub.
+ */
+function createStubProvider(extensionPath: string, providerId = "stub-sidebar") {
+	const getStateToPostToWebview = vi.fn().mockResolvedValue({ refreshedFor: providerId })
+	// Stands in for the real `postStateToWebview`, which fans out to the provider's
+	// own desktop webview. Tests assert this is *not* called on a mobile focus
+	// change - doing so would inject a clineMessages-bearing snapshot into a
+	// possibly-streaming desktop view and drop messages there.
+	const postStateToWebview = vi.fn().mockResolvedValue(undefined)
 
 	const provider = {
+		providerId,
 		contextProxy: { extensionPath },
 		marketplaceManager: {},
-		addPostMessageListener: vi.fn((listener: (message: unknown) => void) => {
-			capturedListener = listener
-			return { dispose: vi.fn() }
-		}),
+		getStateToPostToWebview,
+		postStateToWebview,
+		addPostMessageListener: vi.fn(() => ({ dispose: vi.fn() })),
 	} as unknown as import("../../../core/webview/ClineProvider").ClineProvider
 
-	return { provider, emitPostMessage: (message: unknown) => capturedListener?.(message) }
+	WebviewHub.register(provider as unknown as HubProvider)
+
+	return {
+		provider,
+		providerId,
+		getStateToPostToWebview,
+		postStateToWebview,
+		emitPostMessage: (message: unknown) => WebviewHub.publish(providerId, message as ExtensionMessage),
+	}
 }
 
 /** In-memory `context.secrets` stub so fixed-token persistence can be exercised without real VS Code SecretStorage. */
@@ -95,6 +174,8 @@ function createStubContext() {
 	const store = new Map<string, string>()
 
 	const context = {
+		// Production, so the static-build path is what these tests exercise.
+		extensionMode: 1,
 		secrets: {
 			get: vi.fn(async (key: string) => store.get(key)),
 			store: vi.fn(async (key: string, value: string) => {
@@ -142,6 +223,11 @@ describe("MobileServer", () => {
 
 	beforeEach(() => {
 		configState.tokenMode = undefined
+		uiState.statusBarItem = undefined
+		uiState.panel = undefined
+		// The hub is a module singleton; stale providers would leak focus across tests.
+		WebviewHub.reset()
+		vi.mocked(webviewMessageHandler).mockClear()
 	})
 
 	afterEach(async () => {
@@ -149,12 +235,19 @@ describe("MobileServer", () => {
 	})
 
 	async function startServer(context = createStubContext()) {
-		const { provider, emitPostMessage } = createStubProvider(tmpDir)
+		const { provider, providerId, emitPostMessage } = createStubProvider(tmpDir)
 		server = new MobileServer(provider, createMockOutputChannel(), context)
 		await server.start()
 		expect(server.url).toBeDefined()
 		const parsed = new URL(server.url!)
-		return { origin: parsed.origin, token: parsed.searchParams.get("token")!, emitPostMessage, context }
+		return {
+			origin: parsed.origin,
+			token: parsed.searchParams.get("token")!,
+			emitPostMessage,
+			providerId,
+			provider,
+			context,
+		}
 	}
 
 	it("rejects an unauthenticated GET with 401", async () => {
@@ -240,8 +333,8 @@ describe("MobileServer", () => {
 			const ws = new WsClient(wsUrl)
 			ws.on("open", () => {
 				// Simulate ClineProvider.postMessageToWebview firing while this WS
-				// client is connected - MobileServer subscribed to this via
-				// `provider.addPostMessageListener` at start().
+				// client is connected - MobileServer sees it through its WebviewHub
+				// subscription, registered at start().
 				emitPostMessage({ type: "state", state: { didHydrateState: true } })
 			})
 			ws.on("message", (data) => {
@@ -252,6 +345,183 @@ describe("MobileServer", () => {
 		})
 
 		expect(received).toEqual({ type: "state", state: { didHydrateState: true } })
+	})
+
+	describe("multi-provider fan-out", () => {
+		/**
+		 * Opens a client and collects frames until `settle` ms pass with none arriving,
+		 * so a test can assert on *everything* that was (and was not) forwarded.
+		 */
+		function collectFrames(wsUrl: string, act: () => void, settle = 150) {
+			return new Promise<Array<Record<string, unknown>>>((resolve, reject) => {
+				const frames: Array<Record<string, unknown>> = []
+				const ws = new WsClient(wsUrl)
+				let timer: ReturnType<typeof setTimeout>
+
+				const finish = () => {
+					ws.close()
+					resolve(frames)
+				}
+
+				ws.on("open", () => {
+					timer = setTimeout(finish, settle)
+					act()
+				})
+				ws.on("message", (data) => {
+					frames.push(JSON.parse(data.toString()))
+					clearTimeout(timer)
+					timer = setTimeout(finish, settle)
+				})
+				ws.on("error", reject)
+			})
+		}
+
+		it("forwards messages from an editor-tab provider once it becomes active", async () => {
+			const { origin, token } = await startServer()
+			const wsUrl = `${origin.replace("http", "ws")}/ws?token=${token}`
+
+			// A board task opens its own editor-tab provider. This is the exact case
+			// that used to be dropped: MobileServer was bound to the sidebar instance,
+			// so nothing this provider sent ever reached the phone.
+			const tab = createStubProvider(tmpDir, "editor-tab")
+			WebviewHub.markActive(tab.providerId)
+
+			const frames = await collectFrames(wsUrl, () =>
+				WebviewHub.publish(tab.providerId, {
+					type: "messageUpdated",
+					clineMessage: { text: "streaming from the tab" },
+				} as unknown as ExtensionMessage),
+			)
+
+			expect(frames).toContainEqual({
+				type: "messageUpdated",
+				clineMessage: { text: "streaming from the tab" },
+			})
+		})
+
+		it("does not forward messages from a provider that is not focused", async () => {
+			const { origin, token, providerId } = await startServer()
+			const wsUrl = `${origin.replace("http", "ws")}/ws?token=${token}`
+
+			const background = createStubProvider(tmpDir, "background-tab")
+			// Sidebar stays focused; the background tab must stay off the wire, or two
+			// windows' transcripts would interleave on the phone.
+			expect(WebviewHub.activeProviderId).toBe(providerId)
+
+			const frames = await collectFrames(wsUrl, () =>
+				WebviewHub.publish(background.providerId, {
+					type: "messageUpdated",
+					clineMessage: { text: "should not appear" },
+				} as unknown as ExtensionMessage),
+			)
+
+			expect(frames).toEqual([])
+		})
+
+		it("pushes a full state refresh when focus moves to another provider", async () => {
+			const { origin, token } = await startServer()
+			const wsUrl = `${origin.replace("http", "ws")}/ws?token=${token}`
+
+			const tab = createStubProvider(tmpDir, "editor-tab")
+
+			const frames = await collectFrames(wsUrl, () => WebviewHub.markActive(tab.providerId))
+
+			// Without this the phone would keep rendering the old provider's transcript
+			// until the newly focused one happened to post state of its own.
+			expect(
+				frames.some((frame) => (frame.state as { refreshedFor?: string })?.refreshedFor === "editor-tab"),
+			).toBe(true)
+		})
+
+		it("re-hydrates the phone without pushing state through the provider's own webview", async () => {
+			const { origin, token } = await startServer()
+			const wsUrl = `${origin.replace("http", "ws")}/ws?token=${token}`
+
+			const tab = createStubProvider(tmpDir, "editor-tab")
+
+			await collectFrames(wsUrl, () => WebviewHub.markActive(tab.providerId))
+
+			// `postStateToWebview` also posts to the desktop webview and carries
+			// clineMessages. Calling it here would let a phone focus change drop
+			// messages in a desktop view that is mid-stream - see the race documented
+			// on ClineProvider#postStateToWebviewWithoutClineMessages.
+			expect(tab.getStateToPostToWebview).toHaveBeenCalled()
+			expect(tab.postStateToWebview).not.toHaveBeenCalled()
+		})
+
+		it("re-stamps clineMessagesSeq monotonically across a focus switch", async () => {
+			const { origin, token, providerId } = await startServer()
+			const wsUrl = `${origin.replace("http", "ws")}/ws?token=${token}`
+
+			const tab = createStubProvider(tmpDir, "editor-tab")
+
+			const frames = await collectFrames(wsUrl, () => {
+				// Sidebar is far along in its own sequence...
+				WebviewHub.publish(providerId, {
+					type: "state",
+					state: { clineMessagesSeq: 500 },
+				} as unknown as ExtensionMessage)
+				// ...then focus moves to a provider whose counter started over. Forwarding
+				// that raw 1 would be <= 500 and the client would reject every later
+				// state push, freezing the phone permanently.
+				WebviewHub.markActive(tab.providerId)
+				WebviewHub.publish(tab.providerId, {
+					type: "state",
+					state: { clineMessagesSeq: 2 },
+				} as unknown as ExtensionMessage)
+			})
+
+			const seqs = frames
+				.filter((frame) => frame.type === "state")
+				.map((frame) => (frame.state as { clineMessagesSeq?: number }).clineMessagesSeq)
+
+			expect(seqs.length).toBeGreaterThan(1)
+			expect(seqs).toEqual([...seqs].sort((a, b) => (a ?? 0) - (b ?? 0)))
+			expect(new Set(seqs).size).toBe(seqs.length)
+		})
+
+		it("leaves messages that carry no sequence untouched", async () => {
+			const { origin, token, providerId } = await startServer()
+			const wsUrl = `${origin.replace("http", "ws")}/ws?token=${token}`
+
+			const frames = await collectFrames(wsUrl, () => {
+				// The `state` variants that omit clineMessages deliberately omit the seq
+				// too; stamping one would make the client apply a snapshot it should skip.
+				WebviewHub.publish(providerId, {
+					type: "state",
+					state: { mode: "code" },
+				} as unknown as ExtensionMessage)
+			})
+
+			expect(frames).toContainEqual({ type: "state", state: { mode: "code" } })
+		})
+
+		it("routes inbound WS messages to the focused provider, not the one passed at construction", async () => {
+			const { origin, token } = await startServer()
+			const wsUrl = `${origin.replace("http", "ws")}/ws?token=${token}`
+
+			const tab = createStubProvider(tmpDir, "editor-tab")
+			WebviewHub.markActive(tab.providerId)
+
+			await new Promise<void>((resolve, reject) => {
+				const ws = new WsClient(wsUrl)
+				ws.on("open", () => {
+					ws.send(JSON.stringify({ type: "webviewDidLaunch" }))
+					setTimeout(() => {
+						ws.close()
+						resolve()
+					}, 150)
+				})
+				ws.on("error", reject)
+			})
+
+			// A tap on the phone has to act on the surface the phone is showing.
+			expect(webviewMessageHandler).toHaveBeenCalledWith(
+				tab.provider,
+				{ type: "webviewDidLaunch" },
+				tab.provider.marketplaceManager,
+			)
+		})
 	})
 
 	it("returns 404 for an unknown path", async () => {
@@ -329,6 +599,88 @@ describe("MobileServer", () => {
 					"common:mobileServer.info.noActiveTokenToRotate",
 				)
 			})
+		})
+	})
+
+	describe("QR pairing panel", () => {
+		// The `vscode` mock is module-level, so its call history carries across
+		// tests; these assertions care about *this* test's calls only.
+		beforeEach(async () => {
+			const vscodeModule = await import("vscode")
+			vi.mocked(vscodeModule.window.createWebviewPanel).mockClear()
+			vi.mocked(vscodeModule.window.showInformationMessage).mockClear()
+			vi.mocked(vscodeModule.env.clipboard.writeText).mockClear()
+		})
+
+		function lastPanel(): StubWebviewPanel {
+			expect(uiState.panel).toBeDefined()
+			return uiState.panel!
+		}
+
+		it("points the status bar item at the QR command rather than a copy-link notification", async () => {
+			await startServer()
+
+			expect(uiState.statusBarItem?.command).toEqual({
+				title: "common:mobileServer.qr.title",
+				command: "zoo-code.showMobileServerQrCode",
+			})
+		})
+
+		it("renders the connect URL as a QR code alongside a copy-link button", async () => {
+			await startServer()
+
+			server.showQrCode()
+
+			const html = lastPanel().webview.html
+			expect(html).toContain("<svg ")
+			expect(html).toContain(server.url!.replace(/&/g, "&amp;"))
+			expect(html).toContain("common:mobileServer.notification.copyLink")
+		})
+
+		it("copies the current URL when the panel's copy button posts back", async () => {
+			await startServer()
+			server.showQrCode()
+
+			await lastPanel().emitMessage!({ type: "copyLink" })
+
+			const vscodeModule = await import("vscode")
+			expect(vscodeModule.env.clipboard.writeText).toHaveBeenCalledWith(server.url)
+			expect(lastPanel().webview.postMessage).toHaveBeenCalledWith({ type: "copied" })
+		})
+
+		it("reuses the existing panel and re-renders it after the token rotates", async () => {
+			const { token: originalToken } = await startServer()
+			server.showQrCode()
+
+			const firstPanel = lastPanel()
+			await server.regenerateToken()
+
+			expect(uiState.panel).toBe(firstPanel)
+			expect(firstPanel.webview.html).not.toContain(originalToken)
+			expect(firstPanel.webview.html).toContain(new URL(server.url!).searchParams.get("token"))
+		})
+
+		it("closes the panel when the server stops, since the link is dead", async () => {
+			await startServer()
+			server.showQrCode()
+
+			const panel = lastPanel()
+			await server.stop()
+
+			expect(panel.dispose).toHaveBeenCalled()
+		})
+
+		it("explains that nothing can be shown when the server isn't running", async () => {
+			const { provider } = createStubProvider(tmpDir)
+			server = new MobileServer(provider, createMockOutputChannel(), createStubContext())
+
+			server.showQrCode()
+
+			const vscodeModule = await import("vscode")
+			expect(vscodeModule.window.showInformationMessage).toHaveBeenCalledWith(
+				"common:mobileServer.info.notRunning",
+			)
+			expect(vscodeModule.window.createWebviewPanel).not.toHaveBeenCalled()
 		})
 	})
 })

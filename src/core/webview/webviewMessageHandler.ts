@@ -653,6 +653,19 @@ export const webviewMessageHandler = async (
 			})
 
 			provider.isViewLaunched = true
+
+			// Panels opened onto a specific tab (the popped-out board, for instance) route here
+			// rather than at open time: the webview only has a message listener once it launches,
+			// and it launches again from scratch every time its host reloads - which is what
+			// happens when the panel is moved into an auxiliary window.
+			if (provider.initialTab) {
+				await provider.postMessageToWebview({
+					type: "action",
+					action: "switchTab",
+					tab: provider.initialTab,
+				})
+			}
+
 			break
 		case "newTask":
 			// The new instance gets a fresh slate. Any task already open keeps running
@@ -861,6 +874,15 @@ export const webviewMessageHandler = async (
 			}).catch((error) => provider.log(`[openBoardInEditor] openBoardInNewTab failed: ${error}`))
 			break
 		}
+		case "openBoardInWindow": {
+			// Dynamic import for the same module-cycle reason as openBoardInEditor above.
+			const { openBoardInNewWindow } = await import("../../activate/registerCommands")
+			void openBoardInNewWindow({
+				context: provider.context,
+				outputChannel: provider.getOutputChannel(),
+			}).catch((error) => provider.log(`[openBoardInWindow] openBoardInNewWindow failed: ${error}`))
+			break
+		}
 		case "condenseTaskContextRequest":
 			await provider.condenseTaskContext(message.text!)
 			break
@@ -945,6 +967,7 @@ export const webviewMessageHandler = async (
 		case "deleteBoardTask":
 		case "startBoardTask":
 		case "refineBoardTask":
+		case "validateBoardTask":
 		case "stopBoardTask":
 		case "approveBoardTask": {
 			if (typeof message.taskId !== "string" || !message.taskId) {
@@ -964,6 +987,9 @@ export const webviewMessageHandler = async (
 						break
 					case "refineBoardTask":
 						await provider.refineBoardTask(message.taskId)
+						break
+					case "validateBoardTask":
+						await provider.validateBoardTask(message.taskId)
 						break
 					case "stopBoardTask":
 						await provider.stopBoardTask(message.taskId)

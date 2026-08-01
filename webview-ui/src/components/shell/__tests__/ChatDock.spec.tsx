@@ -285,7 +285,10 @@ describe("ChatDock", () => {
 
 		const dock = screen.getByTestId("chat-dock")
 		expect(dock).toHaveClass("h-[45vh]")
-		expect(dock).toHaveClass("min-h-[400px]")
+		// The large floor is desktop-width-only: on a phone (the mobile server serves
+		// this same shell over the LAN) it would squeeze the routed pane off screen.
+		expect(dock).toHaveClass("sm:min-h-[400px]")
+		expect(dock).toHaveClass("min-h-[240px]")
 		expect(dock).toHaveClass("max-h-[560px]")
 		expect(dock).toHaveClass("shrink-0")
 	})

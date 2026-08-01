@@ -295,15 +295,21 @@
 			"running": "Zoo Code mobile server running at {{url}}",
 			"copyLink": "Copy Link"
 		},
+		"qr": {
+			"title": "Zoo Code Mobile",
+			"hint": "Scan this code with your phone's camera to open Zoo Code, or copy the link below.",
+			"copied": "Copied!"
+		},
 		"statusBar": {
-			"tooltip": "Zoo Code mobile server is running. Click to show the link again."
+			"tooltip": "Zoo Code mobile server is running. Click to show the QR code and link."
 		},
 		"errors": {
 			"noLanAddress": "Could not start the Zoo Code mobile server: no LAN network interface was found on this machine.",
 			"startFailed": "Failed to start the Zoo Code mobile server: {{error}}"
 		},
 		"info": {
-			"noActiveTokenToRotate": "The Zoo Code mobile server isn't running and the token mode is dynamic, so there's no active token to rotate."
+			"noActiveTokenToRotate": "The Zoo Code mobile server isn't running and the token mode is dynamic, so there's no active token to rotate.",
+			"notRunning": "The Zoo Code mobile server isn't running. Start it first to get a connection QR code."
 		}
 	}
 }

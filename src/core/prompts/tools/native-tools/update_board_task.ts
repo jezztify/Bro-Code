@@ -21,7 +21,7 @@ export default {
 				},
 				stage: {
 					type: ["string", "null"],
-					enum: ["backlog", "scoped", "approved", "in_progress", "done", null],
+					enum: ["backlog", "scoped", "approved", "in_progress", "qa_validation", "done", null],
 					description: "New board column, or null to leave it unchanged.",
 				},
 				clear_description: {

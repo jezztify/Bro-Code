@@ -144,6 +144,8 @@ describe("Nested delegation resume (A → B → C)", () => {
 			}
 		})
 
+		const markBoardTaskCompleted = vi.fn(async () => {})
+
 		const updateTaskHistory = vi.fn(async (updated: any) => {
 			// Persist updated history back into index (simulate)
 			historyIndex[updated.id] = updated
@@ -178,6 +180,9 @@ describe("Nested delegation resume (A → B → C)", () => {
 			createTaskWithHistoryItem,
 			updateTaskHistory,
 			taskHistoryStore,
+			// A finished run advances its board card; the card's stage lives on the board,
+			// not on the history item, so this is what "auto-advances" now means here.
+			markBoardTaskCompleted: markBoardTaskCompleted,
 			// Wire through provider method so attemptCompletionTool can call it
 			reopenParentFromDelegation: vi.fn(async (params: any) => {
 				return await (ClineProvider.prototype as any).reopenParentFromDelegation.call(provider, params)
@@ -230,8 +235,11 @@ describe("Nested delegation resume (A → B → C)", () => {
 		// After C completes, B must be current
 		expect(currentActiveId).toBe("B")
 
-		// The completed child's board stage auto-advances to "done" alongside status.
-		expect(historyIndex["C"].boardStage).toBe("done")
+		// The completed child's board card is advanced alongside its status. The stage
+		// itself is the BoardStore's to decide (an execution run lands in QA validation,
+		// not straight in Done) and lives on the card, not on the history item, so this
+		// asserts the hand-off rather than a stage string.
+		expect(markBoardTaskCompleted).toHaveBeenCalledWith("C")
 
 		// Events emitted: C -> B hop
 		const eventNamesAfterC = emitSpy.mock.calls.map((c: any[]) => c[0])
@@ -276,8 +284,8 @@ describe("Nested delegation resume (A → B → C)", () => {
 		// does not contain a new_task tool_use. This should not prevent reopening the parent.
 		expect(currentActiveId).toBe("A")
 
-		// The completed child's board stage auto-advances to "done" alongside status.
-		expect(historyIndex["B"].boardStage).toBe("done")
+		// As above: the card is handed to the board, which decides the resulting stage.
+		expect(markBoardTaskCompleted).toHaveBeenCalledWith("B")
 
 		// Ensure no resume_task asks were scheduled: verified indirectly by startTask:false on both hops
 		// (asserted in createTaskWithHistoryItem mock)

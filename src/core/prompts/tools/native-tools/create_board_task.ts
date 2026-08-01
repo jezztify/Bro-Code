@@ -14,7 +14,7 @@ export default {
 				description: { type: ["string", "null"], description: "Optional task description." },
 				stage: {
 					type: "string",
-					enum: ["backlog", "scoped", "approved", "in_progress", "done"],
+					enum: ["backlog", "scoped", "approved", "in_progress", "qa_validation", "done"],
 					description: "Initial board column.",
 				},
 			},

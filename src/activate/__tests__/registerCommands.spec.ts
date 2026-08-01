@@ -136,7 +136,7 @@ describe("registerCommands handlers", () => {
 	let mockContext: vscode.ExtensionContext
 	let mockVisibleProvider: { postMessageToWebview: Mock }
 	let mockProvider: { postMessageToWebview: Mock }
-	let mockMobileServer: { start: Mock; stop: Mock; regenerateToken: Mock }
+	let mockMobileServer: { start: Mock; stop: Mock; regenerateToken: Mock; showQrCode: Mock }
 	let handlers: Record<string, (...args: unknown[]) => unknown>
 
 	beforeEach(() => {
@@ -169,6 +169,7 @@ describe("registerCommands handlers", () => {
 			start: vi.fn().mockResolvedValue(undefined),
 			stop: vi.fn().mockResolvedValue(undefined),
 			regenerateToken: vi.fn().mockResolvedValue(undefined),
+			showQrCode: vi.fn(),
 		}
 		;(ClineProvider.getVisibleInstance as Mock).mockReturnValue(mockVisibleProvider)
 		;(vscode.commands.registerCommand as Mock).mockImplementation(
@@ -409,6 +410,12 @@ describe("registerCommands handlers", () => {
 		await handlers["zoo-code.stopMobileServer"]()
 
 		expect(mockMobileServer.stop).toHaveBeenCalledTimes(1)
+	})
+
+	it("showMobileServerQrCode calls mobileServer.showQrCode", async () => {
+		await handlers["zoo-code.showMobileServerQrCode"]()
+
+		expect(mockMobileServer.showQrCode).toHaveBeenCalledTimes(1)
 	})
 
 	it("regenerateMobileServerToken calls mobileServer.regenerateToken", async () => {

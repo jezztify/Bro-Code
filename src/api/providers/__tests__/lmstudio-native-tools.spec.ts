@@ -83,6 +83,9 @@ describe("LmStudioHandler Native Tools", () => {
 						}),
 					]),
 				}),
+				// create() takes a second argument carrying the abort signal, and
+				// toHaveBeenCalledWith matches on arity.
+				{ signal: undefined },
 			)
 			// parallel_tool_calls should be true by default when not explicitly set
 			const callArgs = mockCreate.mock.calls[0][0]
@@ -109,6 +112,9 @@ describe("LmStudioHandler Native Tools", () => {
 				expect.objectContaining({
 					tool_choice: "auto",
 				}),
+				// create() takes a second argument carrying the abort signal, and
+				// toHaveBeenCalledWith matches on arity.
+				{ signal: undefined },
 			)
 		})
 
@@ -221,6 +227,9 @@ describe("LmStudioHandler Native Tools", () => {
 				expect.objectContaining({
 					parallel_tool_calls: true,
 				}),
+				// create() takes a second argument carrying the abort signal, and
+				// toHaveBeenCalledWith matches on arity.
+				{ signal: undefined },
 			)
 		})
 

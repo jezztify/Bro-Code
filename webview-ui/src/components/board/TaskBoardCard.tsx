@@ -1,5 +1,5 @@
 import { memo, useState } from "react"
-import { Check, ExternalLink, Play, Sparkles, Square, X } from "lucide-react"
+import { Check, ClipboardCheck, ExternalLink, Play, Sparkles, Square, X } from "lucide-react"
 
 import { formatBoardTaskNumber, type BoardStage, type BoardTask } from "@roo-code/types"
 
@@ -13,7 +13,13 @@ import { writeBoardTaskDrag } from "./boardDrag"
 type PrimaryAction = {
 	labelKey: string
 	icon: typeof Play
-	messageType: "refineBoardTask" | "approveBoardTask" | "startBoardTask" | "stopBoardTask" | "showTaskWithId"
+	messageType:
+		| "refineBoardTask"
+		| "approveBoardTask"
+		| "startBoardTask"
+		| "validateBoardTask"
+		| "stopBoardTask"
+		| "showTaskWithId"
 	variant: "primary" | "secondary" | "destructive"
 	requiresTitle: boolean
 }
@@ -51,6 +57,13 @@ const PRIMARY_ACTIONS: Record<BoardStage, PrimaryAction> = {
 		variant: "destructive",
 		requiresTitle: false,
 	},
+	qa_validation: {
+		labelKey: "board:actions.validate",
+		icon: ClipboardCheck,
+		messageType: "validateBoardTask",
+		variant: "primary",
+		requiresTitle: true,
+	},
 	done: {
 		labelKey: "board:actions.open",
 		icon: ExternalLink,
@@ -60,7 +73,14 @@ const PRIMARY_ACTIONS: Record<BoardStage, PrimaryAction> = {
 	},
 }
 
-const TaskBoardCard = ({ task }: { task: BoardTask }) => {
+const TaskBoardCard = ({
+	task,
+	isRunning = false,
+}: {
+	task: BoardTask
+	/** Whether the card's execution run is still live in the extension host. */
+	isRunning?: boolean
+}) => {
 	const { t } = useAppTranslation()
 	const [title, setTitle] = useState(task.title)
 	const [description, setDescription] = useState(task.description ?? "")
@@ -80,11 +100,12 @@ const TaskBoardCard = ({ task }: { task: BoardTask }) => {
 			vscode.postMessage({ type: "updateBoardTask", taskId: task.id, boardTask: { title, description } })
 	}
 	const taskNumber = formatBoardTaskNumber(task.number)
-	// The card's conversation, shown in the chat dock when the card is clicked. A
-	// running or finished card means the execution chat; before that, the refinement
-	// chat is the only conversation the card has. A card with neither has nothing to
-	// open yet, and clicking it must not start one by accident.
-	const chatTaskId = task.linkedHistoryTaskId ?? task.linkedRefinementTaskId
+	// The card's conversation, shown in the chat dock when the card is clicked. The
+	// card's latest conversation wins: validation once it has been checked, otherwise
+	// the execution run, and before that the refinement chat is the only conversation
+	// the card has. A card with none has nothing to open yet, and clicking it must not
+	// start one by accident.
+	const chatTaskId = task.linkedValidationTaskId ?? task.linkedHistoryTaskId ?? task.linkedRefinementTaskId
 	const openChat = () => chatTaskId && vscode.postMessage({ type: "showTaskWithId", text: chatTaskId })
 	const openChatFromCard = (event: React.MouseEvent) => {
 		// The card's own controls own their clicks: editing a title, expanding the
@@ -92,7 +113,13 @@ const TaskBoardCard = ({ task }: { task: BoardTask }) => {
 		if (event.target instanceof Element && event.target.closest("input, textarea, button")) return
 		openChat()
 	}
-	const primaryAction = PRIMARY_ACTIONS[task.stage]
+	// A card stays in In Progress until its run reports completion, but the run itself
+	// only lives in the extension host: cancelling it from the chat view, a failed
+	// stream, or reloading the window all leave the card behind with nothing running.
+	// Stop is only meaningful while the run is live, so an idle card offers Start
+	// instead - which reopens the linked conversation and picks it back up.
+	const primaryAction =
+		task.stage === "in_progress" && !isRunning ? PRIMARY_ACTIONS.approved : PRIMARY_ACTIONS[task.stage]
 	const PrimaryIcon = primaryAction.icon
 	const primaryDisabled =
 		(primaryAction.requiresTitle && !task.title.trim()) ||

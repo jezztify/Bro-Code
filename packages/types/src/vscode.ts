@@ -37,6 +37,7 @@ export const commandIds = [
 	"kanbanButtonClicked",
 
 	"openInNewTab",
+	"openBoardInNewWindow",
 
 	"newTask",
 
@@ -51,6 +52,7 @@ export const commandIds = [
 	"startMobileServer",
 	"stopMobileServer",
 	"regenerateMobileServerToken",
+	"showMobileServerQrCode",
 
 	"showRipgrepDiagnostic",
 ] as const

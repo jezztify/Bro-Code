@@ -43,6 +43,16 @@ describe("workspace-first TaskBoardView", () => {
 		expect(screen.queryByRole("button", { name: "Chat" })).not.toBeInTheDocument()
 	})
 
+	it("validates work between in progress and done", () => {
+		renderBoard()
+
+		const columns = screen
+			.getAllByTestId(/^board-column-/)
+			.map((column) => column.getAttribute("data-testid")?.replace("board-column-", ""))
+
+		expect(columns).toEqual(["backlog", "scoped", "approved", "in_progress", "qa_validation", "done"])
+	})
+
 	it("renders blank cards in their assigned stage", () => {
 		renderBoard({
 			boardState: {

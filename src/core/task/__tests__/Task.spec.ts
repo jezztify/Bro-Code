@@ -1568,8 +1568,15 @@ describe("Cline", () => {
 				// Call submitUserMessage
 				await task.submitUserMessage("test message", ["image1.png"])
 
-				// Verify handleWebviewAskResponse was called directly (not webview)
-				expect(handleResponseSpy).toHaveBeenCalledWith("messageResponse", "test message", ["image1.png"])
+				// Verify handleWebviewAskResponse was called directly (not webview).
+				// The trailing argument is submitUserMessage's reasoningEffort, which this
+				// call does not set; toHaveBeenCalledWith matches on arity.
+				expect(handleResponseSpy).toHaveBeenCalledWith(
+					"messageResponse",
+					"test message",
+					["image1.png"],
+					undefined,
+				)
 				// Should NOT route through webview anymore
 				expect(mockProvider.postMessageToWebview).not.toHaveBeenCalled()
 			})
@@ -1611,7 +1618,7 @@ describe("Cline", () => {
 				task.clineMessages = []
 				await task.submitUserMessage("new task", ["image1.png"])
 
-				expect(handleResponseSpy).toHaveBeenCalledWith("messageResponse", "new task", ["image1.png"])
+				expect(handleResponseSpy).toHaveBeenCalledWith("messageResponse", "new task", ["image1.png"], undefined)
 
 				// Clear mock
 				handleResponseSpy.mockClear()
@@ -1627,7 +1634,12 @@ describe("Cline", () => {
 				]
 				await task.submitUserMessage("follow-up message", ["image2.png"])
 
-				expect(handleResponseSpy).toHaveBeenCalledWith("messageResponse", "follow-up message", ["image2.png"])
+				expect(handleResponseSpy).toHaveBeenCalledWith(
+					"messageResponse",
+					"follow-up message",
+					["image2.png"],
+					undefined,
+				)
 			})
 
 			it("should handle undefined provider gracefully", async () => {
@@ -3242,7 +3254,7 @@ describe("Queued message processing after condense", () => {
 		vi.runAllTimers()
 		vi.useRealTimers()
 
-		expect(submitSpy).toHaveBeenCalledWith("queued text", ["img1.png"])
+		expect(submitSpy).toHaveBeenCalledWith("queued text", ["img1.png"], undefined, undefined, undefined)
 		expect(task.messageQueueService.isEmpty()).toBe(true)
 	})
 
@@ -3278,7 +3290,7 @@ describe("Queued message processing after condense", () => {
 		vi.runAllTimers()
 		vi.useRealTimers()
 
-		expect(spyA).toHaveBeenCalledWith("A message", undefined)
+		expect(spyA).toHaveBeenCalledWith("A message", undefined, undefined, undefined, undefined)
 		expect(spyB).not.toHaveBeenCalled()
 		expect(taskB.messageQueueService.isEmpty()).toBe(false)
 
@@ -3288,7 +3300,7 @@ describe("Queued message processing after condense", () => {
 		vi.runAllTimers()
 		vi.useRealTimers()
 
-		expect(spyB).toHaveBeenCalledWith("B message", undefined)
+		expect(spyB).toHaveBeenCalledWith("B message", undefined, undefined, undefined, undefined)
 		expect(taskB.messageQueueService.isEmpty()).toBe(true)
 	})
 })

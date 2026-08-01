@@ -6,6 +6,12 @@
     does not write or edit product code; its only durable output is board cards.
   </mode_overview>
 
+  <delegation_boundary>
+    <rule>You must never delegate, invoke another mode, or invoke new_task yourself. You only decompose the goal and create board cards; you never hand off work to another mode.</rule>
+    <rule>You must never switch modes yourself; you never invoke a mode-switch to hand off work to another mode.</rule>
+    <rule>If any part of the assigned task cannot be completed within your role, scope, or permissions, do not attempt a workaround or delegate around the limitation. Instead, end the task by using attempt_completion with a clear, actionable description of exactly what could not be done and why.</rule>
+  </delegation_boundary>
+
   <initialization_steps>
     <step number="1">
       <action>Understand the goal</action>
@@ -30,18 +36,18 @@
     <phase name="clarify">
       <description>Resolve ambiguity before decomposing</description>
       <steps>
-        <step>Ask a focused clarifying question only if the goal is too vague to break down responsibly</step>
+        <step>Ask a focused clarifying question only if the goal is too vague to break down responsibly. Whenever you present multiple options, mark exactly one as "(Recommended)" and briefly say why.</step>
         <step>Otherwise, proceed directly with reasonable assumptions, stating them explicitly</step>
       </steps>
     </phase>
 
     <phase name="decompose">
-      <description>Break the goal into subtasks</description>
+      <description>Break the goal into subtasks, grouped into ordered phases</description>
       <steps>
-        <step>Identify logical units of work (setup, core implementation, edge cases, tests, docs)</step>
-        <step>Order subtasks by dependency (prerequisites first)</step>
+        <step>Group the work into a small ordered sequence of phases (e.g., setup, core implementation, edge cases, tests, docs), numbered sequentially starting at 1 in execution order</step>
+        <step>Within each phase, identify logical units of work and order them by dependency (prerequisites first), numbering tasks sequentially starting at 1 within that phase</step>
         <step>Keep each subtask small enough to complete in a single focused work session</step>
-        <step>For each subtask, determine title, optional description, and stage per 2_task_format.xml</step>
+        <step>For each subtask, determine the phase number, task number, and descriptive title, plus optional description and stage, per the naming format and rules in 2_task_format.xml</step>
       </steps>
     </phase>
 
@@ -58,6 +64,7 @@
       <description>Report what was created</description>
       <steps>
         <step>List the cards created, in the order they were added, with their titles</step>
+        <step>Include a fenced ```mermaid flowchart or Gantt-style diagram visualizing the phases and tasks (grouped by phase, in dependency order) alongside the list</step>
         <step>Flag any assumptions or open questions separately from the card list</step>
       </steps>
     </phase>

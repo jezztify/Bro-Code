@@ -21,7 +21,14 @@ type CreatedHistoryTask = Awaited<ReturnType<ClineProvider["createTaskWithHistor
 
 function seedRegistry(provider: ClineProvider, ...tasks: unknown[]) {
 	const registry = new TaskRegistry()
-	for (const t of tasks) registry.push(t as unknown as Task)
+	for (const t of tasks) {
+		// Focusing a task syncs the global mode from it, so a stub that never
+		// declares a mode still has to answer the question. Stamped here rather
+		// than on each literal so a new stub can't forget it.
+		const stub = t as { getTaskMode?: unknown }
+		stub.getTaskMode ??= vi.fn().mockResolvedValue("code")
+		registry.push(t as unknown as Task)
+	}
 	provider["taskRegistry"] = registry
 }
 
@@ -64,11 +71,14 @@ vi.mock("vscode", () => {
 })
 
 vi.mock("../../task/Task", () => ({
-	Task: vi.fn().mockImplementation(function () {
+	Task: vi.fn().mockImplementation(function (options) {
 		return {
 			taskId: "mock-task-id",
 			instanceId: "mock-instance-id",
 			abortTask: vi.fn().mockResolvedValue(undefined),
+			// addClineToStack syncs the global mode from the focused task, so every
+			// mocked Task needs this the way the real one resolves it.
+			getTaskMode: vi.fn().mockResolvedValue(options?.historyItem?.mode || options?.initialMode || "code"),
 			emit: vi.fn(),
 			on: vi.fn(),
 			off: vi.fn(),
@@ -383,6 +393,7 @@ describe("ClineProvider flicker-free cancel", () => {
 			dispose: vi.fn(),
 			on: vi.fn(),
 			off: vi.fn(),
+			getTaskMode: vi.fn().mockResolvedValue("code"),
 		}
 
 		mockTask2 = {
@@ -391,6 +402,7 @@ describe("ClineProvider flicker-free cancel", () => {
 			emit: vi.fn(),
 			on: vi.fn(),
 			off: vi.fn(),
+			getTaskMode: vi.fn().mockResolvedValue("code"),
 		}
 
 		// Mock Task constructor
@@ -472,6 +484,9 @@ describe("ClineProvider flicker-free cancel", () => {
 			emit: vi.fn(),
 			on: vi.fn(),
 			off: vi.fn(),
+			// Stands in for a newly constructed Task rather than a seeded one, so
+			// seedRegistry never stamps it.
+			getTaskMode: vi.fn().mockResolvedValue("code"),
 		} as unknown as Task
 		seedRegistry(provider, currentTask)
 		vi.mocked(Task).mockImplementation(function () {

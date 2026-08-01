@@ -4,7 +4,7 @@ import type { Mock } from "vitest"
 import * as vscode from "vscode"
 
 import { ClineProvider } from "../../core/webview/ClineProvider"
-import { getOpenTabPanels, openClineInNewTab } from "../registerCommands"
+import { getOpenTabPanels, openBoardInNewTab, openBoardInNewWindow, openClineInNewTab } from "../registerCommands"
 
 vi.mock("delay", () => ({ default: vi.fn().mockResolvedValue(undefined) }))
 
@@ -88,6 +88,62 @@ describe("openClineInNewTab", () => {
 			3,
 			expect.any(Object),
 		)
+	})
+
+	it("stays an editor tab by default", async () => {
+		await openClineInNewTab(options)
+
+		expect(vscode.commands.executeCommand).not.toHaveBeenCalledWith("workbench.action.moveEditorToNewWindow")
+	})
+
+	it("detaches the panel into its own window when asked, before locking the group", async () => {
+		await openClineInNewTab({ ...options, newWindow: true })
+
+		const executed = (vscode.commands.executeCommand as Mock).mock.calls.map(([command]) => command)
+		expect(executed).toEqual(["workbench.action.moveEditorToNewWindow", "workbench.action.lockEditorGroup"])
+	})
+
+	// A panel that couldn't be detached is still a usable panel, so the failure must not propagate
+	// out of the command and surface as an unhandled rejection.
+	it("leaves the panel as a tab when the move command fails", async () => {
+		;(vscode.commands.executeCommand as Mock).mockImplementation((command: string) =>
+			command === "workbench.action.moveEditorToNewWindow"
+				? Promise.reject(new Error("no auxiliary windows here"))
+				: Promise.resolve(undefined),
+		)
+
+		await expect(openClineInNewTab({ ...options, newWindow: true })).resolves.toBeDefined()
+
+		expect(options.outputChannel.appendLine).toHaveBeenCalledWith(
+			expect.stringContaining("no auxiliary windows here"),
+		)
+		expect(vscode.commands.executeCommand).toHaveBeenCalledWith("workbench.action.lockEditorGroup")
+	})
+
+	// The tab the panel should land on is handed to the provider up front rather than posted after
+	// the fact: the webview has no message listener until it launches. See the initialTab replay in
+	// webviewMessageHandler's webviewDidLaunch case.
+	it("hands the board tab to the provider before the webview resolves", async () => {
+		const resolveOrder: string[] = []
+		;(ClineProvider as unknown as Mock).mockImplementation(function (this: Record<string, unknown>) {
+			this.resolveWebviewView = vi.fn().mockImplementation(() => {
+				resolveOrder.push(`resolve:${this.initialTab}`)
+				return Promise.resolve(undefined)
+			})
+		})
+
+		const tabProvider = await openBoardInNewTab(options)
+
+		expect(tabProvider.initialTab).toBe("board")
+		expect(resolveOrder).toEqual(["resolve:board"])
+		expect(vscode.commands.executeCommand).not.toHaveBeenCalledWith("workbench.action.moveEditorToNewWindow")
+	})
+
+	it("openBoardInNewWindow opens the board detached", async () => {
+		const tabProvider = await openBoardInNewWindow(options)
+
+		expect(tabProvider.initialTab).toBe("board")
+		expect(vscode.commands.executeCommand).toHaveBeenCalledWith("workbench.action.moveEditorToNewWindow")
 	})
 
 	it("tracks the panel as open until it is disposed", async () => {

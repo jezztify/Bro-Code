@@ -1,18 +1,15 @@
 // npx vitest run src/__tests__/App.mobile.spec.tsx
 //
-// Covers the "mobile-mode fixture asserting the tab chrome is hidden and
-// ChatView renders full-screen" item from the mobile-server plan's
-// verification checklist. The plan originally called for extending the
-// Playwright CT visual-snapshot harness (`webview-ui/playwright/` +
-// `playwright-ct.config.ts`) for this, but that harness is purely
-// screenshot-diff based (`testMatch: "**/*.visual.tsx"`, `toHaveScreenshot`)
-// and has no baseline for a new fixture to compare against. A structural
-// RTL assertion - same approach as `App.spec.tsx` - covers the same intent
-// (tab chrome absent, ChatView full-screen) without needing a checked-in
-// baseline image.
+// Mobile mode used to render a chat-only shell, so this file used to assert the
+// tab chrome was *absent*. It now asserts the opposite: a phone gets the same
+// AppShell as desktop (rail + routed board pane + chat dock), because the whole
+// point of serving the webview-ui bundle over the LAN is reaching the board from
+// a phone, not just the chat. A structural RTL assertion - same approach as
+// `App.spec.tsx` - covers this without needing the Playwright CT harness's
+// checked-in screenshot baselines.
 
 import React from "react"
-import { render, screen, cleanup } from "@/utils/test-utils"
+import { render, screen, cleanup, act } from "@/utils/test-utils"
 
 import AppWithProviders from "../App"
 
@@ -35,22 +32,24 @@ vi.mock("@src/utils/TelemetryClient", () => ({
 	},
 }))
 
+// forwardRef in both mocks: AppShell/ChatDock and App hand these components a
+// ref, which a plain function component cannot accept.
 vi.mock("@src/components/chat/ChatView", () => ({
 	__esModule: true,
-	default: function ChatView({ isHidden }: { isHidden: boolean }) {
+	default: React.forwardRef(function ChatView({ isHidden }: { isHidden: boolean }, _ref: React.Ref<unknown>) {
 		return (
 			<div data-testid="chat-view" data-hidden={isHidden}>
 				Chat View
 			</div>
 		)
-	},
+	}),
 }))
 
 vi.mock("@src/components/settings/SettingsView", () => ({
 	__esModule: true,
-	default: function SettingsView() {
+	default: React.forwardRef(function SettingsView(_props: unknown, _ref: React.Ref<unknown>) {
 		return <div data-testid="settings-view">Settings View</div>
-	},
+	}),
 }))
 
 vi.mock("@src/components/welcome/WelcomeViewProvider", () => ({
@@ -122,19 +121,25 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 	ExtensionStateContextProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
+const baseExtensionState = {
+	didHydrateState: true,
+	showWelcome: false,
+	shouldShowAnnouncement: false,
+	experiments: {},
+	language: "en",
+	telemetrySetting: "enabled",
+	// Read by ChatDock, which mobile now mounts along with the rest of the shell.
+	taskHistory: [],
+	currentTaskItem: undefined,
+	cwd: "/workspace",
+}
+
 describe("App in mobile mode (window.ZOO_MOBILE_MODE)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		;(window as any).ZOO_MOBILE_MODE = true
 
-		mockUseExtensionState.mockReturnValue({
-			didHydrateState: true,
-			showWelcome: false,
-			shouldShowAnnouncement: false,
-			experiments: {},
-			language: "en",
-			telemetrySetting: "enabled",
-		})
+		mockUseExtensionState.mockReturnValue(baseExtensionState)
 	})
 
 	afterEach(() => {
@@ -142,56 +147,70 @@ describe("App in mobile mode (window.ZOO_MOBILE_MODE)", () => {
 		delete (window as any).ZOO_MOBILE_MODE
 	})
 
-	it("renders ChatView full-screen (not hidden) and skips the desktop tab shell entirely", () => {
+	it("renders the full shell - rail, board pane and chat dock - not a chat-only screen", () => {
 		render(<AppWithProviders />)
 
+		expect(screen.getByTestId("app-shell")).toBeInTheDocument()
+		expect(screen.getByTestId("app-shell-rail")).toBeInTheDocument()
+		expect(screen.getByTestId("board-view")).toBeInTheDocument()
+
 		const chatView = screen.getByTestId("chat-view")
-		expect(chatView).toBeInTheDocument()
+		expect(screen.getByTestId("chat-dock")).toContainElement(chatView)
 		expect(chatView.getAttribute("data-hidden")).toBe("false")
 	})
 
-	it("never mounts the Settings/Board/Marketplace tab chrome, even when messaged to switch tabs", () => {
+	it("switches the routed pane on mobile the same way desktop does", () => {
 		render(<AppWithProviders />)
 
-		for (const action of [
-			"settingsButtonClicked",
-			"boardButtonClicked",
-			"marketplaceButtonClicked",
-			"kanbanButtonClicked",
-		]) {
-			window.dispatchEvent(new MessageEvent("message", { data: { type: "action", action } }))
-		}
-
-		expect(screen.queryByTestId("settings-view")).not.toBeInTheDocument()
-		expect(screen.queryByTestId("board-view")).not.toBeInTheDocument()
-		expect(screen.queryByTestId("marketplace-view")).not.toBeInTheDocument()
-		expect(screen.queryByTestId("welcome-view")).not.toBeInTheDocument()
-
-		// ChatView is still the only thing on screen, still full-screen.
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView.getAttribute("data-hidden")).toBe("false")
-	})
-
-	it("renders the mobile top bar (title + new-task button) instead of tab chrome", () => {
-		render(<AppWithProviders />)
-
-		expect(screen.getByText("chat:mobile.title")).toBeInTheDocument()
-		expect(screen.getByLabelText("chat:mobile.newTask")).toBeInTheDocument()
-	})
-
-	it("still shows MobileApp even when setup/welcome gating would otherwise apply on desktop", () => {
-		mockUseExtensionState.mockReturnValue({
-			didHydrateState: true,
-			showWelcome: true,
-			shouldShowAnnouncement: false,
-			experiments: {},
-			language: "en",
-			telemetrySetting: "enabled",
+		act(() => {
+			window.dispatchEvent(
+				new MessageEvent("message", { data: { type: "action", action: "settingsButtonClicked" } }),
+			)
 		})
+		expect(screen.getByTestId("settings-view")).toBeInTheDocument()
+		expect(screen.queryByTestId("board-view")).not.toBeInTheDocument()
+
+		act(() => {
+			window.dispatchEvent(
+				new MessageEvent("message", { data: { type: "action", action: "marketplaceButtonClicked" } }),
+			)
+		})
+		expect(screen.getByTestId("marketplace-view")).toBeInTheDocument()
+
+		act(() => {
+			window.dispatchEvent(
+				new MessageEvent("message", { data: { type: "action", action: "boardButtonClicked" } }),
+			)
+		})
+		expect(screen.getByTestId("board-view")).toBeInTheDocument()
+
+		// The dock stays mounted across every one of those switches.
+		expect(screen.getByTestId("chat-view")).toBeInTheDocument()
+	})
+
+	it("skips the welcome/setup gate that would otherwise apply on desktop", () => {
+		mockUseExtensionState.mockReturnValue({ ...baseExtensionState, showWelcome: true })
 
 		render(<AppWithProviders />)
 
 		expect(screen.queryByTestId("welcome-view")).not.toBeInTheDocument()
+		expect(screen.getByTestId("board-view")).toBeInTheDocument()
 		expect(screen.getByTestId("chat-view")).toBeInTheDocument()
+	})
+
+	it("shows the reconnecting banner only while the mobile transport is down", () => {
+		render(<AppWithProviders />)
+
+		expect(screen.queryByTestId("mobile-connection-banner")).not.toBeInTheDocument()
+
+		act(() => {
+			window.dispatchEvent(new CustomEvent("zoo-mobile-connection", { detail: { status: "reconnecting" } }))
+		})
+		expect(screen.getByTestId("mobile-connection-banner")).toBeInTheDocument()
+
+		act(() => {
+			window.dispatchEvent(new CustomEvent("zoo-mobile-connection", { detail: { status: "open" } }))
+		})
+		expect(screen.queryByTestId("mobile-connection-banner")).not.toBeInTheDocument()
 	})
 })

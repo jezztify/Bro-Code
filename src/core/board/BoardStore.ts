@@ -8,6 +8,16 @@ import { v7 as uuidv7 } from "uuid"
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { safeWriteJson } from "../../utils/safeWriteJson"
 
+/** A card that has just changed column, reported to {@link BoardStore.setMoveNotifier}. */
+export type BoardTaskMove = {
+	/** The card as it stands after the move. */
+	task: BoardTask
+	from: BoardStage
+	to: BoardStage
+	/** Where this board's storage lives, so a notifier can reach the card's conversation. */
+	globalStoragePath: string
+}
+
 const EMPTY_STATE: BoardState = {
 	version: 1,
 	workspaces: [],
@@ -20,6 +30,60 @@ export class BoardStore {
 	private writeLock: Promise<void> = Promise.resolve()
 	public readonly initialized: Promise<void>
 	private resolveInitialized!: () => void
+	private changeListeners = new Set<(state: BoardState) => void>()
+	private initializeStarted = false
+	/** Moves made by the mutation currently running, drained once it has been written. */
+	private pendingMoves: Array<{ taskId: string; from: BoardStage; to: BoardStage }> = []
+
+	/**
+	 * What to do when a card changes column - writing a note into the card's
+	 * conversation. Deliberately one notifier for the whole extension host rather than
+	 * a per-instance listener like {@link onDidChange}: a change is broadcast to every
+	 * window, but a move must be *reported* exactly once, or the same note would be
+	 * appended to a conversation once per open window.
+	 */
+	private static moveNotifier: ((move: BoardTaskMove) => Promise<void>) | undefined
+
+	/**
+	 * One store per storage path, shared by every `ClineProvider` in the extension
+	 * host. Each provider used to build its own store over the same `board.json`,
+	 * and since a store reads that file exactly once (see `initialize`) and then
+	 * writes its whole in-memory copy back on every mutation, a second provider -
+	 * the popped-out board window is one - would serve stale cards and silently
+	 * revert the other's edits the next time it saved anything.
+	 *
+	 * The constructor stays public for tests, which need genuinely independent
+	 * instances to exercise reload-from-disk. Production code must use this.
+	 */
+	private static instances = new Map<string, BoardStore>()
+
+	/**
+	 * Drops every shared instance. Tests build many providers over the same mocked
+	 * storage path, and without this each one would inherit the previous test's
+	 * cards - which is the whole point of sharing in production. Called from a
+	 * global `beforeEach` in `vitest.setup.ts`, not from production code.
+	 */
+	static resetInstancesForTests(): void {
+		BoardStore.instances.clear()
+		BoardStore.moveNotifier = undefined
+	}
+
+	/** See {@link BoardStore.moveNotifier}. `undefined` leaves moves unreported. */
+	static setMoveNotifier(notifier: ((move: BoardTaskMove) => Promise<void>) | undefined): void {
+		BoardStore.moveNotifier = notifier
+	}
+
+	static getInstance(globalStoragePath: string, log?: (message: string) => void): BoardStore {
+		const existing = BoardStore.instances.get(globalStoragePath)
+
+		if (existing) {
+			return existing
+		}
+
+		const created = new BoardStore(globalStoragePath, log)
+		BoardStore.instances.set(globalStoragePath, created)
+		return created
+	}
 
 	constructor(
 		private readonly globalStoragePath: string,
@@ -30,7 +94,60 @@ export class BoardStore {
 		})
 	}
 
+	/**
+	 * Notifies every subscriber whenever the board changes, so a mutation made in
+	 * one window reaches the webviews of all the others (and the mobile server's
+	 * postMessage listener). Returns an unsubscribe function - deliberately not a
+	 * `vscode.Disposable`, to keep this module free of the `vscode` import.
+	 */
+	onDidChange(listener: (state: BoardState) => void | Promise<void>): () => void {
+		this.changeListeners.add(listener)
+		return () => this.changeListeners.delete(listener)
+	}
+
+	/**
+	 * Awaited by `mutate`, so a mutation isn't considered finished until every
+	 * subscriber has been told. Callers used to await the resulting webview post
+	 * themselves (the old `ClineProvider.updateBoardState`); keeping that await
+	 * here preserves their sequencing now that broadcasting moved into the store.
+	 */
+	private async emitChange(): Promise<void> {
+		for (const listener of this.changeListeners) {
+			try {
+				await listener(this.getSnapshot())
+			} catch (error) {
+				this.log(`[BoardStore] change listener threw: ${String(error)}`)
+			}
+		}
+	}
+
+	/**
+	 * Reports finished moves. A notifier that throws must not fail the mutation that
+	 * moved the card: the card has already moved, and a note that could not be written
+	 * is worth a log, not a rolled-back board.
+	 */
+	private async emitMoves(moves: BoardTaskMove[]): Promise<void> {
+		const notifier = BoardStore.moveNotifier
+		if (!notifier) return
+		for (const move of moves) {
+			try {
+				await notifier(move)
+			} catch (error) {
+				this.log(`[BoardStore] move notifier threw: ${String(error)}`)
+			}
+		}
+	}
+
 	async initialize(): Promise<void> {
+		// Every provider sharing this store calls initialize(); only the first may
+		// run, or a later one would reset `state` to whatever is on disk and drop
+		// mutations made in between.
+		if (this.initializeStarted) {
+			return this.initialized
+		}
+
+		this.initializeStarted = true
+
 		try {
 			const filePath = this.getFilePath()
 			const raw = await fs.readFile(filePath, "utf8")
@@ -131,7 +248,8 @@ export class BoardStore {
 		return this.mutate((state) => {
 			const workspace = this.requireWorkspace(state, id)
 			if (input.name !== undefined) workspace.name = input.name.trim()
-			if (input.linkedWorkspacePath !== undefined) workspace.linkedWorkspacePath = input.linkedWorkspacePath || undefined
+			if (input.linkedWorkspacePath !== undefined)
+				workspace.linkedWorkspacePath = input.linkedWorkspacePath || undefined
 			workspace.updatedAt = Date.now()
 		})
 	}
@@ -201,10 +319,7 @@ export class BoardStore {
 			const task = this.requireTask(state, id)
 			if (input.title !== undefined) task.title = input.title
 			if (input.description !== undefined) task.description = input.description || undefined
-			if (input.stage !== undefined && input.stage !== task.stage) {
-				task.stage = input.stage
-				task.position = this.nextPosition(state, task.workspaceId, input.stage)
-			}
+			if (input.stage !== undefined) this.moveToStage(state, task, input.stage)
 			if (input.position !== undefined) task.position = input.position
 			task.updatedAt = Date.now()
 		})
@@ -222,10 +337,7 @@ export class BoardStore {
 			const task = this.requireTask(state, id)
 			if (task.linkedHistoryTaskId) throw new Error("Board task is already linked to an execution task")
 			task.linkedHistoryTaskId = historyTaskId
-			if (task.stage !== "in_progress") {
-				task.stage = "in_progress"
-				task.position = this.nextPosition(state, task.workspaceId, "in_progress")
-			}
+			this.moveToStage(state, task, "in_progress")
 			task.updatedAt = Date.now()
 		})
 	}
@@ -240,17 +352,45 @@ export class BoardStore {
 	}
 
 	/**
+	 * Attach the run that checks a finished implementation against the card's
+	 * acceptance criteria. Validation is what the QA validation column is for, so a
+	 * card being validated is held there for as long as the check runs.
+	 */
+	async linkValidationTask(id: string, historyTaskId: string): Promise<BoardState> {
+		return this.mutate((state) => {
+			const task = this.requireTask(state, id)
+			if (task.linkedValidationTaskId) throw new Error("Board task is already linked to a validation chat")
+			task.linkedValidationTaskId = historyTaskId
+			this.moveToStage(state, task, "qa_validation")
+			task.updatedAt = Date.now()
+		})
+	}
+
+	/**
+	 * Forget a card's validation chat so it can be validated again. Used when the
+	 * conversation is gone from history: without this the card keeps a Validate button
+	 * that can only ever fail to reveal a conversation that no longer exists.
+	 */
+	async unlinkValidationTask(id: string): Promise<BoardState> {
+		return this.mutate((state) => {
+			const task = this.requireTask(state, id)
+			task.linkedValidationTaskId = undefined
+			task.updatedAt = Date.now()
+		})
+	}
+
+	/**
 	 * Detach a cancelled execution run and return the card to the approved column so
 	 * it can be started again. The cancelled conversation is left in task history.
+	 * Any validation of the abandoned implementation goes with it, so the card that
+	 * gets started again is validated afresh.
 	 */
 	async unlinkExecutionTask(id: string): Promise<BoardState> {
 		return this.mutate((state) => {
 			const task = this.requireTask(state, id)
 			task.linkedHistoryTaskId = undefined
-			if (task.stage !== "approved") {
-				task.stage = "approved"
-				task.position = this.nextPosition(state, task.workspaceId, "approved")
-			}
+			task.linkedValidationTaskId = undefined
+			this.moveToStage(state, task, "approved")
 			task.updatedAt = Date.now()
 		})
 	}
@@ -264,20 +404,48 @@ export class BoardStore {
 		return this.mutate((state) => {
 			for (const task of state.tasks) {
 				if (task.linkedRefinementTaskId === historyTaskId && task.stage === "backlog") {
-					task.stage = "scoped"
-					task.position = this.nextPosition(state, task.workspaceId, "scoped")
+					this.moveToStage(state, task, "scoped")
 					task.updatedAt = Date.now()
 				}
 			}
 		})
 	}
 
-	async moveLinkedHistoryTaskToDone(historyTaskId: string): Promise<BoardState> {
+	/**
+	 * Hand a finished implementation over to validation rather than straight to done:
+	 * a card is only retired once its acceptance criteria have been checked. A card the
+	 * validator sent back for more work returns here when the execution run reports
+	 * finishing again, so fixes get re-validated. Cards already in validation or
+	 * retired to done are left where they are.
+	 */
+	async moveLinkedHistoryTaskToQaValidation(historyTaskId: string): Promise<BoardState> {
 		return this.mutate((state) => {
 			for (const task of state.tasks) {
-				if (task.linkedHistoryTaskId === historyTaskId && task.stage !== "done") {
-					task.stage = "done"
-					task.position = this.nextPosition(state, task.workspaceId, "done")
+				if (
+					task.linkedHistoryTaskId === historyTaskId &&
+					task.stage !== "qa_validation" &&
+					task.stage !== "done"
+				) {
+					this.moveToStage(state, task, "qa_validation")
+					// The implementation has changed since the last check, so its verdict no
+					// longer applies: the card needs a fresh validation run, not the old chat.
+					task.linkedValidationTaskId = undefined
+					task.updatedAt = Date.now()
+				}
+			}
+		})
+	}
+
+	/**
+	 * Retire a card whose validation run has finished. Only cards still in validation
+	 * move: a validator that found unmet criteria sends its card back itself, and
+	 * that decision outranks the completion that follows it.
+	 */
+	async moveLinkedValidationTaskToDone(historyTaskId: string): Promise<BoardState> {
+		return this.mutate((state) => {
+			for (const task of state.tasks) {
+				if (task.linkedValidationTaskId === historyTaskId && task.stage === "qa_validation") {
+					this.moveToStage(state, task, "done")
 					task.updatedAt = Date.now()
 				}
 			}
@@ -285,16 +453,33 @@ export class BoardStore {
 	}
 
 	private async mutate(mutator: (state: BoardState) => void): Promise<BoardState> {
+		// Held locally rather than read back off the instance after the lock is released,
+		// so a mutation queued behind this one cannot drain the moves this one made.
+		let moves: BoardTaskMove[] = []
 		const operation = this.writeLock.then(async () => {
 			await this.initialized
+			this.pendingMoves = []
 			const next = structuredClone(this.state)
 			mutator(next)
 			const validated = boardStateSchema.parse(next)
 			await safeWriteJson(this.getFilePath(), validated)
 			this.state = validated
+			moves = this.pendingMoves.flatMap(({ taskId, from, to }) => {
+				// A card the same mutation went on to delete has no move worth reporting.
+				const task = validated.tasks.find((candidate) => candidate.id === taskId)
+				return task ? [{ task, from, to, globalStoragePath: this.globalStoragePath }] : []
+			})
+			this.pendingMoves = []
 		})
-		this.writeLock = operation.then(() => undefined, () => undefined)
+		this.writeLock = operation.then(
+			() => undefined,
+			() => undefined,
+		)
 		await operation
+		// Single choke point for every write, so every board change - whichever
+		// window or the phone triggered it - fans out from here.
+		await this.emitChange()
+		await this.emitMoves(moves)
 		return this.getSnapshot()
 	}
 
@@ -309,8 +494,26 @@ export class BoardStore {
 		return number
 	}
 
+	/**
+	 * Move a card into another column, remembering where it came from so the card can
+	 * tell the user what happened to it. Every stage change goes through here - a drag,
+	 * an edit, or the pipeline promoting a card on its own - so a move made while
+	 * nobody was watching the board is never silent. A card told to stay where it is
+	 * has not moved, and keeps whatever move it was already showing.
+	 */
+	private moveToStage(state: BoardState, task: BoardTask, stage: BoardStage): void {
+		if (task.stage === stage) return
+		this.pendingMoves.push({ taskId: task.id, from: task.stage, to: stage })
+		task.stage = stage
+		task.position = this.nextPosition(state, task.workspaceId, stage)
+	}
+
 	private nextPosition(state: BoardState, workspaceId: string, stage: BoardStage): number {
-		return state.tasks.filter((task) => task.workspaceId === workspaceId && task.stage === stage).reduce((max, task) => Math.max(max, task.position), -1) + 1
+		return (
+			state.tasks
+				.filter((task) => task.workspaceId === workspaceId && task.stage === stage)
+				.reduce((max, task) => Math.max(max, task.position), -1) + 1
+		)
 	}
 
 	private requireWorkspace(state: BoardState, id: string): BoardWorkspace {

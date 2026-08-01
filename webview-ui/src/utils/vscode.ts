@@ -4,7 +4,7 @@ import { WebviewMessage } from "@roo/WebviewMessage"
 
 /**
  * Event name dispatched on `window` whenever the mobile WebSocket transport's
- * connection status changes. `MobileApp.tsx` listens for this to drive a
+ * connection status changes. `MobileConnectionBanner.tsx` listens for this to drive a
  * "Reconnecting..." banner (see the mobile-server plan's Phase D). Not
  * dispatched at all in the desktop (`acquireVsCodeApi`) or no-op modes.
  */
@@ -18,6 +18,27 @@ export interface ZooMobileConnectionEventDetail {
 
 const RECONNECT_BASE_DELAY_MS = 1000
 const RECONNECT_MAX_DELAY_MS = 30_000
+
+/**
+ * How long the socket may go without any inbound traffic before we treat it as
+ * dead and force a reconnect.
+ *
+ * Browsers answer WebSocket pings transparently but expose no event for them, so
+ * a silently dropped connection (phone sleeping, NAT idle timeout, Wi-Fi roam)
+ * leaves `readyState` at OPEN forever and the `close` handler below never fires.
+ * Browsers answer protocol-level pings without surfacing them to JS, so the
+ * server also emits an application-level heartbeat frame every 20s purely so
+ * this deadline has something observable to refresh. Any gap this long means
+ * the connection is gone whatever `readyState` claims.
+ */
+const LIVENESS_TIMEOUT_MS = 60_000
+
+/**
+ * Server-sent frames handled entirely by the transport. Consumed here rather
+ * than re-dispatched, so no `window` "message" consumer has to know they exist.
+ */
+const HEARTBEAT_MESSAGE_TYPE = "__mobileHeartbeat"
+const RELOAD_MESSAGE_TYPE = "mobileReload"
 
 /**
  * A utility wrapper around the acquireVsCodeApi() function, which enables
@@ -45,6 +66,7 @@ class VSCodeAPIWrapper {
 	private messageQueue: WebviewMessage[] = []
 	private reconnectAttempt = 0
 	private reconnectTimer: ReturnType<typeof setTimeout> | undefined
+	private livenessTimer: ReturnType<typeof setTimeout> | undefined
 
 	constructor() {
 		const mobileWsUrl = (window as unknown as { ZOO_MOBILE_WS_URL?: string }).ZOO_MOBILE_WS_URL
@@ -75,6 +97,7 @@ class VSCodeAPIWrapper {
 		ws.addEventListener("open", () => {
 			this.reconnectAttempt = 0
 			this.dispatchConnectionStatus("open")
+			this.noteLiveness()
 			this.flushQueue()
 
 			// Resend `webviewDidLaunch` on every successful (re)open to force the
@@ -93,8 +116,23 @@ class VSCodeAPIWrapper {
 			// be the parsed `ExtensionMessage` object, matching what
 			// `webview.postMessage()` delivers on desktop. Parse here so those
 			// consumers need no changes.
+			// Any inbound frame proves the connection is alive, heartbeats included.
+			this.noteLiveness()
+
 			try {
 				const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data
+
+				if (data?.type === HEARTBEAT_MESSAGE_TYPE) {
+					return
+				}
+
+				// Dev-mode nudge from the Vite HMR watcher: the served bundle changed,
+				// so reload rather than keep running stale code (see viteDevProxy.ts).
+				if (data?.type === RELOAD_MESSAGE_TYPE) {
+					window.location.reload()
+					return
+				}
+
 				window.dispatchEvent(new MessageEvent("message", { data }))
 			} catch (error) {
 				console.error("Failed to parse WS message from MobileServer:", error)
@@ -102,12 +140,39 @@ class VSCodeAPIWrapper {
 		})
 
 		ws.addEventListener("close", () => {
+			this.clearLivenessTimer()
 			this.scheduleReconnect()
 		})
 
 		ws.addEventListener("error", () => {
 			ws.close()
 		})
+	}
+
+	/**
+	 * Restarts the liveness deadline. On expiry the socket is force-closed, which
+	 * runs the `close` handler above and so funnels into the normal reconnect path
+	 * rather than duplicating its backoff logic.
+	 */
+	private noteLiveness() {
+		this.clearLivenessTimer()
+
+		this.livenessTimer = setTimeout(() => {
+			this.livenessTimer = undefined
+
+			try {
+				this.ws?.close()
+			} catch {
+				// Already closing; the close handler still schedules the reconnect.
+			}
+		}, LIVENESS_TIMEOUT_MS)
+	}
+
+	private clearLivenessTimer() {
+		if (this.livenessTimer) {
+			clearTimeout(this.livenessTimer)
+			this.livenessTimer = undefined
+		}
 	}
 
 	private scheduleReconnect() {

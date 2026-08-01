@@ -466,6 +466,8 @@ describe("Task persistence", () => {
 					status: "completed",
 					tokensIn: 10,
 				}),
+				// saveClineMessages drops any reasoning-effort override as it persists.
+				{ removeReasoningEffort: true },
 			)
 		})
 	})

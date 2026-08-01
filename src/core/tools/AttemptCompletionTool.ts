@@ -90,11 +90,11 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 
 			await task.say("completion_result", result, undefined, false)
 
-			// The agent has declared the work finished, so retire its board card here.
+			// The agent has declared the work finished, so advance its board card here.
 			// TaskCompleted cannot carry this on its own: for a top-level task it is only
 			// emitted on "yesButtonClicked", and the completion_result ask renders a
 			// "Start New Task" button that posts clearTask instead — so a board card
-			// would otherwise sit in In Progress forever.
+			// would otherwise sit in the column it was started from forever.
 			await this.markBoardTaskCompleted(task)
 
 			// Check for subtask using parentTaskId (metadata-driven delegation)
@@ -245,7 +245,7 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 			await provider.markBoardTaskCompleted(task.taskId)
 		} catch (error) {
 			provider.log(
-				`[AttemptCompletionTool] Failed to move the board card for ${task.taskId} to done: ${
+				`[AttemptCompletionTool] Failed to advance the board card for ${task.taskId}: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 			)

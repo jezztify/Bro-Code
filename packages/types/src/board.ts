@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-export const boardStageSchema = z.enum(["backlog", "scoped", "approved", "in_progress", "done"])
+export const boardStageSchema = z.enum(["backlog", "scoped", "approved", "in_progress", "qa_validation", "done"])
 export type BoardStage = z.infer<typeof boardStageSchema>
 
 /**
@@ -16,6 +16,7 @@ export const boardColumnModesSchema = z
 		scoped: z.string().min(1),
 		approved: z.string().min(1),
 		in_progress: z.string().min(1),
+		qa_validation: z.string().min(1),
 		done: z.string().min(1),
 	})
 	.partial()
@@ -49,6 +50,8 @@ export const boardTaskSchema = z.object({
 	updatedAt: z.number().finite(),
 	linkedHistoryTaskId: z.string().min(1).optional(),
 	linkedRefinementTaskId: z.string().min(1).optional(),
+	/** The conversation that checked the finished implementation against the card's acceptance criteria. */
+	linkedValidationTaskId: z.string().min(1).optional(),
 })
 export type BoardTask = z.infer<typeof boardTaskSchema>
 

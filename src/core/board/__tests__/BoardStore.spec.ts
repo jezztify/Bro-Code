@@ -1,11 +1,15 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 import { mkdtemp, readFile, writeFile } from "fs/promises"
 import { tmpdir } from "os"
 import { join } from "path"
 
-import { BoardStore } from "../BoardStore"
+import { BoardStore, type BoardTaskMove } from "../BoardStore"
 
 describe("BoardStore", () => {
+	// The notifier is host-wide state, so a test that installs one must not leave it
+	// listening to the next test's board.
+	afterEach(() => BoardStore.setMoveNotifier(undefined))
+
 	it("persists an empty-title task in its selected logical workspace", async () => {
 		const directory = await mkdtemp(join(tmpdir(), "board-store-"))
 		const store = new BoardStore(directory)
@@ -16,7 +20,9 @@ describe("BoardStore", () => {
 		const snapshot = store.getSnapshot()
 		expect(snapshot.tasks).toHaveLength(1)
 		expect(snapshot.tasks[0]).toMatchObject({ workspaceId, title: "", stage: "approved", position: 0 })
-		expect(JSON.parse(await readFile(join(directory, "board.json"), "utf8"))).toMatchObject({ selectedWorkspaceId: workspaceId })
+		expect(JSON.parse(await readFile(join(directory, "board.json"), "utf8"))).toMatchObject({
+			selectedWorkspaceId: workspaceId,
+		})
 	})
 
 	it("persists a mode per column and clears it again", async () => {
@@ -43,13 +49,35 @@ describe("BoardStore", () => {
 		const store = new BoardStore(directory)
 		await store.initialize()
 		const history = [
-			{ id: "root", number: 1, ts: 1, task: "Root", tokensIn: 0, tokensOut: 0, totalCost: 0, status: "completed" as const },
-			{ id: "child", parentTaskId: "root", number: 2, ts: 2, task: "Child", tokensIn: 0, tokensOut: 0, totalCost: 0 },
+			{
+				id: "root",
+				number: 1,
+				ts: 1,
+				task: "Root",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
+				status: "completed" as const,
+			},
+			{
+				id: "child",
+				parentTaskId: "root",
+				number: 2,
+				ts: 2,
+				task: "Child",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
+			},
 		]
 		await store.importHistoryOnce(history)
 		await store.importHistoryOnce(history)
 		expect(store.getSnapshot().tasks).toHaveLength(1)
-		expect(store.getSnapshot().tasks[0]).toMatchObject({ title: "Root", stage: "done", linkedHistoryTaskId: "root" })
+		expect(store.getSnapshot().tasks[0]).toMatchObject({
+			title: "Root",
+			stage: "done",
+			linkedHistoryTaskId: "root",
+		})
 	})
 
 	it("numbers cards across every workspace so a TASK number identifies one card", async () => {
@@ -182,24 +210,182 @@ describe("BoardStore", () => {
 		const { store, taskId } = await seedTask()
 		await store.linkRefinementTask(taskId, "refine-1")
 		await store.linkTaskToHistory(taskId, "execution-1")
+		await store.linkValidationTask(taskId, "validate-1")
 
 		await store.unlinkExecutionTask(taskId)
 
 		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "approved" })
 		expect(store.getSnapshot().tasks[0]?.linkedHistoryTaskId).toBeUndefined()
+		// The abandoned implementation's validation goes with it, so the restarted card
+		// gets checked afresh rather than reopening a verdict on work that was thrown away.
+		expect(store.getSnapshot().tasks[0]?.linkedValidationTaskId).toBeUndefined()
 		// The refinement chat survives a stopped run so the card can still be reopened.
 		expect(store.getSnapshot().tasks[0]?.linkedRefinementTaskId).toBe("refine-1")
 		// The card is startable again.
 		await expect(store.linkTaskToHistory(taskId, "execution-2")).resolves.toBeDefined()
 	})
 
-	it("does not move a card to done when its refinement chat completes", async () => {
+	it("does not move a card to qa validation when its refinement chat completes", async () => {
 		const { store, taskId } = await seedTask("backlog")
 		await store.linkRefinementTask(taskId, "refine-1")
 
-		await store.moveLinkedHistoryTaskToDone("refine-1")
+		await store.moveLinkedHistoryTaskToQaValidation("refine-1")
 
 		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "backlog" })
+	})
+
+	it("hands a completed execution run to qa validation rather than straight to done", async () => {
+		const { store, taskId } = await seedTask()
+		await store.linkTaskToHistory(taskId, "execution-1")
+
+		await store.moveLinkedHistoryTaskToQaValidation("execution-1")
+
+		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "qa_validation" })
+	})
+
+	it("sends a card the validator returned back for validation once the fixes finish", async () => {
+		const { store, taskId } = await seedTask()
+		await store.linkTaskToHistory(taskId, "execution-1")
+		await store.moveLinkedHistoryTaskToQaValidation("execution-1")
+		await store.linkValidationTask(taskId, "validate-1")
+		// The validator found unmet criteria and returned the card for more work.
+		await store.updateTask(taskId, { stage: "in_progress" })
+
+		await store.moveLinkedHistoryTaskToQaValidation("execution-1")
+
+		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "qa_validation" })
+		// The fixed implementation needs checking afresh, not the previous verdict's chat.
+		expect(store.getSnapshot().tasks[0]?.linkedValidationTaskId).toBeUndefined()
+	})
+
+	it("reports every kind of move, and only moves, to the notifier", async () => {
+		const moves: Array<{ from: string; to: string }> = []
+		BoardStore.setMoveNotifier(async (move) => {
+			moves.push({ from: move.from, to: move.to })
+		})
+		const { store, taskId } = await seedTask("backlog")
+
+		// Created in a column rather than moved into one.
+		expect(moves).toEqual([])
+
+		await store.updateTask(taskId, { stage: "scoped" })
+		// A move made by the pipeline rather than by hand is reported the same way.
+		await store.linkTaskToHistory(taskId, "execution-1")
+		// Neither renaming a card nor reordering it within its column is a move.
+		await store.updateTask(taskId, { title: "Renamed" })
+		await store.updateTask(taskId, { stage: "in_progress", position: 3 })
+
+		expect(moves).toEqual([
+			{ from: "backlog", to: "scoped" },
+			{ from: "scoped", to: "in_progress" },
+		])
+	})
+
+	it("hands the notifier the card as it stands after the move", async () => {
+		const moves: BoardTaskMove[] = []
+		BoardStore.setMoveNotifier(async (move) => {
+			moves.push(move)
+		})
+		const { store, taskId } = await seedTask()
+
+		await store.linkTaskToHistory(taskId, "execution-1")
+
+		// The conversation the note belongs in is the one the move just linked.
+		expect(moves[0]?.task).toMatchObject({ id: taskId, stage: "in_progress", linkedHistoryTaskId: "execution-1" })
+	})
+
+	it("keeps a card moved even when writing its note fails", async () => {
+		BoardStore.setMoveNotifier(async () => {
+			throw new Error("no conversation to write to")
+		})
+		const { store, taskId } = await seedTask()
+
+		await expect(store.updateTask(taskId, { stage: "done" })).resolves.toBeDefined()
+		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "done" })
+	})
+
+	it("forgets a validation chat so the card can be validated again", async () => {
+		const { store, taskId } = await seedTask()
+		await store.linkValidationTask(taskId, "validate-1")
+
+		await store.unlinkValidationTask(taskId)
+
+		expect(store.getSnapshot().tasks[0]?.linkedValidationTaskId).toBeUndefined()
+		// The card is validatable again.
+		await expect(store.linkValidationTask(taskId, "validate-2")).resolves.toBeDefined()
+	})
+
+	it("leaves a retired card alone when its execution run reports completion again", async () => {
+		const { store, taskId } = await seedTask()
+		await store.linkTaskToHistory(taskId, "execution-1")
+		await store.updateTask(taskId, { stage: "done" })
+
+		await store.moveLinkedHistoryTaskToQaValidation("execution-1")
+
+		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "done" })
+	})
+
+	it("moves a card to qa validation when a validation task is linked", async () => {
+		const { store, taskId } = await seedTask()
+		await store.linkTaskToHistory(taskId, "execution-1")
+
+		await store.linkValidationTask(taskId, "validate-1")
+
+		expect(store.getSnapshot().tasks[0]).toMatchObject({
+			stage: "qa_validation",
+			linkedValidationTaskId: "validate-1",
+			// Validation is a check, not a rerun, so the execution chat stays reachable.
+			linkedHistoryTaskId: "execution-1",
+		})
+		await expect(store.linkValidationTask(taskId, "validate-2")).rejects.toThrow(/already linked/)
+	})
+
+	it("retires a card to done when its validation task completes", async () => {
+		const { store, taskId } = await seedTask()
+		await store.linkValidationTask(taskId, "validate-1")
+
+		await store.moveLinkedValidationTaskToDone("validate-1")
+
+		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "done" })
+	})
+
+	it("does not retire a card whose validator sent it back before completing", async () => {
+		const { store, taskId } = await seedTask()
+		await store.linkValidationTask(taskId, "validate-1")
+		// A failed validation writes its findings and returns the card for more work.
+		await store.updateTask(taskId, { stage: "in_progress" })
+
+		await store.moveLinkedValidationTaskToDone("validate-1")
+
+		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "in_progress" })
+	})
+
+	it("does not retire a card from an execution task completing", async () => {
+		const { store, taskId } = await seedTask()
+		await store.linkTaskToHistory(taskId, "execution-1")
+		await store.moveLinkedHistoryTaskToQaValidation("execution-1")
+
+		await store.moveLinkedValidationTaskToDone("execution-1")
+
+		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "qa_validation" })
+	})
+
+	it("persists the validation link across reopen", async () => {
+		const directory = await mkdtemp(join(tmpdir(), "board-store-"))
+		const store = new BoardStore(directory)
+		await store.initialize()
+		await store.createWorkspace("Planning")
+		const workspaceId = store.getSnapshot().selectedWorkspaceId!
+		await store.createTask({ workspaceId, title: "Implement" })
+		await store.linkValidationTask(store.getSnapshot().tasks[0]!.id, "validate-1")
+
+		const reopenedStore = new BoardStore(directory)
+		await reopenedStore.initialize()
+
+		expect(reopenedStore.getSnapshot().tasks[0]).toMatchObject({
+			stage: "qa_validation",
+			linkedValidationTaskId: "validate-1",
+		})
 	})
 
 	it("promotes a backlog card to scoped when its refinement chat completes", async () => {
@@ -259,5 +445,83 @@ describe("BoardStore", () => {
 		await reopenedStore.initialize()
 
 		expect(reopenedStore.getSnapshot().tasks[0]).toMatchObject({ linkedRefinementTaskId: "refine-1" })
+	})
+
+	describe("sharing one store across providers", () => {
+		it("hands the same store to every consumer of a storage path", async () => {
+			const directory = await mkdtemp(join(tmpdir(), "board-store-"))
+			const other = await mkdtemp(join(tmpdir(), "board-store-"))
+
+			expect(BoardStore.getInstance(directory)).toBe(BoardStore.getInstance(directory))
+			expect(BoardStore.getInstance(directory)).not.toBe(BoardStore.getInstance(other))
+
+			BoardStore.resetInstancesForTests()
+		})
+
+		/**
+		 * The bug this sharing exists to prevent: the sidebar and a popped-out board
+		 * window each built their own store over one board.json, and since a store
+		 * reads that file once and then writes its whole in-memory copy back on every
+		 * mutation, the second one served stale cards and reverted the first's edits.
+		 */
+		it("does not let a second consumer revert the first's edits", async () => {
+			const directory = await mkdtemp(join(tmpdir(), "board-store-"))
+			const sidebar = BoardStore.getInstance(directory)
+			await sidebar.initialize()
+			await sidebar.createWorkspace("Planning")
+			const workspaceId = sidebar.getSnapshot().selectedWorkspaceId!
+			await sidebar.createTask({ workspaceId, title: "Card", stage: "approved" })
+			const cardId = sidebar.getSnapshot().tasks[0]!.id
+
+			// Stands in for the board window: a second provider constructed later, which
+			// used to mean a second store initialized from disk.
+			const boardWindow = BoardStore.getInstance(directory)
+			await boardWindow.initialize()
+
+			await sidebar.updateTask(cardId, { stage: "in_progress" })
+			// The window saving anything of its own must not roll that back.
+			await boardWindow.updateTask(cardId, { title: "Card renamed" })
+
+			expect(boardWindow.getSnapshot().tasks[0]).toMatchObject({
+				stage: "in_progress",
+				title: "Card renamed",
+			})
+			expect(JSON.parse(await readFile(join(directory, "board.json"), "utf8")).tasks[0]).toMatchObject({
+				stage: "in_progress",
+				title: "Card renamed",
+			})
+
+			BoardStore.resetInstancesForTests()
+		})
+
+		it("tells every subscriber about a mutation, whoever made it", async () => {
+			const directory = await mkdtemp(join(tmpdir(), "board-store-"))
+			const store = BoardStore.getInstance(directory)
+			await store.initialize()
+
+			// Two subscribers stand in for two providers' webviews.
+			const sidebarSaw: string[] = []
+			const windowSaw: string[] = []
+			const unsubscribe = store.onDidChange((state) => {
+				sidebarSaw.push(state.workspaces.map((workspace) => workspace.name).join(","))
+			})
+			store.onDidChange((state) => {
+				windowSaw.push(state.workspaces.map((workspace) => workspace.name).join(","))
+			})
+
+			await store.createWorkspace("Planning")
+
+			expect(sidebarSaw).toEqual(["Planning"])
+			expect(windowSaw).toEqual(["Planning"])
+
+			// A disposed provider stops being handed updates.
+			unsubscribe()
+			await store.createWorkspace("Second")
+
+			expect(sidebarSaw).toEqual(["Planning"])
+			expect(windowSaw).toEqual(["Planning", "Planning,Second"])
+
+			BoardStore.resetInstancesForTests()
+		})
 	})
 })

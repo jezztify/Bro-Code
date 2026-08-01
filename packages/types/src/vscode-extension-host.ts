@@ -33,6 +33,7 @@ export interface ExtensionMessage {
 		| "taskHistoryItemUpdated"
 		| "boardStateUpdated"
 		| "boardPlanningUpdated"
+		| "runningTaskIdsUpdated"
 		| "selectedImages"
 		| "theme"
 		| "workspaceUpdated"
@@ -217,6 +218,8 @@ export interface ExtensionMessage {
 	boardState?: BoardState
 	/** For boardPlanningUpdated: transient, execution-free planning session state. */
 	boardPlanning?: BoardPlanningSessionState
+	/** For runningTaskIdsUpdated: the tasks that are live in this host right now. */
+	runningTaskIds?: string[]
 	/** For taskHistoryItemUpdated: single updated/added history item */
 	taskHistoryItem?: HistoryItem
 	// Worktree response properties
@@ -361,6 +364,12 @@ export type ExtensionState = Pick<
 
 	taskHistory: HistoryItem[]
 	boardState: BoardState
+	/**
+	 * Task IDs that are resident and not aborted in this extension host, so the UI can
+	 * tell "this task is live" from "this task only exists in history". Nothing survives
+	 * a host restart, so absent (or empty) means nothing is running.
+	 */
+	runningTaskIds?: string[]
 
 	writeDelayMs: number
 	diffFuzzyThreshold: number
@@ -508,6 +517,7 @@ export interface WebviewMessage {
 		| "deleteBoardTask"
 		| "startBoardTask"
 		| "refineBoardTask"
+		| "validateBoardTask"
 		| "stopBoardTask"
 		| "approveBoardTask"
 		| "startBoardPlanning"
@@ -515,6 +525,7 @@ export interface WebviewMessage {
 		| "abandonSubtaskWithId"
 		| "exportTaskWithId"
 		| "openBoardInEditor"
+		| "openBoardInWindow"
 		| "importSettings"
 		| "exportSettings"
 		| "resetState"

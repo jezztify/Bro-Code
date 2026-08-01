@@ -514,8 +514,6 @@
 		"openSettings": "Open Settings"
 	},
 	"mobile": {
-		"title": "Zoo Code",
-		"newTask": "New task",
 		"reconnecting": "Reconnecting..."
 	},
 	"boardTasks": {
