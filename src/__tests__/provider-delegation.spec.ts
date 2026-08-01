@@ -128,6 +128,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		const taskHistoryStore = makeStoreStub()
 
 		const provider = {
+			taskScheduler: new TaskScheduler(),
 			emit: providerEmit,
 			getCurrentTask: vi.fn(() => parentTask),
 			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
@@ -211,6 +212,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		})
 
 		const provider = {
+			taskScheduler: new TaskScheduler(),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => current),
 			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
@@ -266,6 +268,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		}
 
 		const provider = {
+			taskScheduler: new TaskScheduler(),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => parentTask),
 			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
@@ -308,6 +311,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		})
 
 		const provider = {
+			taskScheduler: new TaskScheduler(),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => parentTask),
 			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
@@ -336,13 +340,14 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 
 	it("does not fail delegation when the optimistic state push throws", async () => {
 		const parentTask = makeParentTask()
-		const childStart = vi.fn()
+		const childRun = vi.fn().mockResolvedValue(undefined)
 
 		const provider = {
+			taskScheduler: new TaskScheduler(),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => parentTask),
 			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
-			createTask: vi.fn().mockResolvedValue({ taskId: "child-1", start: childStart }),
+			createTask: vi.fn().mockResolvedValue({ taskId: "child-1", start: vi.fn(), run: childRun }),
 			handleModeSwitch: vi.fn().mockResolvedValue(undefined),
 			postStateToWebviewWithoutTaskHistory: vi.fn().mockRejectedValue(new Error("boom")),
 			log: vi.fn(),
@@ -358,8 +363,10 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			mode: "code",
 		})
 
+		await Promise.resolve() // drain scheduler microtask so child.run() is invoked
+
 		expect(child.taskId).toBe("child-1")
-		expect(childStart).toHaveBeenCalledTimes(1)
+		expect(childRun).toHaveBeenCalledTimes(1)
 	})
 
 	it("posts taskHistoryItemUpdated to the webview when isViewLaunched is true", async () => {

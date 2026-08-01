@@ -884,7 +884,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			const createTask = vi.spyOn(provider, "createTask").mockImplementation(
 				async () =>
 					await new Promise<any>((resolve) => {
-						createStarted.then(() => resolve({ taskId: "execution-1" }))
+						void createStarted.then(() => resolve({ taskId: "execution-1" }))
 					}),
 			)
 
@@ -1097,7 +1097,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			const createTask = vi.spyOn(provider, "createTask").mockImplementation(
 				async () =>
 					await new Promise<any>((resolve) => {
-						createStarted.then(() => resolve({ taskId: "refine-1" }))
+						void createStarted.then(() => resolve({ taskId: "refine-1" }))
 					}),
 			)
 
@@ -1243,7 +1243,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			const createTask = vi.spyOn(provider, "createTask").mockImplementation(
 				async () =>
 					await new Promise<any>((resolve) => {
-						createStarted.then(() => resolve({ taskId: "validate-1" }))
+						void createStarted.then(() => resolve({ taskId: "validate-1" }))
 					}),
 			)
 

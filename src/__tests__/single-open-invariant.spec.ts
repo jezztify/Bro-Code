@@ -130,6 +130,7 @@ describe("Starting a task alongside one already open", () => {
 
 		const provider = {
 			taskRegistry: registry,
+			taskScheduler: new TaskScheduler(),
 			getCurrentTask: vi.fn(() => existingTask),
 			taskHistoryStore: { get: vi.fn(() => undefined) },
 			setValues: vi.fn(),
@@ -329,6 +330,7 @@ describe("Starting a task alongside one already open", () => {
 			getPendingEditOperation: vi.fn().mockReturnValue(undefined),
 			clearPendingEditOperation: vi.fn(),
 			taskScheduler: { schedule: schedulespy },
+			syncFocusedTaskMode: vi.fn().mockResolvedValue(undefined),
 			taskEventListeners: new WeakMap(),
 			performPreparationTasks: vi.fn().mockResolvedValue(undefined),
 			context: { extension: { packageJSON: {} }, globalStorageUri: { fsPath: "/tmp" } },

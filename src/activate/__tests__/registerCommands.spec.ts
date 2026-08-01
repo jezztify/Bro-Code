@@ -18,6 +18,7 @@ vi.mock("vscode", () => ({
 		joinPath: vi.fn((_base: unknown, ..._pathSegments: string[]) => ({ path: _pathSegments.join("/") })),
 	},
 	ViewColumn: {
+		One: 1,
 		Two: 2,
 	},
 	window: {

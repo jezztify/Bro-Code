@@ -31,7 +31,7 @@
 	},
 	"__tests__/history-resume-delegation.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 72
+			"count": 85
 		}
 	},
 	"__tests__/migrateSettings.spec.ts": {
@@ -51,7 +51,7 @@
 	},
 	"__tests__/provider-delegation.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 11
+			"count": 16
 		}
 	},
 	"activate/CodeActionProvider.ts": {
@@ -71,7 +71,7 @@
 	},
 	"activate/__tests__/registerCommands.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 2
+			"count": 3
 		}
 	},
 	"activate/registerCodeActions.ts": {
@@ -436,7 +436,7 @@
 	},
 	"api/providers/poe.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 3
+			"count": 4
 		}
 	},
 	"api/providers/qwen-code.ts": {
@@ -619,6 +619,11 @@
 			"count": 2
 		}
 	},
+	"core/board/__tests__/BoardPlanningSession.spec.ts": {
+		"@typescript-eslint/no-explicit-any": {
+			"count": 1
+		}
+	},
 	"core/checkpoints/__tests__/checkpoint.test.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 7
@@ -791,7 +796,7 @@
 	},
 	"core/prompts/tools/__tests__/filter-tools-for-mode.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 14
+			"count": 16
 		}
 	},
 	"core/prompts/tools/filter-tools-for-mode.ts": {
@@ -989,6 +994,11 @@
 			"count": 11
 		}
 	},
+	"core/tools/__tests__/createBoardTaskTool.spec.ts": {
+		"@typescript-eslint/no-explicit-any": {
+			"count": 9
+		}
+	},
 	"core/tools/__tests__/editFileTool.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 5
@@ -1021,12 +1031,12 @@
 	},
 	"core/tools/__tests__/mcpServerRestriction.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 7
+			"count": 8
 		}
 	},
 	"core/tools/__tests__/newTaskTool.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 35
+			"count": 43
 		}
 	},
 	"core/tools/__tests__/readFileTool.spec.ts": {
@@ -1089,6 +1099,11 @@
 			"count": 34
 		}
 	},
+	"core/webview/__tests__/ClineProvider.flicker-free-cancel.spec.ts": {
+		"@typescript-eslint/no-explicit-any": {
+			"count": 3
+		}
+	},
 	"core/webview/__tests__/ClineProvider.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 205
@@ -1096,7 +1111,7 @@
 	},
 	"core/webview/__tests__/ClineProvider.sticky-mode.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 40
+			"count": 44
 		}
 	},
 	"core/webview/__tests__/ClineProvider.sticky-profile.spec.ts": {
@@ -1106,7 +1121,7 @@
 	},
 	"core/webview/__tests__/ClineProvider.taskHistory.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
-			"count": 12
+			"count": 47
 		}
 	},
 	"core/webview/__tests__/ClineProvider.tierApiConfig.spec.ts": {

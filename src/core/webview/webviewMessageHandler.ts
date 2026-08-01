@@ -2463,7 +2463,7 @@ export const webviewMessageHandler = async (
 					const { name: _name, ...apiConfiguration } = await provider.providerSettingsManager.getProfile({
 						name: message.text,
 					})
-					provider.postMessageToWebview({
+					await provider.postMessageToWebview({
 						type: "apiConfigurationByName",
 						apiConfiguration,
 						requestId: message.requestId,
