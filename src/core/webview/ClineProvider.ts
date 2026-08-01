@@ -173,6 +173,27 @@ function scheduleTask(scheduler: TaskScheduler, task: Task, source: string): voi
 		.catch((error) => console.error(`[${source}] taskScheduler.schedule failed:`, error))
 }
 
+/**
+ * Start a task immediately, bypassing the TaskScheduler.
+ *
+ * TaskScheduler holds its permit for the whole lifetime of run(), and run() only
+ * settles once the agent loop ends - a task parked on an `ask` is still holding it.
+ * At maxConcurrency=1 that is fine for a product where one task is active at a
+ * time, but this branch keeps several chats resident and interactive at once
+ * (the board's Refine/Approve/Start/Validate cards, multi-window). Routing
+ * user-initiated creation through the gate meant the second and later tasks
+ * queued behind a permit that never came back, so their startTask() never ran and
+ * they rendered as empty chats.
+ *
+ * run() rather than start(): start() only covers the task/images case, while
+ * run() also resumes history tasks, which is what the rehydration paths need.
+ *
+ * Delegation still goes through scheduleTask - there the serialization is wanted.
+ */
+function startTaskImmediately(task: Task, source: string): void {
+	void task.run().catch((error) => console.error(`[${source}] task.run failed:`, error))
+}
+
 export class ClineProvider
 	extends EventEmitter<TaskProviderEvents>
 	implements vscode.WebviewViewProvider, TelemetryPropertiesProvider, TaskProviderLike
@@ -1481,7 +1502,7 @@ export class ClineProvider
 			)
 
 			if (options?.startTask !== false) {
-				scheduleTask(this.taskScheduler, task, "createTaskWithHistoryItem")
+				startTaskImmediately(task, "createTaskWithHistoryItem")
 			}
 		} else {
 			await this.addClineToStack(task)
@@ -1491,7 +1512,7 @@ export class ClineProvider
 			)
 
 			if (options?.startTask !== false) {
-				scheduleTask(this.taskScheduler, task, "createTaskWithHistoryItem")
+				startTaskImmediately(task, "createTaskWithHistoryItem")
 			}
 		}
 
@@ -4113,7 +4134,7 @@ export class ClineProvider
 
 		await this.addClineToStack(task)
 		if (options.startTask !== false) {
-			scheduleTask(this.taskScheduler, task, "createTask")
+			startTaskImmediately(task, "createTask")
 		}
 
 		this.log(

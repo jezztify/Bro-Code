@@ -79,6 +79,10 @@ vi.mock("../../task/Task", () => ({
 			// addClineToStack syncs the global mode from the focused task, so every
 			// mocked Task needs this the way the real one resolves it.
 			getTaskMode: vi.fn().mockResolvedValue(options?.historyItem?.mode || options?.initialMode || "code"),
+			// Task startup is invoked directly (startTaskImmediately) rather than through
+			// TaskScheduler, so the double has to answer run().
+			run: vi.fn().mockResolvedValue(undefined),
+			start: vi.fn(),
 			emit: vi.fn(),
 			on: vi.fn(),
 			off: vi.fn(),
@@ -394,6 +398,8 @@ describe("ClineProvider flicker-free cancel", () => {
 			on: vi.fn(),
 			off: vi.fn(),
 			getTaskMode: vi.fn().mockResolvedValue("code"),
+			run: vi.fn().mockResolvedValue(undefined),
+			start: vi.fn(),
 		}
 
 		mockTask2 = {
@@ -403,6 +409,8 @@ describe("ClineProvider flicker-free cancel", () => {
 			on: vi.fn(),
 			off: vi.fn(),
 			getTaskMode: vi.fn().mockResolvedValue("code"),
+			run: vi.fn().mockResolvedValue(undefined),
+			start: vi.fn(),
 		}
 
 		// Mock Task constructor
@@ -456,7 +464,9 @@ describe("ClineProvider flicker-free cancel", () => {
 			abortTask: vi.fn(),
 		} as unknown as Task
 		seedRegistry(provider, currentTask)
-		const createTaskWithHistoryItem = vi.spyOn(provider, "createTaskWithHistoryItem").mockResolvedValue(undefined as any)
+		const createTaskWithHistoryItem = vi
+			.spyOn(provider, "createTaskWithHistoryItem")
+			.mockResolvedValue(undefined as any)
 		const postStateToWebview = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
 		const postMessageToWebview = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
 
@@ -487,14 +497,16 @@ describe("ClineProvider flicker-free cancel", () => {
 			// Stands in for a newly constructed Task rather than a seeded one, so
 			// seedRegistry never stamps it.
 			getTaskMode: vi.fn().mockResolvedValue("code"),
+			run: vi.fn().mockResolvedValue(undefined),
+			start: vi.fn(),
 		} as unknown as Task
 		seedRegistry(provider, currentTask)
 		vi.mocked(Task).mockImplementation(function () {
 			return restoredTask
 		})
-		;(provider as any).providerSettingsManager.listConfig = vi.fn().mockResolvedValue([
-			{ id: "view-profile-id", name: "view-profile", apiProvider: "openai" },
-		])
+		;(provider as any).providerSettingsManager.listConfig = vi
+			.fn()
+			.mockResolvedValue([{ id: "view-profile-id", name: "view-profile", apiProvider: "openai" }])
 		;(provider as any).providerSettingsManager.getProfile = vi.fn().mockResolvedValue({
 			id: "view-profile-id",
 			name: "view-profile",
@@ -520,10 +532,7 @@ describe("ClineProvider flicker-free cancel", () => {
 		expect(currentTask.abortTask).not.toHaveBeenCalled()
 		expect(provider["taskRegistry"].getById("current-task")).toBe(currentTask)
 		expect(provider["taskRegistry"].current).toBe(restoredTask)
-		expect(activateProviderProfile).toHaveBeenCalledWith(
-			{ name: "view-profile" },
-			{ persistTaskHistory: false },
-		)
+		expect(activateProviderProfile).toHaveBeenCalledWith({ name: "view-profile" }, { persistTaskHistory: false })
 	})
 
 	it("should not remove current task from stack when rehydrating same taskId", async () => {

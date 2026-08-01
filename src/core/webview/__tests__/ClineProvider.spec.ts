@@ -276,6 +276,10 @@ vi.mock("../../task/Task", () => ({
 			setParentTask: vi.fn(),
 			setRootTask: vi.fn(),
 			getTaskMode: vi.fn().mockResolvedValue(options?.historyItem?.mode || options?.initialMode || "code"),
+			// Task startup is invoked directly (startTaskImmediately) rather than through
+			// TaskScheduler, so the double has to answer run().
+			run: vi.fn().mockResolvedValue(undefined),
+			start: vi.fn(),
 			taskId: options?.historyItem?.id || "test-task-id",
 			emit: vi.fn(),
 		}
@@ -424,6 +428,10 @@ describe("ClineProvider", () => {
 				setParentTask: vi.fn(),
 				setRootTask: vi.fn(),
 				getTaskMode: vi.fn().mockResolvedValue(options?.historyItem?.mode || options?.initialMode || "code"),
+				// Task startup is invoked directly (startTaskImmediately) rather than through
+				// TaskScheduler, so the double has to answer run().
+				run: vi.fn().mockResolvedValue(undefined),
+				start: vi.fn(),
 				taskId: options?.historyItem?.id || "test-task-id",
 				emit: vi.fn(),
 			}

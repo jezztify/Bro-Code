@@ -76,6 +76,10 @@ vi.mock("../../task/Task", () => ({
 			// addClineToStack syncs the global mode from the focused task, so every
 			// mocked Task needs this the way the real one resolves it.
 			getTaskMode: vi.fn().mockResolvedValue(options?.historyItem?.mode || options?.initialMode || "code"),
+			// Task startup is invoked directly (startTaskImmediately) rather than through
+			// TaskScheduler, so the double has to answer run().
+			run: vi.fn().mockResolvedValue(undefined),
+			start: vi.fn(),
 			emit: vi.fn(),
 			parentTask: options.parentTask,
 			updateApiConfiguration: vi.fn(),

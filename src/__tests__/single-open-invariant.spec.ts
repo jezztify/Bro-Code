@@ -27,6 +27,11 @@ type PrivateClineProviderMethods = {
 
 const privateClineProvider = ClineProvider.prototype as unknown as PrivateClineProviderMethods
 
+// User-initiated creation deliberately bypasses TaskScheduler and calls run()
+// directly (see startTaskImmediately in ClineProvider), so "did the task start?"
+// is asserted on run() rather than on the scheduler.
+const { runSpy } = vi.hoisted(() => ({ runSpy: vi.fn() }))
+
 // Mock Task class used by ClineProvider to avoid heavy startup
 vi.mock("../core/task/Task", () => {
 	class TaskStub {
@@ -53,6 +58,7 @@ vi.mock("../core/task/Task", () => {
 		}
 		start() {}
 		run() {
+			runSpy(this.taskId)
 			return Promise.resolve()
 		}
 		on() {}
@@ -65,6 +71,63 @@ vi.mock("../core/task/Task", () => {
 describe("Starting a task alongside one already open", () => {
 	beforeEach(() => {
 		vi.restoreAllMocks()
+		runSpy.mockClear()
+	})
+
+	// Regression: board cards (Refine/Approve/Start/Validate) and the New Task button
+	// both land in createTask. When these went through TaskScheduler, the first task to
+	// park on an `ask` kept the only permit at maxConcurrency=1, so every later create
+	// sat in the queue, never reached startTask(), and rendered as a blank chat.
+	it("User-initiated create: repeated creates all start, even while a real scheduler permit is held", async () => {
+		vi.spyOn(ProfileValidatorMod.ProfileValidator, "isProfileAllowed").mockReturnValue(true)
+
+		const scheduler = new TaskScheduler()
+		// Occupy the single permit with work that never settles, standing in for a task
+		// waiting on the user.
+		void scheduler.schedule(
+			{ abort: false, abandoned: false } as unknown as Task,
+			() => new Promise<void>(() => {}),
+		)
+		for (let i = 0; i < 50; i++) await Promise.resolve()
+
+		const registry = new TaskRegistry()
+		const provider = {
+			taskRegistry: registry,
+			taskScheduler: scheduler,
+			getCurrentTask: vi.fn(() => registry.current),
+			taskHistoryStore: { get: vi.fn(() => undefined) },
+			setValues: vi.fn(),
+			getState: vi.fn().mockResolvedValue({
+				apiConfiguration: { apiProvider: "anthropic", consecutiveMistakeLimit: 0 },
+				organizationAllowList: "*",
+				enableCheckpoints: true,
+				checkpointTimeout: 60,
+				cloudUserInfo: null,
+			}),
+			addClineToStack: vi.fn().mockResolvedValue(undefined),
+			setProviderProfile: vi.fn(),
+			log: vi.fn(),
+			getStateToPostToWebview: vi.fn(),
+			providerSettingsManager: { getModeConfigId: vi.fn(), listConfig: vi.fn() },
+			customModesManager: { getCustomModes: vi.fn().mockResolvedValue([]) },
+			taskCreationCallback: vi.fn(),
+			contextProxy: {
+				extensionUri: {},
+				setValue: vi.fn(),
+				getValue: vi.fn(),
+				setProviderSettings: vi.fn(),
+				getProviderSettings: vi.fn(() => ({})),
+			},
+		} as unknown as ClineProvider
+
+		for (const label of ["Refine", "Approve", "Validate"]) {
+			await privateClineProvider.createTask.call(provider, label)
+		}
+		for (let i = 0; i < 50; i++) await Promise.resolve()
+
+		// Each card's task must have actually begun; a queued task never calls run().
+		expect(runSpy).toHaveBeenCalledTimes(3)
+		expect(scheduler.waiting).toBe(0)
 	})
 
 	it("User-initiated create: leaves the existing task resident and running", async () => {
@@ -116,7 +179,9 @@ describe("Starting a task alongside one already open", () => {
 
 		expect(removeClineFromStack).not.toHaveBeenCalled()
 		expect(addClineToStack).toHaveBeenCalledTimes(1)
-		expect(schedulespy).toHaveBeenCalledTimes(1)
+		// Started directly, not queued behind the scheduler's single permit.
+		expect(runSpy).toHaveBeenCalledTimes(1)
+		expect(schedulespy).not.toHaveBeenCalled()
 		// The task that was already open is untouched — not aborted, not evicted.
 		expect(registry.getById("existing-1")).toBe(existingTask)
 	})
@@ -283,10 +348,12 @@ describe("Starting a task alongside one already open", () => {
 		expect(task).toBeTruthy()
 		expect(removeClineFromStack).toHaveBeenCalledTimes(1)
 		expect(addClineToStack).toHaveBeenCalledTimes(1)
-		expect(schedulespy).toHaveBeenCalledTimes(1)
+		// run() resumes the history task; start() would not, so this must not regress to start().
+		expect(runSpy).toHaveBeenCalledTimes(1)
+		expect(schedulespy).not.toHaveBeenCalled()
 	})
 
-	it("History resume path wires scheduler in rehydrating (in-place) case", async () => {
+	it("History resume path starts the task directly in rehydrating (in-place) case", async () => {
 		const schedulespy = vi.fn().mockResolvedValue(undefined)
 		const removeClineFromStack = vi.fn().mockResolvedValue(undefined)
 		const historyId = "hist-rehydrate-1"
@@ -357,7 +424,8 @@ describe("Starting a task alongside one already open", () => {
 
 		await privateClineProvider.createTaskWithHistoryItem.call(provider, historyItem)
 
-		expect(schedulespy).toHaveBeenCalledTimes(1)
+		expect(runSpy).toHaveBeenCalledTimes(1)
+		expect(schedulespy).not.toHaveBeenCalled()
 		// evictCurrentTask must NOT have been called — in-place replace, no stack pop
 		expect(removeClineFromStack).not.toHaveBeenCalled()
 	})
