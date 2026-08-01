@@ -175,7 +175,7 @@ const ChatDock = forwardRef<ChatViewRef, ChatDockProps>(
 							data-testid="chat-dock-new-chat"
 							aria-label={t("shell:dock.newChat")}
 							className="flex size-7 shrink-0 items-center justify-center rounded-sm text-vscode-descriptionForeground cursor-pointer hover:bg-vscode-toolbar-hoverBackground hover:text-vscode-foreground"
-							onClick={() => vscode.postMessage({ type: "clearTask" })}>
+							onClick={() => vscode.postMessage({ type: "unfocusTask" })}>
 							<Plus className="size-4" />
 						</button>
 						{recentTasks.length > 0 && (

@@ -501,6 +501,7 @@ export interface WebviewMessage {
 		| "setTaskReasoningEffort"
 		| "terminalOperation"
 		| "clearTask"
+		| "unfocusTask"
 		| "didShowAnnouncement"
 		| "selectImages"
 		| "exportCurrentTask"

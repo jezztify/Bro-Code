@@ -832,6 +832,12 @@ export const webviewMessageHandler = async (
 			await provider.clearTask()
 			await provider.postStateToWebview()
 			break
+		case "unfocusTask":
+			// Blank the composer without ending anything: the open task stays resident
+			// and keeps running, so "new chat" opens a new chat instead of popping the
+			// stack one task at a time. unfocusCurrentTask() posts state itself.
+			await provider.unfocusCurrentTask()
+			break
 		case "didShowAnnouncement":
 			await updateGlobalState("lastShownAnnouncementId", provider.latestAnnouncementId)
 			await provider.postStateToWebview()

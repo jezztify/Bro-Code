@@ -67,7 +67,7 @@ describe("ChatDock", () => {
 		render(<ChatDock showAnnouncement={false} hideAnnouncement={() => {}} />)
 		fireEvent.click(screen.getByRole("button", { name: "shell:dock.newChat" }))
 
-		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "clearTask" })
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "unfocusTask" })
 	})
 
 	it("shows workspace task chats in a dropdown list", () => {
