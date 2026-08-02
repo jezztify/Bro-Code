@@ -358,7 +358,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			await provider.handleModeSwitch("architect")
 
 			// Verify mode was updated in global state
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "architect")
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("mode", "architect")
 
 			// Verify task history was updated with new mode
 			expect(updateTaskHistorySpy).toHaveBeenCalledWith(
@@ -456,7 +456,7 @@ describe("ClineProvider - Sticky Mode", () => {
 				updateTaskHistorySpy = vi
 					.spyOn(provider, "updateTaskHistory")
 					.mockImplementation(() => Promise.resolve([]))
-				vi.mocked(mockContext.globalState.update).mockClear()
+				vi.mocked(mockContext.workspaceState.update).mockClear()
 
 				await provider.handleModeSwitch("architect", background)
 			})
@@ -479,7 +479,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			})
 
 			it("leaves the provider-wide mode on the focused task's mode", () => {
-				expect(mockContext.globalState.update).not.toHaveBeenCalledWith("mode", "architect")
+				expect(mockContext.workspaceState.update).not.toHaveBeenCalledWith("mode", "architect")
 			})
 
 			it("does not rebuild the focused task's API handler", () => {
@@ -763,7 +763,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			await expect(provider.handleModeSwitch("architect")).resolves.not.toThrow()
 
 			// Verify mode was still updated in global state
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "architect")
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("mode", "architect")
 		})
 
 		it("should handle null/undefined mode gracefully", async () => {
@@ -932,8 +932,8 @@ describe("ClineProvider - Sticky Mode", () => {
 				return Promise.resolve([])
 			})
 
-			// Clear previous calls to globalState.update
-			vi.mocked(mockContext.globalState.update).mockClear()
+			// Clear previous calls to workspaceState.update
+			vi.mocked(mockContext.workspaceState.update).mockClear()
 
 			// Simulate concurrent mode switches
 			const switches = [
@@ -945,7 +945,9 @@ describe("ClineProvider - Sticky Mode", () => {
 			await Promise.all(switches)
 
 			// Find the last mode update call
-			const modeCalls = vi.mocked(mockContext.globalState.update).mock.calls.filter((call) => call[0] === "mode")
+			const modeCalls = vi
+				.mocked(mockContext.workspaceState.update)
+				.mock.calls.filter((call) => call[0] === "mode")
 			const lastModeCall = modeCalls[modeCalls.length - 1]
 
 			// Verify the last mode switch wins
@@ -1044,13 +1046,13 @@ describe("ClineProvider - Sticky Mode", () => {
 			await provider.addClineToStack(mockTask as any)
 
 			// Clear previous calls
-			vi.mocked(mockContext.globalState.update).mockClear()
+			vi.mocked(mockContext.workspaceState.update).mockClear()
 
 			// Try to switch to invalid mode - it will actually switch
 			await provider.handleModeSwitch("invalid-mode" as any)
 
 			// The mode WILL be updated to invalid-mode (this is the actual behavior)
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "invalid-mode")
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("mode", "invalid-mode")
 		})
 
 		it("should handle errors during mode switch gracefully", async () => {
@@ -1107,7 +1109,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
 			// Clear previous mock calls to isolate this test
-			vi.mocked(mockContext.globalState.update).mockClear()
+			vi.mocked(mockContext.workspaceState.update).mockClear()
 
 			// The handleModeSwitch method doesn't catch errors from emit, so it will throw
 			// The error is thrown before the task's mode is updated
@@ -1115,7 +1117,9 @@ describe("ClineProvider - Sticky Mode", () => {
 
 			// Since the error is thrown before updating the task's _taskMode,
 			// neither the task mode nor global state are updated
-			const modeCalls = vi.mocked(mockContext.globalState.update).mock.calls.filter((call) => call[0] === "mode")
+			const modeCalls = vi
+				.mocked(mockContext.workspaceState.update)
+				.mock.calls.filter((call) => call[0] === "mode")
 			expect(modeCalls.length).toBe(0)
 
 			// The task's mode should NOT have been updated since the error occurred first
@@ -1345,7 +1349,9 @@ describe("ClineProvider - Sticky Mode", () => {
 			await initPromise
 
 			// Check all mode update calls
-			const modeCalls = vi.mocked(mockContext.globalState.update).mock.calls.filter((call) => call[0] === "mode")
+			const modeCalls = vi
+				.mocked(mockContext.workspaceState.update)
+				.mock.calls.filter((call) => call[0] === "mode")
 
 			// Based on the actual behavior, the mode switch to "code" happens and persists
 			// The history mode restoration doesn't override it

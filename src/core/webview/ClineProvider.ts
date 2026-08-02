@@ -2998,6 +2998,22 @@ export class ClineProvider
 					return false
 				}
 			})(),
+			claudeCodeIsAuthenticated: await (async () => {
+				try {
+					const { claudeCodeOAuthManager } = await import("../../integrations/claude-code/oauth")
+					return await claudeCodeOAuthManager.isAuthenticated()
+				} catch {
+					return false
+				}
+			})(),
+			claudeCodeOAuthState: await (async () => {
+				try {
+					const { claudeCodeOAuthManager } = await import("../../integrations/claude-code/oauth")
+					return claudeCodeOAuthManager.getState()
+				} catch {
+					return undefined
+				}
+			})(),
 			kimiCodeIsAuthenticated: await (async () => {
 				try {
 					const { kimiCodeOAuthManager } = await import("../../integrations/kimi-code/oauth")
@@ -3855,6 +3871,25 @@ export class ClineProvider
 		await this.removeClineFromStack()
 		await this.postStateToWebview()
 		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+	}
+
+	/**
+	 * Copies this workspace's settings over the global defaults that every newly opened workspace
+	 * inherits. Workspaces that have already been opened keep their own settings.
+	 */
+	async saveWorkspaceSettingsAsGlobalDefaults() {
+		const answer = await vscode.window.showInformationMessage(
+			t("common:confirmation.overwrite_global_settings"),
+			{ modal: true },
+			t("common:answers.yes"),
+		)
+
+		if (answer !== t("common:answers.yes")) {
+			return
+		}
+
+		await this.contextProxy.overwriteGlobalDefaults()
+		vscode.window.showInformationMessage(t("common:info.global_settings_overwritten"))
 	}
 
 	// logging

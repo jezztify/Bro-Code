@@ -128,6 +128,10 @@ function validateModelsAndKeysProvided(
 				return i18next.t("settings:validation.qwenCodeOauthPath")
 			}
 			break
+		// Claude Code has no API key to validate — auth is the OAuth sign-in,
+		// surfaced in its own settings panel.
+		case providerIdentifiers.claudeCode:
+			break
 		case providerIdentifiers.kimiCode:
 			if ((apiConfiguration.kimiCodeAuthMethod ?? "oauth") === "api-key" && !apiConfiguration.kimiCodeApiKey) {
 				return i18next.t("settings:validation.apiKey")

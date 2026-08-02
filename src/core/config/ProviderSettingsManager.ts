@@ -21,6 +21,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { Mode, modes } from "../../shared/modes"
 import { buildApiHandler } from "../../api"
 import { downgradeLegacyRooConfig } from "./routerRemoval"
+import { readScopedState } from "./scopedState"
 
 // Type-safe model migrations mapping
 type ModelMigrations = {
@@ -255,7 +256,7 @@ export class ProviderSettingsManager {
 			let rateLimitSeconds: number | undefined
 
 			try {
-				rateLimitSeconds = await this.context.globalState.get<number>("rateLimitSeconds")
+				rateLimitSeconds = readScopedState<number>(this.context, "rateLimitSeconds")
 			} catch (error) {
 				console.error("[MigrateRateLimitSeconds] Error getting global rate limit:", error)
 			}

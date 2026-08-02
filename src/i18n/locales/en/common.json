@@ -16,6 +16,7 @@
 	},
 	"confirmation": {
 		"reset_state": "Are you sure you want to reset all state and secret storage in the extension? This cannot be undone.",
+		"overwrite_global_settings": "Overwrite the global default settings with this workspace's settings?\n\nWorkspaces you open for the first time from now on will start from these values. Workspaces you have already opened keep their own settings.",
 		"delete_config_profile": "Are you sure you want to delete this configuration profile?",
 		"delete_custom_mode_with_rules": "Are you sure you want to delete this {scope} mode?\n\nThis will also delete the associated rules folder at:\n{rulesFolderPath}"
 	},
@@ -166,6 +167,7 @@
 		"custom_storage_path_set": "Custom storage path set: {{path}}",
 		"default_storage_path": "Reverted to using default storage path",
 		"settings_imported": "Settings imported successfully.",
+		"global_settings_overwritten": "Global default settings updated from this workspace.",
 		"auto_import_success": "ZooCode settings automatically imported from {{filename}}",
 		"share_link_copied": "Share link copied to clipboard",
 		"organization_share_link_copied": "Organization share link copied to clipboard!",

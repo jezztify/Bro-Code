@@ -60,6 +60,11 @@ describe("CustomModesManager", () => {
 				keys: vi.fn(() => []),
 				setKeysForSync: vi.fn(),
 			},
+			workspaceState: {
+				get: vi.fn(),
+				update: vi.fn(),
+				keys: vi.fn(() => []),
+			},
 			globalStorageUri: {
 				fsPath: mockStoragePath,
 			},
@@ -502,7 +507,7 @@ describe("CustomModesManager", () => {
 			)
 
 			// Should update global state with merged modes where .roomodes takes precedence
-			expect(mockContext.globalState.update).toHaveBeenCalledWith(
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith(
 				"customModes",
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -615,7 +620,7 @@ describe("CustomModesManager", () => {
 			expect(settingsContent.customModes.map((m: ModeConfig) => m.name)).toContain("Mode 2")
 
 			// Verify global state was updated
-			expect(mockContext.globalState.update).toHaveBeenCalledWith(
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith(
 				"customModes",
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -704,7 +709,7 @@ describe("CustomModesManager", () => {
 
 				// Verify file was processed
 				expect(fs.readFile).toHaveBeenCalledWith(configPath, "utf-8")
-				expect(mockContext.globalState.update).toHaveBeenCalled()
+				expect(mockContext.workspaceState.update).toHaveBeenCalled()
 				expect(mockOnUpdate).toHaveBeenCalled()
 
 				// Clean up
@@ -741,7 +746,7 @@ describe("CustomModesManager", () => {
 			})
 
 			// Mock the global state update to actually update the settingsContent
-			;(mockContext.globalState.update as Mock).mockImplementation((key: string, value: any) => {
+			;(mockContext.workspaceState.update as Mock).mockImplementation((key: string, value: any) => {
 				if (key === "customModes") {
 					settingsContent.customModes = value
 				}
@@ -754,7 +759,7 @@ describe("CustomModesManager", () => {
 			expect(settingsContent.customModes).toHaveLength(0)
 
 			// Verify global state was updated
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("customModes", [])
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("customModes", [])
 
 			// Should trigger onUpdate
 			expect(mockOnUpdate).toHaveBeenCalled()

@@ -16,6 +16,7 @@ import {
 } from "./provider-identifiers.js"
 import {
 	anthropicModels,
+	claudeCodeModels,
 	basetenModels,
 	bedrockModels,
 	deepSeekModels,
@@ -216,6 +217,12 @@ const anthropicSchema = apiModelIdProviderModelSchema.extend({
 	anthropicBaseUrl: z.string().optional(),
 	anthropicUseAuthToken: z.boolean().optional(),
 	anthropicBeta1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window.
+})
+
+// Claude Code signs in through Claude.ai OAuth, so tokens live in SecretStorage
+// rather than here. Only the model selection is persisted with the profile.
+const claudeCodeSchema = apiModelIdProviderModelSchema.extend({
+	claudeCodeBeta1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window.
 })
 
 const openRouterSchema = baseProviderSettingsSchema.extend({
@@ -445,6 +452,7 @@ const defaultSchema = z.object({
 
 export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProvider", [
 	anthropicSchema.merge(z.object({ apiProvider: z.literal("anthropic") })),
+	claudeCodeSchema.merge(z.object({ apiProvider: z.literal("claude-code") })),
 	openRouterSchema.merge(z.object({ apiProvider: z.literal("openrouter") })),
 	bedrockSchema.merge(z.object({ apiProvider: z.literal("bedrock") })),
 	vertexSchema.merge(z.object({ apiProvider: z.literal("vertex") })),
@@ -484,6 +492,7 @@ export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProv
 export const providerSettingsSchema = z.object({
 	apiProvider: providerNamesWithRetiredSchema.optional(),
 	...anthropicSchema.shape,
+	...claudeCodeSchema.shape,
 	...openRouterSchema.shape,
 	...bedrockSchema.shape,
 	...vertexSchema.shape,
@@ -570,6 +579,7 @@ export const isTypicalProvider = (key: unknown): key is TypicalProvider =>
 
 export const modelIdKeysByProvider: Record<TypicalProvider, ModelIdKey> = {
 	anthropic: "apiModelId",
+	"claude-code": "apiModelId",
 	openrouter: "openRouterModelId",
 	bedrock: "apiModelId",
 	vertex: "apiModelId",
@@ -676,6 +686,11 @@ export const MODELS_BY_PROVIDER: Record<
 		id: "anthropic",
 		label: "Anthropic",
 		models: Object.keys(anthropicModels),
+	},
+	"claude-code": {
+		id: "claude-code",
+		label: "Claude Code",
+		models: Object.keys(claudeCodeModels),
 	},
 	bedrock: {
 		id: "bedrock",

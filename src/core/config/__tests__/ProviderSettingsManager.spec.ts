@@ -50,9 +50,15 @@ const mockGlobalState = {
 	update: vi.fn(),
 }
 
+const mockWorkspaceState = {
+	get: vi.fn(),
+	update: vi.fn(),
+}
+
 const mockContext = {
 	secrets: mockSecrets,
 	globalState: mockGlobalState,
+	workspaceState: mockWorkspaceState,
 } as unknown as ExtensionContext
 
 describe("ProviderSettingsManager", () => {
@@ -143,7 +149,8 @@ describe("ProviderSettingsManager", () => {
 		})
 
 		it("should call migrateRateLimitSeconds if it has not done so already", async () => {
-			mockGlobalState.get.mockResolvedValue(42)
+			// `globalState.get` is synchronous in the real VS Code API.
+			mockGlobalState.get.mockReturnValue(42)
 
 			mockSecrets.get.mockResolvedValue(
 				JSON.stringify({
@@ -718,7 +725,8 @@ describe("ProviderSettingsManager", () => {
 				},
 			}
 
-			mockGlobalState.get.mockResolvedValue(42)
+			// `globalState.get` is synchronous in the real VS Code API.
+			mockGlobalState.get.mockReturnValue(42)
 			mockSecrets.get.mockResolvedValue(JSON.stringify(existingConfig))
 
 			const { name, ...providerSettings } = await providerSettingsManager.activateProfile({ name: "test" })

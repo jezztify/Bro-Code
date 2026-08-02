@@ -40,9 +40,9 @@ const ANTHROPIC_MODEL_ID_LOWER_TO_ORIGINAL = Object.fromEntries(
 )
 
 export class AnthropicHandler extends BaseProvider implements SingleCompletionHandler {
-	private options: ApiHandlerOptions
-	private client: Anthropic
-	private readonly providerName = "Anthropic"
+	protected options: ApiHandlerOptions
+	protected client: Anthropic
+	protected providerName = "Anthropic"
 
 	constructor(options: ApiHandlerOptions) {
 		super()

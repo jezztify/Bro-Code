@@ -26,6 +26,7 @@ export * from "./vercel-ai-gateway.js"
 export * from "./opencode-go.js"
 export * from "./kenari.js"
 export * from "./kimi-code.js"
+export * from "./claude-code.js"
 export * from "./zai.js"
 export * from "./minimax.js"
 export * from "./mimo.js"
@@ -55,6 +56,7 @@ import { vercelAiGatewayDefaultModelId } from "./vercel-ai-gateway.js"
 import { opencodeGoDefaultModelId } from "./opencode-go.js"
 import { kenariDefaultModelId } from "./kenari.js"
 import { kimiCodeDefaultModelId } from "./kimi-code.js"
+import { claudeCodeDefaultModelId } from "./claude-code.js"
 import { internationalZAiDefaultModelId, mainlandZAiDefaultModelId } from "./zai.js"
 import { minimaxDefaultModelId } from "./minimax.js"
 import { mimoDefaultModelId } from "./mimo.js"
@@ -135,6 +137,8 @@ export function getProviderDefaultModelId(
 			return kenariDefaultModelId
 		case providerIdentifiers.kimiCode:
 			return kimiCodeDefaultModelId
+		case providerIdentifiers.claudeCode:
+			return claudeCodeDefaultModelId
 		case providerIdentifiers.zooGateway:
 			return zooGatewayDefaultModelId
 		case providerIdentifiers.anthropic:

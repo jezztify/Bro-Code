@@ -2,6 +2,7 @@ import {
 	type ProviderName,
 	type ModelInfo,
 	anthropicModels,
+	claudeCodeModels,
 	bedrockModels,
 	deepSeekModels,
 	moonshotModels,
@@ -23,6 +24,7 @@ import {
 
 export const MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, ModelInfo>>> = {
 	anthropic: anthropicModels,
+	"claude-code": claudeCodeModels,
 	bedrock: bedrockModels,
 	deepseek: deepSeekModels,
 	moonshot: moonshotModels,
@@ -49,6 +51,7 @@ export const PROVIDERS = [
 	{ value: "deepseek", label: "DeepSeek", proxy: false },
 	{ value: "moonshot", label: "Moonshot", proxy: false },
 	{ value: "kimi-code", label: "Kimi Code", proxy: false },
+	{ value: "claude-code", label: "Claude Code - Claude Pro/Max", proxy: false },
 	{ value: "openai-native", label: "OpenAI", proxy: false },
 	{ value: "openai-codex", label: "OpenAI - ChatGPT Plus/Pro", proxy: false },
 	{ value: "openai", label: "OpenAI Compatible", proxy: true },

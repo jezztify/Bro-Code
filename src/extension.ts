@@ -27,12 +27,14 @@ import { initializeNetworkProxy } from "./utils/networkProxy"
 import { Package } from "./shared/package"
 import { formatLanguage } from "./shared/language"
 import { ContextProxy } from "./core/config/ContextProxy"
+import { readScopedState, writeScopedState } from "./core/config/scopedState"
 import { ClineProvider } from "./core/webview/ClineProvider"
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
 import { Terminal } from "./integrations/terminal/Terminal"
 import { TerminalRegistry } from "./integrations/terminal/TerminalRegistry"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { kimiCodeOAuthManager } from "./integrations/kimi-code/oauth"
+import { claudeCodeOAuthManager } from "./integrations/claude-code/oauth"
 import { McpServerManager } from "./services/mcp/McpServerManager"
 import { CodeIndexManager } from "./services/code-index/manager"
 import { MdmService } from "./services/mdm/MdmService"
@@ -162,6 +164,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	openAiCodexOAuthManager.initialize(context, (message) => outputChannel.appendLine(message))
 	// Kimi Code OAuth tokens live only in VS Code SecretStorage, outside provider profile JSON/cloud sync.
 	kimiCodeOAuthManager.initialize(context)
+	// Claude Code (Claude.ai SSO) tokens are likewise SecretStorage-only.
+	claudeCodeOAuthManager.initialize(context, (message) => outputChannel.appendLine(message))
 
 	// Initialize Zoo Code auth service for extension session token management.
 	await initZooCodeAuth(context)
@@ -169,9 +173,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Get default commands from configuration.
 	const defaultCommands = vscode.workspace.getConfiguration(Package.name).get<string[]>("allowedCommands") || []
 
-	// Initialize global state if not already set.
-	if (!context.globalState.get("allowedCommands")) {
-		context.globalState.update("allowedCommands", defaultCommands)
+	// Initialize state if not already set.
+	if (!readScopedState(context, "allowedCommands")) {
+		writeScopedState(context, "allowedCommands", defaultCommands)
 	}
 
 	const contextProxy = await ContextProxy.getInstance(context)

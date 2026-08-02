@@ -59,6 +59,11 @@ describe("CustomModesManager - YAML Edge Cases", () => {
 				keys: vi.fn(() => []),
 				setKeysForSync: vi.fn(),
 			},
+			workspaceState: {
+				get: vi.fn(),
+				update: vi.fn(),
+				keys: vi.fn(() => []),
+			},
 			globalStorageUri: {
 				fsPath: mockStoragePath,
 			},

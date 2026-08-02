@@ -426,6 +426,13 @@ export type ExtensionState = Pick<
 	mdmCompliant?: boolean
 	taskSyncEnabled: boolean
 	openAiCodexIsAuthenticated?: boolean
+	claudeCodeIsAuthenticated?: boolean
+	claudeCodeOAuthState?: {
+		status: "idle" | "authorizing" | "authenticated" | "error"
+		email?: string
+		organizationName?: string
+		error?: string
+	}
 	kimiCodeIsAuthenticated?: boolean
 	kimiCodeOAuthState?: {
 		status: "idle" | "authorizing" | "polling" | "authenticated" | "error"
@@ -530,6 +537,7 @@ export interface WebviewMessage {
 		| "importSettings"
 		| "exportSettings"
 		| "resetState"
+		| "saveWorkspaceSettingsAsGlobalDefaults"
 		| "flushRouterModels"
 		| "requestRouterModels"
 		| "requestOpenAiModels"
@@ -613,6 +621,8 @@ export interface WebviewMessage {
 		| "openAiCodexSignOut"
 		| "kimiCodeSignIn"
 		| "kimiCodeSignOut"
+		| "claudeCodeSignIn"
+		| "claudeCodeSignOut"
 		| "zooCodeSignOut"
 		| "switchOrganization"
 		| "condenseTaskContextRequest"

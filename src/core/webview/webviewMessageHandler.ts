@@ -1209,6 +1209,9 @@ export const webviewMessageHandler = async (
 		case "resetState":
 			await provider.resetState()
 			break
+		case "saveWorkspaceSettingsAsGlobalDefaults":
+			await provider.saveWorkspaceSettingsAsGlobalDefaults()
+			break
 		case "flushRouterModels":
 			const routerNameFlush: RouterName = toRouterName(message.text)
 			// Note: flushRouterModels is a generic flush without credentials
@@ -3040,6 +3043,54 @@ export const webviewMessageHandler = async (
 			} catch (error) {
 				provider.log(`OpenAI Codex sign out failed: ${error}`)
 				vscode.window.showErrorMessage("OpenAI Codex sign out failed.")
+			}
+			break
+		}
+		case "claudeCodeSignIn": {
+			try {
+				const { claudeCodeOAuthManager } = await import("../../integrations/claude-code/oauth")
+				const authorizationUrl = claudeCodeOAuthManager.startAuthorizationFlow()
+
+				// Start listening before opening the browser so a fast redirect
+				// cannot arrive before the loopback server is up.
+				const callback = claudeCodeOAuthManager.waitForCallback()
+				await provider.postStateToWebview()
+				await vscode.env.openExternal(vscode.Uri.parse(authorizationUrl))
+
+				void callback
+					.then(async (credentials) => {
+						vscode.window.showInformationMessage(
+							credentials.email
+								? `Signed in to Claude Code as ${credentials.email}`
+								: "Successfully signed in to Claude Code",
+						)
+						await provider.postStateToWebview()
+					})
+					.catch(async (error) => {
+						provider.log(`Claude Code OAuth failed: ${error}`)
+						vscode.window.showErrorMessage(
+							`Claude Code sign in failed: ${error instanceof Error ? error.message : error}`,
+						)
+						await provider.postStateToWebview()
+					})
+			} catch (error) {
+				provider.log(`Claude Code OAuth failed: ${error}`)
+				vscode.window.showErrorMessage(
+					`Claude Code sign in failed: ${error instanceof Error ? error.message : error}`,
+				)
+				await provider.postStateToWebview()
+			}
+			break
+		}
+		case "claudeCodeSignOut": {
+			try {
+				const { claudeCodeOAuthManager } = await import("../../integrations/claude-code/oauth")
+				await claudeCodeOAuthManager.clearCredentials()
+				vscode.window.showInformationMessage("Signed out from Claude Code")
+				await provider.postStateToWebview()
+			} catch (error) {
+				provider.log(`Claude Code sign out failed: ${error}`)
+				vscode.window.showErrorMessage("Claude Code sign out failed.")
 			}
 			break
 		}

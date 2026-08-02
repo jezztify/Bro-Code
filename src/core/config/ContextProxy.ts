@@ -7,6 +7,7 @@ import {
 	SECRET_STATE_KEYS,
 	GLOBAL_STATE_KEYS,
 	GLOBAL_SECRET_KEYS,
+	WORKSPACE_STATE_KEYS,
 	type ProviderSettings,
 	type GlobalSettings,
 	type SecretState,
@@ -23,6 +24,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { logger } from "../../utils/logging"
 import { supportPrompt } from "../../shared/support-prompt"
 import { downgradeLegacyRooConfig } from "./routerRemoval"
+import { readScopedState, seedWorkspaceSettings, writeScopedState, WORKSPACE_SETTINGS_SEEDED_KEY } from "./scopedState"
 
 type GlobalStateKey = keyof GlobalState
 type SecretStateKey = keyof SecretState
@@ -57,12 +59,17 @@ export class ContextProxy {
 	}
 
 	public async initialize() {
+		// Settings live in this workspace's state; inherit the global values the first time this
+		// workspace is opened so upgrading users see no change.
+		await seedWorkspaceSettings(this.originalContext)
+
 		for (const key of GLOBAL_STATE_KEYS) {
 			try {
-				// Revert to original assignment
-				this.stateCache[key] = this.originalContext.globalState.get(key)
+				// The cache holds the effective value for this workspace; `readScopedState` decides
+				// whether that comes from workspace or global state.
+				this.stateCache[key] = readScopedState(this.originalContext, key)
 			} catch (error) {
-				logger.error(`Error loading global ${key}: ${error instanceof Error ? error.message : String(error)}`)
+				logger.error(`Error loading state ${key}: ${error instanceof Error ? error.message : String(error)}`)
 			}
 		}
 
@@ -116,10 +123,10 @@ export class ContextProxy {
 	 */
 	private async migrateLegacyCondensingPrompt() {
 		try {
-			const legacyPrompt = this.originalContext.globalState.get<string>("customCondensingPrompt")
+			const legacyPrompt = readScopedState<string>(this.originalContext, "customCondensingPrompt")
 			if (legacyPrompt) {
 				const currentSupportPrompts =
-					this.originalContext.globalState.get<Record<string, string>>("customSupportPrompts") || {}
+					readScopedState<Record<string, string>>(this.originalContext, "customSupportPrompts") || {}
 
 				// Only migrate if:
 				// 1. The new location doesn't already have a value
@@ -129,14 +136,14 @@ export class ContextProxy {
 				if (!currentSupportPrompts.CONDENSE && isCustomized) {
 					logger.info("Migrating customized legacy customCondensingPrompt to customSupportPrompts")
 					const updatedPrompts = { ...currentSupportPrompts, CONDENSE: legacyPrompt }
-					await this.originalContext.globalState.update("customSupportPrompts", updatedPrompts)
+					await writeScopedState(this.originalContext, "customSupportPrompts", updatedPrompts)
 					this.stateCache.customSupportPrompts = updatedPrompts
 				} else if (!isCustomized) {
 					logger.info("Skipping migration: legacy customCondensingPrompt equals the default prompt")
 				}
 
 				// Always remove the legacy field
-				await this.originalContext.globalState.update("customCondensingPrompt", undefined)
+				await writeScopedState(this.originalContext, "customCondensingPrompt", undefined)
 				this.stateCache.customCondensingPrompt = undefined
 			}
 		} catch (error) {
@@ -161,7 +168,7 @@ export class ContextProxy {
 	private async migrateOldDefaultCondensingPrompt() {
 		try {
 			const currentSupportPrompts =
-				this.originalContext.globalState.get<Record<string, string>>("customSupportPrompts") || {}
+				readScopedState<Record<string, string>>(this.originalContext, "customSupportPrompts") || {}
 
 			const savedCondensePrompt = currentSupportPrompts.CONDENSE
 
@@ -174,7 +181,7 @@ export class ContextProxy {
 				const { CONDENSE: _, ...remainingPrompts } = currentSupportPrompts
 				const updatedPrompts = Object.keys(remainingPrompts).length > 0 ? remainingPrompts : undefined
 
-				await this.originalContext.globalState.update("customSupportPrompts", updatedPrompts)
+				await writeScopedState(this.originalContext, "customSupportPrompts", updatedPrompts)
 				this.stateCache.customSupportPrompts = updatedPrompts
 			}
 		} catch (error) {
@@ -243,8 +250,9 @@ export class ContextProxy {
 			logger.info("[ContextProxy] Migrating legacy Roo Code Router state to setup-needed fallback")
 			this.stateCache = migratedState as GlobalState
 			await Promise.all([
-				this.originalContext.globalState.update("apiProvider", undefined),
-				this.originalContext.globalState.update("apiModelId", undefined),
+				writeScopedState(this.originalContext, "apiProvider", undefined),
+				writeScopedState(this.originalContext, "apiModelId", undefined),
+				// `rooApiKey` is no longer part of GlobalState; only the legacy global entry can exist.
 				this.originalContext.globalState.update("rooApiKey", undefined),
 			])
 		} catch (error) {
@@ -268,7 +276,7 @@ export class ContextProxy {
 				logger.info(`[ContextProxy] Found invalid provider "${apiProvider}" in storage - clearing it`)
 				// Clear the invalid provider from both cache and storage
 				this.stateCache.apiProvider = undefined
-				await this.originalContext.globalState.update("apiProvider", undefined)
+				await writeScopedState(this.originalContext, "apiProvider", undefined)
 			}
 		} catch (error) {
 			logger.error(
@@ -300,12 +308,13 @@ export class ContextProxy {
 
 				// Migrate the selected model if it exists and we don't already have one
 				if (oldNestedSettings.selectedModel && !this.stateCache.openRouterImageGenerationSelectedModel) {
-					await this.originalContext.globalState.update(
+					await writeScopedState(
+						this.originalContext,
 						"openRouterImageGenerationSelectedModel",
 						oldNestedSettings.selectedModel,
 					)
 					this.stateCache.openRouterImageGenerationSelectedModel = oldNestedSettings.selectedModel
-					logger.info("Migrated openRouterImageGenerationSelectedModel to global state")
+					logger.info("Migrated openRouterImageGenerationSelectedModel to extension state")
 				}
 
 				// Clean up the old nested structure
@@ -344,15 +353,18 @@ export class ContextProxy {
 	}
 
 	/**
-	 * ExtensionContext.globalState
-	 * https://code.visualstudio.com/api/references/vscode-api#ExtensionContext.globalState
+	 * Extension state
+	 *
+	 * Reads and writes are routed by key: most settings live in this workspace's
+	 * `ExtensionContext.workspaceState`, while the keys in `ALWAYS_GLOBAL_STATE_KEYS` stay in
+	 * `ExtensionContext.globalState`. See `./scopedState`.
 	 */
 
 	getGlobalState<K extends GlobalStateKey>(key: K): GlobalState[K]
 	getGlobalState<K extends GlobalStateKey>(key: K, defaultValue: GlobalState[K]): GlobalState[K]
 	getGlobalState<K extends GlobalStateKey>(key: K, defaultValue?: GlobalState[K]): GlobalState[K] {
 		if (isPassThroughStateKey(key)) {
-			const value = this.originalContext.globalState.get<GlobalState[K]>(key)
+			const value = readScopedState<GlobalState[K]>(this.originalContext, key)
 			return value === undefined || value === null ? defaultValue : value
 		}
 
@@ -362,11 +374,11 @@ export class ContextProxy {
 
 	updateGlobalState<K extends GlobalStateKey>(key: K, value: GlobalState[K]) {
 		if (isPassThroughStateKey(key)) {
-			return this.originalContext.globalState.update(key, value)
+			return writeScopedState(this.originalContext, key, value)
 		}
 
 		this.stateCache[key] = value
-		return this.originalContext.globalState.update(key, value)
+		return writeScopedState(this.originalContext, key, value)
 	}
 
 	private getAllGlobalState(): GlobalState {
@@ -582,7 +594,20 @@ export class ContextProxy {
 	}
 
 	/**
-	 * Resets all global state, secrets, and in-memory caches.
+	 * Copies this workspace's settings over the global defaults.
+	 *
+	 * The global values are what a workspace inherits the first time it is opened, so this makes the
+	 * current workspace the starting point for every workspace opened from now on. Workspaces that
+	 * have already been seeded keep their own settings.
+	 */
+	public async overwriteGlobalDefaults() {
+		await Promise.all(
+			WORKSPACE_STATE_KEYS.map((key) => this.originalContext.globalState.update(key, this.stateCache[key])),
+		)
+	}
+
+	/**
+	 * Resets this workspace's state, the global defaults, secrets, and in-memory caches.
 	 * This clears all data from both the in-memory caches and the VSCode storage.
 	 * @returns A promise that resolves when all reset operations are complete
 	 */
@@ -593,6 +618,8 @@ export class ContextProxy {
 
 		await Promise.all([
 			...GLOBAL_STATE_KEYS.map((key) => this.originalContext.globalState.update(key, undefined)),
+			...WORKSPACE_STATE_KEYS.map((key) => this.originalContext.workspaceState.update(key, undefined)),
+			this.originalContext.workspaceState.update(WORKSPACE_SETTINGS_SEEDED_KEY, undefined),
 			...SECRET_STATE_KEYS.map((key) => this.originalContext.secrets.delete(key)),
 			...GLOBAL_SECRET_KEYS.map((key) => this.originalContext.secrets.delete(key)),
 		])

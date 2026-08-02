@@ -419,19 +419,25 @@ function getSelectedModel({
 			return { id, info }
 		}
 		case providerIdentifiers.anthropic:
+		case providerIdentifiers.claudeCode:
 		case providerIdentifiers.geminiCli:
 		case providerIdentifiers.fakeAi: {
 			const id = apiConfiguration.apiModelId ?? defaultModelId
+			// Claude Code serves the Anthropic catalog, so its model info lives here too.
 			const baseInfo = anthropicModels[id as keyof typeof anthropicModels]
+
+			const wants1MContext =
+				provider === providerIdentifiers.claudeCode
+					? apiConfiguration.claudeCodeBeta1MContext
+					: provider === providerIdentifiers.anthropic && apiConfiguration.anthropicBeta1MContext
 
 			// Apply 1M context beta tier pricing for supported Claude 4 models
 			if (
-				provider === providerIdentifiers.anthropic &&
 				(id === "claude-sonnet-4-20250514" ||
 					id === "claude-sonnet-4-5" ||
 					id === "claude-sonnet-4-6" ||
 					id === "claude-opus-4-6") &&
-				apiConfiguration.anthropicBeta1MContext &&
+				wants1MContext &&
 				baseInfo
 			) {
 				// Type assertion since supported Claude 4 models include 1M context pricing tiers.

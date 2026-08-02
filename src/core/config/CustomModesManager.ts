@@ -15,6 +15,7 @@ import { logger } from "../../utils/logging"
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { ensureSettingsDirectoryExists } from "../../utils/globalContext"
 import { t } from "../../i18n"
+import { writeScopedState } from "./scopedState"
 
 const ROOMODES_FILENAME = ".roomodes"
 
@@ -300,7 +301,7 @@ export class CustomModesManager {
 
 				// Merge modes from both sources (.roomodes takes precedence)
 				const mergedModes = await this.mergeCustomModes(roomodesModes, result.data.customModes)
-				await this.context.globalState.update("customModes", mergedModes)
+				await writeScopedState(this.context, "customModes", mergedModes)
 				this.clearCache()
 				await this.onUpdate()
 			} catch (error) {
@@ -326,7 +327,7 @@ export class CustomModesManager {
 					const roomodesModes = await this.loadModesFromFile(roomodesPath)
 					// .roomodes takes precedence
 					const mergedModes = await this.mergeCustomModes(roomodesModes, settingsModes)
-					await this.context.globalState.update("customModes", mergedModes)
+					await writeScopedState(this.context, "customModes", mergedModes)
 					this.clearCache()
 					await this.onUpdate()
 				} catch (error) {
@@ -341,7 +342,7 @@ export class CustomModesManager {
 					// When .roomodes is deleted, refresh with only settings modes
 					try {
 						const settingsModes = await this.loadModesFromFile(settingsPath)
-						await this.context.globalState.update("customModes", settingsModes)
+						await writeScopedState(this.context, "customModes", settingsModes)
 						this.clearCache()
 						await this.onUpdate()
 					} catch (error) {
@@ -393,7 +394,7 @@ export class CustomModesManager {
 				.map((mode) => ({ ...mode, source: "global" as const })),
 		]
 
-		await this.context.globalState.update("customModes", mergedModes)
+		await writeScopedState(this.context, "customModes", mergedModes)
 
 		this.cachedModes = mergedModes
 		this.cachedAt = now
@@ -501,7 +502,7 @@ export class CustomModesManager {
 		const roomodesModes = roomodesPath ? await this.loadModesFromFile(roomodesPath) : []
 		const mergedModes = await this.mergeCustomModes(roomodesModes, settingsModes)
 
-		await this.context.globalState.update("customModes", mergedModes)
+		await writeScopedState(this.context, "customModes", mergedModes)
 
 		this.clearCache()
 
@@ -605,7 +606,7 @@ export class CustomModesManager {
 		try {
 			const filePath = await this.getCustomModesFilePath()
 			await fs.writeFile(filePath, yaml.stringify({ customModes: [] }, { lineWidth: 0 }))
-			await this.context.globalState.update("customModes", [])
+			await writeScopedState(this.context, "customModes", [])
 			this.clearCache()
 			await this.onUpdate()
 		} catch (error) {

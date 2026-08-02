@@ -57,6 +57,7 @@ import {
 	Mistral,
 	Moonshot,
 	KimiCode,
+	ClaudeCode,
 	Ollama,
 	OpenAI,
 	OpenAICompatible,
@@ -117,8 +118,14 @@ const ApiOptions = ({
 	setErrorMessage,
 }: ApiOptionsProps) => {
 	const { t } = useAppTranslation()
-	const { organizationAllowList, openAiCodexIsAuthenticated, kimiCodeIsAuthenticated, kimiCodeOAuthState } =
-		useExtensionState()
+	const {
+		organizationAllowList,
+		openAiCodexIsAuthenticated,
+		kimiCodeIsAuthenticated,
+		kimiCodeOAuthState,
+		claudeCodeIsAuthenticated,
+		claudeCodeOAuthState,
+	} = useExtensionState()
 
 	const [customHeaders, setCustomHeaders] = useState<[string, string][]>(() => {
 		const headers = apiConfiguration?.openAiHeaders || {}
@@ -581,6 +588,16 @@ const ApiOptions = ({
 							apiConfiguration={apiConfiguration}
 							setApiConfigurationField={setApiConfigurationField}
 							simplifySettings={fromWelcomeView}
+						/>
+					)}
+
+					{selectedProvider === "claude-code" && (
+						<ClaudeCode
+							apiConfiguration={apiConfiguration}
+							setApiConfigurationField={setApiConfigurationField}
+							simplifySettings={fromWelcomeView}
+							claudeCodeIsAuthenticated={claudeCodeIsAuthenticated}
+							claudeCodeOAuthState={claudeCodeOAuthState}
 						/>
 					)}
 

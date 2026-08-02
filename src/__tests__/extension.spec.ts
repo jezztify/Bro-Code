@@ -232,6 +232,10 @@ describe("extension.ts", () => {
 				get: vi.fn().mockReturnValue(undefined),
 				update: vi.fn(),
 			},
+			workspaceState: {
+				get: vi.fn().mockReturnValue(undefined),
+				update: vi.fn(),
+			},
 			subscriptions: [],
 		} as unknown as vscode.ExtensionContext
 

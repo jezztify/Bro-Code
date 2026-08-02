@@ -10,6 +10,7 @@ import {
 } from "@roo-code/types"
 
 import { addCustomInstructions } from "../core/prompts/sections/custom-instructions"
+import { readScopedState } from "../core/config/scopedState"
 
 import { TOOL_GROUPS, ALWAYS_AVAILABLE_TOOLS } from "./tools"
 
@@ -159,8 +160,8 @@ export const defaultPrompts: Readonly<CustomModePrompts> = Object.freeze(
 
 // Helper function to get all modes with their prompt overrides from extension state
 export async function getAllModesWithPrompts(context: vscode.ExtensionContext): Promise<ModeConfig[]> {
-	const customModes = (await context.globalState.get<ModeConfig[]>("customModes")) || []
-	const customModePrompts = (await context.globalState.get<CustomModePrompts>("customModePrompts")) || {}
+	const customModes = readScopedState<ModeConfig[]>(context, "customModes") || []
+	const customModePrompts = readScopedState<CustomModePrompts>(context, "customModePrompts") || {}
 
 	const allModes = getAllModes(customModes)
 	return allModes.map((mode) => ({

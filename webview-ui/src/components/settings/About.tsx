@@ -1,7 +1,17 @@
 import { HTMLAttributes, useEffect, useState } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { Trans } from "react-i18next"
-import { ArrowRightLeft, Download, Upload, TriangleAlert, Bug, Lightbulb, Shield, MessagesSquare } from "lucide-react"
+import {
+	ArrowRightLeft,
+	Download,
+	Globe,
+	Upload,
+	TriangleAlert,
+	Bug,
+	Lightbulb,
+	Shield,
+	MessagesSquare,
+} from "lucide-react"
 import { VSCodeButton, VSCodeCheckbox, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 
 import type { ExtensionMessage, TelemetrySetting } from "@roo-code/types"
@@ -212,6 +222,17 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 							<TriangleAlert className="p-0.5" />
 							{t("settings:footer.settings.reset")}
 						</Button>
+					</div>
+					<div className="mt-4 pt-4 border-t border-vscode-settings-headerBorder">
+						<Button
+							variant="secondary"
+							onClick={() => vscode.postMessage({ type: "saveWorkspaceSettingsAsGlobalDefaults" })}>
+							<Globe className="p-0.5" />
+							{t("settings:footer.settings.overwriteGlobalDefaults")}
+						</Button>
+						<p className="text-vscode-descriptionForeground text-sm mt-2 mb-0">
+							{t("settings:footer.settings.overwriteGlobalDefaultsDescription")}
+						</p>
 					</div>
 				</SearchableSetting>
 			</Section>

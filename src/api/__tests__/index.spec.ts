@@ -34,6 +34,7 @@ import {
 	AnthropicVertexHandler,
 	AwsBedrockHandler,
 	BasetenHandler,
+	ClaudeCodeHandler,
 	DeepSeekHandler,
 	FakeAIHandler,
 	FireworksHandler,
@@ -70,6 +71,7 @@ type HandlerConstructor = new (...args: never[]) => object
 
 const expectedHandlers = {
 	[providerIdentifiers.anthropic]: AnthropicHandler,
+	[providerIdentifiers.claudeCode]: ClaudeCodeHandler,
 	[providerIdentifiers.openrouter]: OpenRouterHandler,
 	[providerIdentifiers.bedrock]: AwsBedrockHandler,
 	[providerIdentifiers.openai]: OpenAiHandler,

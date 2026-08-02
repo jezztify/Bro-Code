@@ -20,6 +20,7 @@ export const providerIdentifiers = {
 	openai: "openai",
 	fakeAi: "fake-ai",
 	anthropic: "anthropic",
+	claudeCode: "claude-code",
 	bedrock: "bedrock",
 	baseten: "baseten",
 	fireworks: "fireworks",

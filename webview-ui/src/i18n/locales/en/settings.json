@@ -560,6 +560,15 @@
 		"moonshotApiKey": "Moonshot API Key",
 		"getMoonshotApiKey": "Get Moonshot API Key",
 		"moonshotBaseUrl": "Moonshot Entrypoint",
+		"claudeCode": {
+			"signIn": "Sign in with Claude",
+			"signingIn": "Waiting for browser…",
+			"signInHelp": "Opens claude.ai in your browser to connect your Claude Pro or Max subscription.",
+			"signOut": "Sign out",
+			"authenticated": "Signed in to Claude",
+			"oneMContext": "Enable 1M context window (beta)",
+			"docs": "Claude Code documentation"
+		},
 		"kimiCode": {
 			"authMethod": "Authentication method",
 			"oauth": "Kimi Code subscription (OAuth)",
@@ -745,14 +754,7 @@
 			"low": "Low",
 			"description": "Controls how detailed the model's responses are. Low verbosity produces concise answers, while high verbosity provides thorough explanations."
 		},
-		"setReasoningLevel": "Enable Reasoning Effort",
-		"claudeCode": {
-			"pathLabel": "Claude Code Path",
-			"description": "Optional path to your Claude Code CLI. Defaults to 'claude' if not set.",
-			"placeholder": "Default: claude",
-			"maxTokensLabel": "Max Output Tokens",
-			"maxTokensDescription": "Maximum number of output tokens for Claude Code responses. Default is 8000."
-		}
+		"setReasoningLevel": "Enable Reasoning Effort"
 	},
 	"checkpoints": {
 		"timeout": {
@@ -1087,7 +1089,9 @@
 		"settings": {
 			"import": "Import",
 			"export": "Export",
-			"reset": "Reset"
+			"reset": "Reset",
+			"overwriteGlobalDefaults": "Overwrite global defaults with this workspace",
+			"overwriteGlobalDefaultsDescription": "Settings are stored per workspace. New workspaces start from the global defaults — use this to make the current workspace's settings that starting point. Already-opened workspaces are unaffected."
 		}
 	},
 	"thinkingBudget": {

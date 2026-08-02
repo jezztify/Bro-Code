@@ -13,11 +13,13 @@ export function checkExistKey(config: ProviderSettings | undefined, zooCodeIsAut
 		return false
 	}
 
-	// Special case for fake-ai, openai-codex, and qwen-code providers which don't need any configuration.
+	// Special case for providers whose credentials live outside provider settings
+	// (OAuth tokens in SecretStorage) or which need no configuration at all.
 	const configurationFreeProviders: ProviderSettings["apiProvider"][] = [
 		providerIdentifiers.fakeAi,
 		providerIdentifiers.openaiCodex,
 		providerIdentifiers.qwenCode,
+		providerIdentifiers.claudeCode,
 	]
 	if (config.apiProvider && configurationFreeProviders.includes(config.apiProvider)) {
 		return true

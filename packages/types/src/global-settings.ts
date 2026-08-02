@@ -363,3 +363,33 @@ export const GLOBAL_STATE_KEYS = [...GLOBAL_SETTINGS_KEYS, ...PROVIDER_SETTINGS_
 
 export const isGlobalStateKey = (key: string): key is Keys<GlobalState> =>
 	GLOBAL_STATE_KEYS.includes(key as Keys<GlobalState>)
+
+/**
+ * Storage scope
+ *
+ * Settings are stored per-workspace (`ExtensionContext.workspaceState`) so that changing a setting
+ * in one VS Code window does not rewrite it for every other open workspace. The keys below are the
+ * exceptions: they must stay in `ExtensionContext.globalState`.
+ *
+ * Secrets are not listed here because VS Code's SecretStorage is global-only; API keys and the
+ * saved provider profiles remain shared across workspaces by design.
+ */
+export const ALWAYS_GLOBAL_STATE_KEYS = [
+	// Legacy pass-through data. Task history is file-backed by TaskHistoryStore; the state key only
+	// exists for the one-time migration, which reads whatever the previous version wrote globally.
+	"taskHistory",
+	// User-level telemetry consent. Must not vary by folder.
+	"telemetrySetting",
+	// Written by one window and read by a *different* window during activation
+	// (see `checkWorktreeAutoOpen` in src/extension.ts), so it cannot be workspace-scoped.
+	"worktreeAutoOpenPath",
+	// Read during activation before ContextProxy exists, and is a user-level preference.
+	"language",
+] as const satisfies readonly Keys<GlobalState>[]
+
+export const WORKSPACE_STATE_KEYS = GLOBAL_STATE_KEYS.filter(
+	(key) => !(ALWAYS_GLOBAL_STATE_KEYS as readonly string[]).includes(key),
+) as Keys<GlobalState>[]
+
+export const isWorkspaceScopedStateKey = (key: string): key is Keys<GlobalState> =>
+	isGlobalStateKey(key) && !(ALWAYS_GLOBAL_STATE_KEYS as readonly string[]).includes(key)

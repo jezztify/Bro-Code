@@ -28,6 +28,7 @@ import {
 	DeepSeekHandler,
 	MoonshotHandler,
 	KimiCodeHandler,
+	ClaudeCodeHandler,
 	MistralHandler,
 	VsCodeLmHandler,
 	RequestyHandler,
@@ -54,7 +55,10 @@ import { NativeOllamaHandler } from "./providers/native-ollama"
  * Options for completePrompt — unified with ApiHandlerCreateMessageMetadata.
  * Uses abortSignal (not signal) to match the metadata pattern used in stream path.
  */
-export interface CompletePromptOptions extends Pick<ApiHandlerCreateMessageMetadata, "abortSignal" | "reasoningEffort"> {
+export interface CompletePromptOptions extends Pick<
+	ApiHandlerCreateMessageMetadata,
+	"abortSignal" | "reasoningEffort"
+> {
 	/** Optional timeout override (ms) — falls back to provider default if omitted */
 	timeoutMs?: number
 }
@@ -197,6 +201,8 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			return new MoonshotHandler(options)
 		case providerIdentifiers.kimiCode:
 			return new KimiCodeHandler(options)
+		case providerIdentifiers.claudeCode:
+			return new ClaudeCodeHandler(options)
 		case providerIdentifiers.vscodeLm:
 			return new VsCodeLmHandler(options)
 		case providerIdentifiers.mistral:

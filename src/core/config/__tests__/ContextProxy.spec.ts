@@ -2,9 +2,10 @@
 
 import * as vscode from "vscode"
 
-import { GLOBAL_STATE_KEYS, SECRET_STATE_KEYS, GLOBAL_SECRET_KEYS } from "@roo-code/types"
+import { GLOBAL_STATE_KEYS, SECRET_STATE_KEYS, GLOBAL_SECRET_KEYS, WORKSPACE_STATE_KEYS } from "@roo-code/types"
 
 import { ContextProxy } from "../ContextProxy"
+import { WORKSPACE_SETTINGS_SEEDED_KEY } from "../scopedState"
 
 vi.mock("vscode", () => ({
 	Uri: {
@@ -21,6 +22,7 @@ describe("ContextProxy", () => {
 	let proxy: ContextProxy
 	let mockContext: any
 	let mockGlobalState: any
+	let mockWorkspaceState: any
 	let mockSecrets: any
 
 	beforeEach(async () => {
@@ -29,6 +31,12 @@ describe("ContextProxy", () => {
 
 		// Mock globalState
 		mockGlobalState = {
+			get: vi.fn(),
+			update: vi.fn().mockResolvedValue(undefined),
+		}
+
+		// Mock workspaceState, where all workspace-scoped settings live
+		mockWorkspaceState = {
 			get: vi.fn(),
 			update: vi.fn().mockResolvedValue(undefined),
 		}
@@ -43,6 +51,7 @@ describe("ContextProxy", () => {
 		// Mock the extension context
 		mockContext = {
 			globalState: mockGlobalState,
+			workspaceState: mockWorkspaceState,
 			secrets: mockSecrets,
 			extensionUri: { path: "/test/extension" },
 			extensionPath: "/test/extension",
@@ -70,11 +79,6 @@ describe("ContextProxy", () => {
 
 	describe("constructor", () => {
 		it("should initialize state cache with all global state keys", () => {
-			// +3 for the migration checks:
-			// 1. openRouterImageGenerationSettings
-			// 2. customCondensingPrompt
-			// 3. customSupportPrompts (for migrateOldDefaultCondensingPrompt)
-			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 3)
 			for (const key of GLOBAL_STATE_KEYS) {
 				expect(mockGlobalState.get).toHaveBeenCalledWith(key)
 			}
@@ -82,6 +86,39 @@ describe("ContextProxy", () => {
 			expect(mockGlobalState.get).toHaveBeenCalledWith("openRouterImageGenerationSettings")
 			expect(mockGlobalState.get).toHaveBeenCalledWith("customCondensingPrompt")
 			expect(mockGlobalState.get).toHaveBeenCalledWith("customSupportPrompts")
+		})
+
+		it("should read workspace-scoped keys from workspace state", () => {
+			for (const key of WORKSPACE_STATE_KEYS) {
+				expect(mockWorkspaceState.get).toHaveBeenCalledWith(key)
+			}
+		})
+
+		it("should mark the workspace as seeded from the global defaults", () => {
+			expect(mockWorkspaceState.get).toHaveBeenCalledWith(WORKSPACE_SETTINGS_SEEDED_KEY)
+			expect(mockWorkspaceState.update).toHaveBeenCalledWith(WORKSPACE_SETTINGS_SEEDED_KEY, true)
+		})
+
+		it("should seed workspace state from the global defaults on first initialization", async () => {
+			vi.clearAllMocks()
+			mockGlobalState.get.mockImplementation((key: string) => (key === "mode" ? "architect" : undefined))
+
+			await new ContextProxy(mockContext).initialize()
+
+			expect(mockWorkspaceState.update).toHaveBeenCalledWith("mode", "architect")
+		})
+
+		it("should not re-seed a workspace that was already seeded", async () => {
+			vi.clearAllMocks()
+			mockGlobalState.get.mockImplementation((key: string) => (key === "mode" ? "architect" : undefined))
+			mockWorkspaceState.get.mockImplementation((key: string) =>
+				key === WORKSPACE_SETTINGS_SEEDED_KEY ? true : undefined,
+			)
+
+			await new ContextProxy(mockContext).initialize()
+
+			const modeUpdates = mockWorkspaceState.update.mock.calls.filter((call: unknown[]) => call[0] === "mode")
+			expect(modeUpdates).toHaveLength(0)
 		})
 
 		it("should initialize secret cache with all secret keys", () => {
@@ -104,8 +141,10 @@ describe("ContextProxy", () => {
 			const result = proxy.getGlobalState("apiProvider")
 			expect(result).toBe("deepseek")
 
-			// Original context should be called once during updateGlobalState (+3 for migration checks)
-			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 3) // From initialization + migration checks
+			// Reading a cached value must not hit storage again.
+			const readsAfterInitialization = mockWorkspaceState.get.mock.calls.length
+			proxy.getGlobalState("apiProvider")
+			expect(mockWorkspaceState.get.mock.calls.length).toBe(readsAfterInitialization)
 		})
 
 		it("should handle default values correctly", async () => {
@@ -151,15 +190,27 @@ describe("ContextProxy", () => {
 	})
 
 	describe("updateGlobalState", () => {
-		it("should update state directly in original context", async () => {
+		it("should write workspace-scoped keys to workspace state only", async () => {
+			vi.clearAllMocks()
+
 			await proxy.updateGlobalState("apiProvider", "deepseek")
 
-			// Should have called original context
-			expect(mockGlobalState.update).toHaveBeenCalledWith("apiProvider", "deepseek")
+			// Workspace-scoped settings must not leak into other workspaces.
+			expect(mockWorkspaceState.update).toHaveBeenCalledWith("apiProvider", "deepseek")
+			expect(mockGlobalState.update).not.toHaveBeenCalled()
 
 			// Should have stored the value in cache
 			const storedValue = await proxy.getGlobalState("apiProvider")
 			expect(storedValue).toBe("deepseek")
+		})
+
+		it("should write always-global keys to global state only", async () => {
+			vi.clearAllMocks()
+
+			await proxy.updateGlobalState("telemetrySetting", "enabled")
+
+			expect(mockGlobalState.update).toHaveBeenCalledWith("telemetrySetting", "enabled")
+			expect(mockWorkspaceState.update).not.toHaveBeenCalled()
 		})
 
 		it("should bypass cache for pass-through state keys", async () => {
@@ -384,7 +435,7 @@ describe("ContextProxy", () => {
 			expect(proxy.getGlobalState("apiModelId")).toBeUndefined()
 		})
 
-		it("should update all global state keys to undefined", async () => {
+		it("should update all state keys to undefined in both scopes", async () => {
 			// Setup initial state
 			await proxy.updateGlobalState("apiModelId", "gpt-4")
 			await proxy.updateGlobalState("apiProvider", "openai")
@@ -397,9 +448,12 @@ describe("ContextProxy", () => {
 				expect(mockGlobalState.update).toHaveBeenCalledWith(key, undefined)
 			}
 
-			// Total calls should include initial setup + reset operations
-			const expectedUpdateCalls = 2 + GLOBAL_STATE_KEYS.length
-			expect(mockGlobalState.update).toHaveBeenCalledTimes(expectedUpdateCalls)
+			for (const key of WORKSPACE_STATE_KEYS) {
+				expect(mockWorkspaceState.update).toHaveBeenCalledWith(key, undefined)
+			}
+
+			// The workspace is re-seeded on the next initialization.
+			expect(mockWorkspaceState.update).toHaveBeenCalledWith(WORKSPACE_SETTINGS_SEEDED_KEY, undefined)
 		})
 
 		it("should delete all secrets", async () => {
@@ -434,6 +488,23 @@ describe("ContextProxy", () => {
 		})
 	})
 
+	describe("overwriteGlobalDefaults", () => {
+		it("should copy this workspace's settings into the global defaults", async () => {
+			await proxy.updateGlobalState("apiProvider", "deepseek")
+			await proxy.updateGlobalState("mode", "architect")
+
+			vi.clearAllMocks()
+			await proxy.overwriteGlobalDefaults()
+
+			expect(mockGlobalState.update).toHaveBeenCalledWith("apiProvider", "deepseek")
+			expect(mockGlobalState.update).toHaveBeenCalledWith("mode", "architect")
+			expect(mockGlobalState.update).toHaveBeenCalledTimes(WORKSPACE_STATE_KEYS.length)
+
+			// The workspace's own state is untouched.
+			expect(mockWorkspaceState.update).not.toHaveBeenCalled()
+		})
+	})
+
 	describe("invalid apiProvider migration", () => {
 		it("should clear Roo provider state during initialization", async () => {
 			vi.clearAllMocks()
@@ -453,8 +524,9 @@ describe("ContextProxy", () => {
 			const proxyWithRooProvider = new ContextProxy(mockContext)
 			await proxyWithRooProvider.initialize()
 
-			expect(mockGlobalState.update).toHaveBeenCalledWith("apiProvider", undefined)
-			expect(mockGlobalState.update).toHaveBeenCalledWith("apiModelId", undefined)
+			expect(mockWorkspaceState.update).toHaveBeenCalledWith("apiProvider", undefined)
+			expect(mockWorkspaceState.update).toHaveBeenCalledWith("apiModelId", undefined)
+			// `rooApiKey` was removed from GlobalState, so only the legacy global entry can exist.
 			expect(mockGlobalState.update).toHaveBeenCalledWith("rooApiKey", undefined)
 		})
 
@@ -472,7 +544,7 @@ describe("ContextProxy", () => {
 			await proxyWithInvalidProvider.initialize()
 
 			// Should have cleared the invalid apiProvider
-			expect(mockGlobalState.update).toHaveBeenCalledWith("apiProvider", undefined)
+			expect(mockWorkspaceState.update).toHaveBeenCalledWith("apiProvider", undefined)
 		})
 
 		it("should not clear retired apiProvider from storage during initialization", async () => {
@@ -488,10 +560,13 @@ describe("ContextProxy", () => {
 			const proxyWithRetiredProvider = new ContextProxy(mockContext)
 			await proxyWithRetiredProvider.initialize()
 
-			// Should NOT have called update for apiProvider (retired should be preserved)
-			const updateCalls = mockGlobalState.update.mock.calls
-			const apiProviderUpdateCalls = updateCalls.filter((call: unknown[]) => call[0] === "apiProvider")
-			expect(apiProviderUpdateCalls).toHaveLength(0)
+			// Should NOT have cleared apiProvider (retired should be preserved). Seeding copies the
+			// global value into the workspace, so only look for a clearing write.
+			const updateCalls = mockWorkspaceState.update.mock.calls
+			const clearingCalls = updateCalls.filter(
+				(call: unknown[]) => call[0] === "apiProvider" && call[1] === undefined,
+			)
+			expect(clearingCalls).toHaveLength(0)
 		})
 
 		it("should not modify valid apiProvider during initialization", async () => {
@@ -507,10 +582,12 @@ describe("ContextProxy", () => {
 			const proxyWithValidProvider = new ContextProxy(mockContext)
 			await proxyWithValidProvider.initialize()
 
-			// Should NOT have called update for apiProvider (it's valid)
-			const updateCalls = mockGlobalState.update.mock.calls
-			const apiProviderUpdateCalls = updateCalls.filter((call: unknown[]) => call[0] === "apiProvider")
-			expect(apiProviderUpdateCalls.length).toBe(0)
+			// Should NOT have cleared apiProvider (it's valid)
+			const updateCalls = mockWorkspaceState.update.mock.calls
+			const clearingCalls = updateCalls.filter(
+				(call: unknown[]) => call[0] === "apiProvider" && call[1] === undefined,
+			)
+			expect(clearingCalls.length).toBe(0)
 		})
 	})
 
@@ -633,7 +710,7 @@ Output only the summary of the conversation so far, without any additional comme
 
 			// Should have cleared the old default by updating customSupportPrompts to undefined
 			// (since CONDENSE was the only key)
-			expect(mockGlobalState.update).toHaveBeenCalledWith("customSupportPrompts", undefined)
+			expect(mockWorkspaceState.update).toHaveBeenCalledWith("customSupportPrompts", undefined)
 		})
 
 		it("should preserve other custom prompts when clearing old v1 default", async () => {
@@ -653,7 +730,7 @@ Output only the summary of the conversation so far, without any additional comme
 			await proxyWithOldDefault.initialize()
 
 			// Should have updated customSupportPrompts to keep EXPLAIN but remove CONDENSE
-			expect(mockGlobalState.update).toHaveBeenCalledWith("customSupportPrompts", {
+			expect(mockWorkspaceState.update).toHaveBeenCalledWith("customSupportPrompts", {
 				EXPLAIN: "Custom explain prompt",
 			})
 		})
@@ -672,12 +749,14 @@ Output only the summary of the conversation so far, without any additional comme
 			const proxyWithCustomPrompt = new ContextProxy(mockContext)
 			await proxyWithCustomPrompt.initialize()
 
-			// Should NOT have called update for customSupportPrompts (custom prompt should be preserved)
-			const updateCalls = mockGlobalState.update.mock.calls
+			// Seeding copies the global value into the workspace; the migration must leave it alone.
+			const updateCalls = mockWorkspaceState.update.mock.calls
 			const customSupportPromptsUpdateCalls = updateCalls.filter(
 				(call: any[]) => call[0] === "customSupportPrompts",
 			)
-			expect(customSupportPromptsUpdateCalls.length).toBe(0)
+			expect(customSupportPromptsUpdateCalls.every((call: any[]) => call[1]?.CONDENSE === customPrompt)).toBe(
+				true,
+			)
 		})
 
 		it("should not fail when customSupportPrompts is undefined", async () => {
@@ -689,7 +768,7 @@ Output only the summary of the conversation so far, without any additional comme
 			await proxyWithNoPrompts.initialize()
 
 			// Should not have called update for customSupportPrompts
-			const updateCalls = mockGlobalState.update.mock.calls
+			const updateCalls = mockWorkspaceState.update.mock.calls
 			const customSupportPromptsUpdateCalls = updateCalls.filter(
 				(call: any[]) => call[0] === "customSupportPrompts",
 			)

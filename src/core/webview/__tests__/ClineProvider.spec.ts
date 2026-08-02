@@ -1111,7 +1111,7 @@ describe("ClineProvider", () => {
 		await messageHandler({ type: "updateSettings", updatedSettings: { writeDelayMs: 2000 } })
 
 		expect(updateGlobalStateSpy).toHaveBeenCalledWith("writeDelayMs", 2000)
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("writeDelayMs", 2000)
+		expect(mockContext.workspaceState.update).toHaveBeenCalledWith("writeDelayMs", 2000)
 		expect(mockPostMessage).toHaveBeenCalled()
 	})
 
@@ -1124,24 +1124,24 @@ describe("ClineProvider", () => {
 		// Simulate setting sound to enabled
 		await messageHandler({ type: "updateSettings", updatedSettings: { soundEnabled: true } })
 		expect(updateGlobalStateSpy).toHaveBeenCalledWith("soundEnabled", true)
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("soundEnabled", true)
+		expect(mockContext.workspaceState.update).toHaveBeenCalledWith("soundEnabled", true)
 		expect(mockPostMessage).toHaveBeenCalled()
 
 		// Simulate setting sound to disabled
 		await messageHandler({ type: "updateSettings", updatedSettings: { soundEnabled: false } })
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("soundEnabled", false)
+		expect(mockContext.workspaceState.update).toHaveBeenCalledWith("soundEnabled", false)
 		expect(mockPostMessage).toHaveBeenCalled()
 
 		// Simulate setting tts to enabled
 		await messageHandler({ type: "updateSettings", updatedSettings: { ttsEnabled: true } })
 		expect(setTtsEnabled).toHaveBeenCalledWith(true)
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("ttsEnabled", true)
+		expect(mockContext.workspaceState.update).toHaveBeenCalledWith("ttsEnabled", true)
 		expect(mockPostMessage).toHaveBeenCalled()
 
 		// Simulate setting tts to disabled
 		await messageHandler({ type: "updateSettings", updatedSettings: { ttsEnabled: false } })
 		expect(setTtsEnabled).toHaveBeenCalledWith(false)
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("ttsEnabled", false)
+		expect(mockContext.workspaceState.update).toHaveBeenCalledWith("ttsEnabled", false)
 		expect(mockPostMessage).toHaveBeenCalled()
 	})
 
@@ -1159,7 +1159,7 @@ describe("ClineProvider", () => {
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 		await messageHandler({ type: "updateSettings", updatedSettings: { autoCondenseContext: false } })
 		expect(updateGlobalStateSpy).toHaveBeenCalledWith("autoCondenseContext", false)
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("autoCondenseContext", false)
+		expect(mockContext.workspaceState.update).toHaveBeenCalledWith("autoCondenseContext", false)
 		expect(mockPostMessage).toHaveBeenCalled()
 	})
 
@@ -1180,7 +1180,7 @@ describe("ClineProvider", () => {
 		await messageHandler({ type: "updateSettings", updatedSettings: { autoCondenseContextPercent: 75 } })
 
 		expect(updateGlobalStateSpy).toHaveBeenCalledWith("autoCondenseContextPercent", 75)
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("autoCondenseContextPercent", 75)
+		expect(mockContext.workspaceState.update).toHaveBeenCalledWith("autoCondenseContextPercent", 75)
 		expect(mockPostMessage).toHaveBeenCalled()
 	})
 
@@ -1265,7 +1265,7 @@ describe("ClineProvider", () => {
 		// Should load the saved config for architect mode
 		expect(vi.mocked(provider.providerSettingsManager.getModeConfigId).mock.calls[0][0]).toBe("architect")
 		expect(provider.providerSettingsManager.activateProfile).toHaveBeenCalledWith({ name: "test-config" })
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("currentApiConfigName", "test-config")
+		expect(mockContext.workspaceState.update).toHaveBeenCalledWith("currentApiConfigName", "test-config")
 	})
 
 	it("does not save current config as default when switching to a mode without a saved config", async () => {
@@ -1360,13 +1360,13 @@ describe("ClineProvider", () => {
 
 		// Test showRooIgnoredFiles with true
 		await messageHandler({ type: "updateSettings", updatedSettings: { showRooIgnoredFiles: true } })
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("showRooIgnoredFiles", true)
+		expect(mockContext.workspaceState.update).toHaveBeenCalledWith("showRooIgnoredFiles", true)
 		expect(mockPostMessage).toHaveBeenCalled()
 		expect((await provider.getState()).showRooIgnoredFiles).toBe(true)
 
 		// Test showRooIgnoredFiles with false
 		await messageHandler({ type: "updateSettings", updatedSettings: { showRooIgnoredFiles: false } })
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("showRooIgnoredFiles", false)
+		expect(mockContext.workspaceState.update).toHaveBeenCalledWith("showRooIgnoredFiles", false)
 		expect(mockPostMessage).toHaveBeenCalled()
 		expect((await provider.getState()).showRooIgnoredFiles).toBe(false)
 	})
@@ -1397,7 +1397,7 @@ describe("ClineProvider", () => {
 		})
 
 		// Verify state was updated correctly
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("customModePrompts", {
+		expect(mockContext.workspaceState.update).toHaveBeenCalledWith("customModePrompts", {
 			...existingPrompts,
 			code: "new code prompt",
 		})
@@ -1436,7 +1436,7 @@ describe("ClineProvider", () => {
 		await messageHandler({ type: "updateSettings", updatedSettings: { maxWorkspaceFiles: 300 } })
 
 		expect(updateGlobalStateSpy).toHaveBeenCalledWith("maxWorkspaceFiles", 300)
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("maxWorkspaceFiles", 300)
+		expect(mockContext.workspaceState.update).toHaveBeenCalledWith("maxWorkspaceFiles", 300)
 		expect(mockPostMessage).toHaveBeenCalled()
 	})
 
@@ -1469,7 +1469,7 @@ describe("ClineProvider", () => {
 		})
 
 		// Verify state was updated correctly
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("customModePrompts", {
+		expect(mockContext.workspaceState.update).toHaveBeenCalledWith("customModePrompts", {
 			code: {
 				roleDefinition: "Code role",
 				customInstructions: "New instructions",
@@ -1870,12 +1870,12 @@ describe("ClineProvider", () => {
 			await provider.handleModeSwitch("architect")
 
 			// Verify mode was updated
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "architect")
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("mode", "architect")
 
 			// Verify saved config was loaded
 			expect(vi.mocked(provider.providerSettingsManager.getModeConfigId).mock.calls[0][0]).toBe("architect")
 			expect(provider.providerSettingsManager.activateProfile).toHaveBeenCalledWith({ name: "saved-config" })
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("currentApiConfigName", "saved-config")
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("currentApiConfigName", "saved-config")
 
 			// Verify state was posted to webview
 			expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "state" }))
@@ -1904,7 +1904,7 @@ describe("ClineProvider", () => {
 			await provider.handleModeSwitch("architect")
 
 			// Verify mode was updated
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "architect")
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("mode", "architect")
 
 			// Assigning a profile to a mode is now an explicit action - switching to a mode
 			// with no saved config must not implicitly assign one.
@@ -1975,7 +1975,7 @@ describe("ClineProvider", () => {
 			expect(getModeBySlug).toHaveBeenCalledWith("non-existent-mode", expect.any(Array))
 
 			// Verify fallback to default mode
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "code")
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("mode", "code")
 			expect(logSpy).toHaveBeenCalledWith(
 				"Mode 'non-existent-mode' from history no longer exists. Falling back to default mode 'code'.",
 			)
@@ -2046,7 +2046,7 @@ describe("ClineProvider", () => {
 			expect(getModeBySlug).toHaveBeenCalledWith("custom-mode", expect.any(Array))
 
 			// Verify mode was preserved
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "custom-mode")
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("mode", "custom-mode")
 			expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining("no longer exists"))
 
 			// Verify history item mode was not changed
@@ -2096,7 +2096,7 @@ describe("ClineProvider", () => {
 			await provider.createTaskWithHistoryItem(historyItem)
 
 			// Verify mode was preserved
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "architect")
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("mode", "architect")
 
 			// Verify history item mode was not changed
 			expect(historyItem.mode).toBe("architect")
@@ -2129,7 +2129,7 @@ describe("ClineProvider", () => {
 			await provider.createTaskWithHistoryItem(historyItem)
 
 			// No explicit mode validation is needed for a legacy task.
-			expect(mockContext.globalState.update).not.toHaveBeenCalledWith("mode", expect.any(String))
+			expect(mockContext.workspaceState.update).not.toHaveBeenCalledWith("mode", expect.any(String))
 		})
 
 		test("continues with task restoration even if mode config loading fails", async () => {
@@ -2227,7 +2227,7 @@ describe("ClineProvider", () => {
 			)
 
 			// Verify state was updated
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("customModes", [
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("customModes", [
 				{ groups: ["read"], name: "Test Mode", roleDefinition: "Updated role definition", slug: "test-mode" },
 			])
 
@@ -2320,10 +2320,10 @@ describe("ClineProvider", () => {
 			expect(provider.providerSettingsManager.saveConfig).toHaveBeenCalledWith("test-config", testApiConfig)
 
 			// Verify state updates
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("listApiConfigMeta", [
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("listApiConfigMeta", [
 				{ name: "test-config", id: "test-id", apiProvider: "anthropic" },
 			])
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("currentApiConfigName", "test-config")
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("currentApiConfigName", "test-config")
 
 			// Verify state was posted to webview
 			expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "state" }))
@@ -2379,10 +2379,10 @@ describe("ClineProvider", () => {
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith("errors.create_api_config")
 
 			// Verify state was still updated
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("listApiConfigMeta", [
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("listApiConfigMeta", [
 				{ name: "test-config", id: "test-id", apiProvider: "anthropic" },
 			])
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("currentApiConfigName", "test-config")
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("currentApiConfigName", "test-config")
 		})
 
 		test("saving edits to a non-active profile persists settings without activating it", async () => {
@@ -2424,7 +2424,7 @@ describe("ClineProvider", () => {
 			// ...but the active mode's provider mapping and global "current" profile are
 			// left untouched.
 			expect(provider.providerSettingsManager.setModeConfig).not.toHaveBeenCalled()
-			expect(mockContext.globalState.update).not.toHaveBeenCalledWith("currentApiConfigName", "other-config")
+			expect(mockContext.workspaceState.update).not.toHaveBeenCalledWith("currentApiConfigName", "other-config")
 		})
 
 		test("handles successful saveApiConfiguration", async () => {
@@ -2457,7 +2457,7 @@ describe("ClineProvider", () => {
 			expect(provider.providerSettingsManager.saveConfig).toHaveBeenCalledWith("test-config", testApiConfig)
 
 			// Verify state updates
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("listApiConfigMeta", [
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("listApiConfigMeta", [
 				{ name: "test-config", id: "test-id", apiProvider: "anthropic" },
 			])
 			expect(updateGlobalStateSpy).toHaveBeenCalledWith("listApiConfigMeta", [

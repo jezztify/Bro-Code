@@ -5,6 +5,7 @@ import {
 	deepSeekDefaultModelId,
 	moonshotDefaultModelId,
 	kimiCodeDefaultModelId,
+	claudeCodeDefaultModelId,
 	geminiDefaultModelId,
 	mistralDefaultModelId,
 	openRouterDefaultModelId,
@@ -44,6 +45,7 @@ export const PROVIDER_SERVICE_CONFIG: Partial<Record<ProviderName, ProviderServi
 	deepseek: { serviceName: "DeepSeek", serviceUrl: "https://platform.deepseek.com" },
 	moonshot: { serviceName: "Moonshot", serviceUrl: "https://platform.moonshot.cn" },
 	"kimi-code": { serviceName: "Kimi Code", serviceUrl: "https://www.kimi.com/code" },
+	"claude-code": { serviceName: "Claude Code", serviceUrl: "https://claude.ai" },
 	gemini: { serviceName: "Google Gemini", serviceUrl: "https://ai.google.dev" },
 	mistral: { serviceName: "Mistral", serviceUrl: "https://console.mistral.ai" },
 	"openai-native": { serviceName: "OpenAI", serviceUrl: "https://platform.openai.com" },
@@ -71,6 +73,7 @@ export const PROVIDER_DEFAULT_MODEL_IDS: Partial<Record<ProviderName, string>> =
 	deepseek: deepSeekDefaultModelId,
 	moonshot: moonshotDefaultModelId,
 	"kimi-code": kimiCodeDefaultModelId,
+	"claude-code": claudeCodeDefaultModelId,
 	gemini: geminiDefaultModelId,
 	mistral: mistralDefaultModelId,
 	"openai-native": openAiNativeDefaultModelId,
@@ -121,6 +124,7 @@ const PROVIDER_MODEL_CONFIG: Partial<Record<ProviderName, ProviderModelConfig>> 
 	deepseek: { field: "apiModelId", default: deepSeekDefaultModelId },
 	moonshot: { field: "apiModelId", default: moonshotDefaultModelId },
 	"kimi-code": { field: "apiModelId", default: kimiCodeDefaultModelId },
+	"claude-code": { field: "apiModelId", default: claudeCodeDefaultModelId },
 	minimax: { field: "apiModelId", default: minimaxDefaultModelId },
 	mimo: { field: "apiModelId", default: mimoDefaultModelId },
 	mistral: { field: "apiModelId", default: mistralDefaultModelId },
@@ -206,6 +210,8 @@ export const PROVIDERS_WITH_CUSTOM_MODEL_UI: ProviderName[] = [
 	"openai", // OpenAI Compatible
 	"openai-codex", // OpenAI Codex has custom UI with auth and rate limits
 	"kimi-code",
+	"claude-code", // Claude Code renders its own picker alongside the sign-in panel
+
 	"litellm",
 	"vercel-ai-gateway",
 	"ollama",

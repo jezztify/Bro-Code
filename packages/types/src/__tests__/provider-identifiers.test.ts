@@ -37,6 +37,7 @@ const expectedProviderIdentifiers = [
 	"openai",
 	"fake-ai",
 	"anthropic",
+	"claude-code",
 	"bedrock",
 	"baseten",
 	"fireworks",
