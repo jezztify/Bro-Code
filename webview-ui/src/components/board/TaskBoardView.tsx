@@ -11,6 +11,7 @@ import { vscode } from "@/utils/vscode"
 
 import { Tab, TabContent, TabHeader } from "../common/Tab"
 
+import BoardActivityColumn from "./BoardActivityColumn"
 import { COLUMNS, compareBoardTasks } from "./boardStage"
 import { sumBoardWorkspaceTokens } from "./boardTokenTotals"
 import TaskBoardColumn from "./TaskBoardColumn"
@@ -86,6 +87,15 @@ const TaskBoardView = () => {
 				)
 			: []
 	}, [boardState.tasks, search, selectedWorkspace])
+	// The log is a record of what happened, not a view of the cards, so the search box
+	// deliberately does not narrow it — but it is still scoped to the open workspace.
+	const activity = useMemo(
+		() =>
+			selectedWorkspace
+				? (boardState.activity ?? []).filter((entry) => entry.workspaceId === selectedWorkspace.id)
+				: [],
+		[boardState.activity, selectedWorkspace],
+	)
 	// Every card counts toward the workspace total, including the ones the search
 	// box is currently hiding.
 	const tokenTotals = useMemo(
@@ -240,6 +250,7 @@ const TaskBoardView = () => {
 			</TabHeader>
 			<TabContent className="bg-vscode-editor-background px-4 py-4">
 				<div className="flex h-full min-w-max gap-4 overflow-x-auto pr-2">
+					<BoardActivityColumn entries={activity} />
 					{COLUMNS.map((column) => (
 						<TaskBoardColumn
 							key={column.stage}

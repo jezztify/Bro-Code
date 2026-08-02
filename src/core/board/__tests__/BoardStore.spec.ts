@@ -3,6 +3,8 @@ import { mkdtemp, readFile, writeFile } from "fs/promises"
 import { tmpdir } from "os"
 import { join } from "path"
 
+import { BOARD_ACTIVITY_LIMIT } from "@roo-code/types"
+
 import { BoardStore, type BoardTaskMove } from "../BoardStore"
 
 describe("BoardStore", () => {
@@ -445,6 +447,123 @@ describe("BoardStore", () => {
 		await reopenedStore.initialize()
 
 		expect(reopenedStore.getSnapshot().tasks[0]).toMatchObject({ linkedRefinementTaskId: "refine-1" })
+	})
+
+	describe("activity log", () => {
+		afterEach(() => BoardStore.setActivityContext(undefined))
+
+		it("records a move forward as passed and a move back as blocked", async () => {
+			const { store, taskId } = await seedTask("backlog")
+
+			await store.updateTask(taskId, { stage: "scoped" })
+			// The validator found unmet criteria and returned the card for more work.
+			await store.updateTask(taskId, { stage: "qa_validation" })
+			await store.updateTask(taskId, { stage: "in_progress" })
+
+			expect(store.getSnapshot().activity).toMatchObject([
+				{ from: "backlog", to: "scoped", outcome: "passed" },
+				{ from: "scoped", to: "qa_validation", outcome: "passed" },
+				{ from: "qa_validation", to: "in_progress", outcome: "blocked" },
+			])
+		})
+
+		it("logs only moves, never a card created in a column or renamed in place", async () => {
+			const { store, taskId } = await seedTask("backlog")
+
+			await store.updateTask(taskId, { title: "Renamed" })
+			await store.updateTask(taskId, { position: 3 })
+
+			expect(store.getSnapshot().activity ?? []).toEqual([])
+		})
+
+		it("stamps an entry with the card reference and the mode of the column it left", async () => {
+			const { store, taskId } = await seedTask("approved")
+			const workspaceId = store.getSnapshot().selectedWorkspaceId!
+			await store.setColumnMode(workspaceId, "approved", "code")
+			BoardStore.setActivityContext(() => ({ mode: "ask", apiConfigName: "Anthropic prod" }))
+
+			await store.linkTaskToHistory(taskId, "execution-1")
+
+			expect(store.getSnapshot().activity?.[0]).toMatchObject({
+				taskId,
+				taskNumber: 1,
+				taskTitle: "Implement",
+				// The approved column's mode, not the host's currently selected one: that
+				// column is what ran the work this move reports.
+				mode: "code",
+				apiConfigName: "Anthropic prod",
+				from: "approved",
+				to: "in_progress",
+			})
+		})
+
+		it("falls back to the host's mode when the column it left has none", async () => {
+			const { store, taskId } = await seedTask("approved")
+			BoardStore.setActivityContext(() => ({ mode: "ask", apiConfigName: "OpenRouter cheap" }))
+
+			await store.updateTask(taskId, { stage: "in_progress" })
+
+			expect(store.getSnapshot().activity?.[0]).toMatchObject({ mode: "ask", apiConfigName: "OpenRouter cheap" })
+		})
+
+		it("records a move with no mode or API configuration when no host context is registered", async () => {
+			const { store, taskId } = await seedTask("approved")
+
+			await store.updateTask(taskId, { stage: "in_progress" })
+
+			const entry = store.getSnapshot().activity?.[0]
+			expect(entry).toMatchObject({ from: "approved", to: "in_progress" })
+			expect(entry?.mode).toBeUndefined()
+			expect(entry?.apiConfigName).toBeUndefined()
+		})
+
+		it("keeps the newest entries once the log is full", async () => {
+			const { store, taskId } = await seedTask("approved")
+
+			// Two moves per pass, so the log passes its cap partway through.
+			for (let pass = 0; pass < BOARD_ACTIVITY_LIMIT; pass++) {
+				await store.updateTask(taskId, { stage: "in_progress" })
+				await store.updateTask(taskId, { stage: "approved" })
+			}
+
+			const activity = store.getSnapshot().activity ?? []
+			expect(activity).toHaveLength(BOARD_ACTIVITY_LIMIT)
+			// Oldest first, so the window that survives ends on the most recent move.
+			expect(activity.at(-1)).toMatchObject({ from: "in_progress", to: "approved" })
+		})
+
+		it("drops the entries of a deleted workspace", async () => {
+			const { store, taskId } = await seedTask("approved")
+			const workspaceId = store.getSnapshot().selectedWorkspaceId!
+			await store.updateTask(taskId, { stage: "in_progress" })
+
+			await store.deleteWorkspace(workspaceId)
+
+			expect(store.getSnapshot().activity).toEqual([])
+		})
+
+		it("survives a reopen, and reads a snapshot written before the log existed", async () => {
+			const directory = await mkdtemp(join(tmpdir(), "board-store-"))
+			const store = new BoardStore(directory)
+			await store.initialize()
+			await store.createWorkspace("Planning")
+			const workspaceId = store.getSnapshot().selectedWorkspaceId!
+			await store.createTask({ workspaceId, title: "Implement" })
+			await store.updateTask(store.getSnapshot().tasks[0]!.id, { stage: "done" })
+
+			// A board.json from before this feature has no `activity` key at all.
+			const written = JSON.parse(await readFile(join(directory, "board.json"), "utf8"))
+			const legacyStore = new BoardStore(directory)
+			await legacyStore.initialize()
+			expect(legacyStore.getSnapshot().activity).toHaveLength(1)
+
+			delete written.activity
+			await writeFile(join(directory, "board.json"), JSON.stringify(written), "utf8")
+			const reopenedStore = new BoardStore(directory)
+			await reopenedStore.initialize()
+
+			expect(reopenedStore.getSnapshot().activity).toBeUndefined()
+		})
 	})
 
 	describe("sharing one store across providers", () => {

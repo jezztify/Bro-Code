@@ -18,7 +18,15 @@ export const boardTaskChatId = (task: BoardTask): string | undefined =>
 
 /** A conversation that is live in this host and owns its own copy of its messages. */
 export type LiveConversation = {
-	say: (type: ClineSay, text: string) => Promise<unknown>
+	say: (
+		type: ClineSay,
+		text: string,
+		images: undefined,
+		partial: undefined,
+		checkpoint: undefined,
+		progressStatus: undefined,
+		options: { isNonInteractive?: boolean },
+	) => Promise<unknown>
 }
 
 /**
@@ -42,7 +50,13 @@ export async function postBoardTaskMoveNotice(
 	// its back would miss the open chat view and be overwritten by its next save.
 	const liveConversation = findLiveConversation(chatTaskId)
 	if (liveConversation) {
-		await liveConversation.say(BOARD_TASK_MOVED_SAY, text)
+		// The note is something the conversation is told, not something it is asked.
+		// Without `isNonInteractive` the say bumps `lastMessageTs`, which supersedes a
+		// question the conversation is already waiting on - so approving a scoped card
+		// would cut off its refinement chat's pending ask and drive another model turn.
+		await liveConversation.say(BOARD_TASK_MOVED_SAY, text, undefined, undefined, undefined, undefined, {
+			isNonInteractive: true,
+		})
 		return
 	}
 

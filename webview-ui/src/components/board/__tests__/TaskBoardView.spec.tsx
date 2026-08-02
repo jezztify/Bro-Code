@@ -50,7 +50,8 @@ describe("workspace-first TaskBoardView", () => {
 			.getAllByTestId(/^board-column-/)
 			.map((column) => column.getAttribute("data-testid")?.replace("board-column-", ""))
 
-		expect(columns).toEqual(["backlog", "scoped", "approved", "in_progress", "qa_validation", "done"])
+		// The activity log leads the board, ahead of the first column cards live in.
+		expect(columns).toEqual(["activity", "backlog", "scoped", "approved", "in_progress", "qa_validation", "done"])
 	})
 
 	it("renders blank cards in their assigned stage", () => {

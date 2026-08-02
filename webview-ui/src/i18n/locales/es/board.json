@@ -25,7 +25,17 @@
 		"open": "Open task"
 	},
 	"movedNotice": "This task was moved from {{from}} to {{to}}",
+	"activity": {
+		"empty": "No moves recorded yet.",
+		"unknownMode": "no mode",
+		"unknownApiConfig": "no API config",
+		"outcome": {
+			"passed": "PASSED",
+			"blocked": "BLOCKED"
+		}
+	},
 	"columns": {
+		"activityLog": "Activity Log",
 		"backlog": "Backlog",
 		"scoped": "Scoped",
 		"approved": "Approved",

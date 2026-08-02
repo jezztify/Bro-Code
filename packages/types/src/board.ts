@@ -3,6 +3,21 @@ import { z } from "zod"
 export const boardStageSchema = z.enum(["backlog", "scoped", "approved", "in_progress", "qa_validation", "done"])
 export type BoardStage = z.infer<typeof boardStageSchema>
 
+/** The stages in pipeline order, so a move can be read as progress or as a setback. */
+export const BOARD_STAGE_ORDER = boardStageSchema.options
+
+/**
+ * Whether a move carried its card forward or sent it back. The QA validation column
+ * is what this exists for — a validated card goes on to done, one with unmet criteria
+ * is returned to in_progress — but it reads the same for every other column: a card
+ * that advanced cleared its gate, a card that came back is held up.
+ */
+export const boardActivityOutcomeSchema = z.enum(["passed", "blocked"])
+export type BoardActivityOutcome = z.infer<typeof boardActivityOutcomeSchema>
+
+export const boardActivityOutcomeFor = (from: BoardStage, to: BoardStage): BoardActivityOutcome =>
+	BOARD_STAGE_ORDER.indexOf(to) > BOARD_STAGE_ORDER.indexOf(from) ? "passed" : "blocked"
+
 /**
  * Mode per board column, keyed by stage. A card is run in the mode of the column
  * it sits in, so the mode belongs to the workspace's columns rather than to
@@ -72,6 +87,36 @@ export const parseBoardTaskNumber = (reference: string): number | undefined => {
 	return Number.isInteger(number) && number > 0 ? number : undefined
 }
 
+/**
+ * One line of the board's activity log: a card changing column, recorded with enough
+ * context to read it without opening the card. A card can be renamed or deleted after
+ * the fact, so the title and number are copied in rather than looked up — the log says
+ * what the board looked like when it happened.
+ */
+export const boardActivityEntrySchema = z.object({
+	id: z.string().min(1),
+	workspaceId: z.string().min(1),
+	taskId: z.string().min(1),
+	taskNumber: z.number().int().positive().optional(),
+	taskTitle: z.string(),
+	from: boardStageSchema,
+	to: boardStageSchema,
+	outcome: boardActivityOutcomeSchema,
+	/** The mode the card's column runs in, or the mode selected at the time. */
+	mode: z.string().min(1).optional(),
+	/** The name of the API configuration profile active when the move happened. */
+	apiConfigName: z.string().min(1).optional(),
+	at: z.number().finite(),
+})
+export type BoardActivityEntry = z.infer<typeof boardActivityEntrySchema>
+
+/**
+ * How many entries the log keeps. The board is stored as a single JSON file rewritten
+ * on every mutation, so an unbounded log would make every card edit progressively more
+ * expensive; the oldest entries fall off instead.
+ */
+export const BOARD_ACTIVITY_LIMIT = 200
+
 export const boardStateSchema = z.object({
 	version: z.literal(1),
 	selectedWorkspaceId: z.string().min(1).optional(),
@@ -79,6 +124,8 @@ export const boardStateSchema = z.object({
 	nextTaskNumber: z.number().int().positive().optional(),
 	workspaces: z.array(boardWorkspaceSchema),
 	tasks: z.array(boardTaskSchema),
+	/** Oldest first, capped at {@link BOARD_ACTIVITY_LIMIT}. Absent in older snapshots. */
+	activity: z.array(boardActivityEntrySchema).optional(),
 	migrations: z.object({
 		historyImport: z.literal(1).optional(),
 	}),

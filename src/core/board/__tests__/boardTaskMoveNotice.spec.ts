@@ -40,10 +40,28 @@ describe("postBoardTaskMoveNotice", () => {
 
 		await postBoardTaskMoveNotice(move(card({ linkedHistoryTaskId: "execution-1" })), () => ({ say }))
 
-		expect(say).toHaveBeenCalledWith("board_task_moved", JSON.stringify({ from: "in_progress", to: "qa_validation" }))
+		expect(say).toHaveBeenCalledWith(
+			"board_task_moved",
+			JSON.stringify({ from: "in_progress", to: "qa_validation" }),
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			{ isNonInteractive: true },
+		)
 		// A live conversation owns its messages; writing the file behind its back would
 		// be overwritten by its next save.
 		expect(saveTaskMessages).not.toHaveBeenCalled()
+	})
+
+	it("does not supersede a question the live conversation is waiting on", async () => {
+		const say = vi.fn().mockResolvedValue(undefined)
+
+		await postBoardTaskMoveNotice(move(card({ linkedRefinementTaskId: "refine-1" })), () => ({ say }))
+
+		// An interactive say bumps `lastMessageTs` and cancels the pending ask, which
+		// restarts the conversation's loop - approving a card must not cost a model turn.
+		expect(say.mock.calls[0][6]).toEqual({ isNonInteractive: true })
 	})
 
 	it("appends to the stored conversation when nothing is live", async () => {

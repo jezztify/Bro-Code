@@ -342,6 +342,13 @@ export class ClineProvider
 		// once for the host rather than once per open window. Re-registering from a
 		// second provider replaces the hook with an equivalent one.
 		BoardStore.setMoveNotifier((move) => postBoardTaskMoveNotice(move, ClineProvider.findLiveConversation))
+		// Stamps the activity log with what the host was set to when a card moved. Read
+		// from the context proxy rather than `getState`, because the store resolves this
+		// synchronously in the middle of a write.
+		BoardStore.setActivityContext(() => {
+			const values = this.contextProxy.getValues()
+			return { mode: values.mode, apiConfigName: values.currentApiConfigName }
+		})
 
 		// Start configuration loading (which might trigger indexing) in the background.
 		// Don't await, allowing activation to continue immediately.

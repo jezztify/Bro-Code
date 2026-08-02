@@ -2,7 +2,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 
 import type { BoardStage, BoardState, BoardTask, BoardWorkspace, HistoryItem } from "@roo-code/types"
-import { boardStateSchema } from "@roo-code/types"
+import { BOARD_ACTIVITY_LIMIT, boardActivityOutcomeFor, boardStateSchema } from "@roo-code/types"
 import { v7 as uuidv7 } from "uuid"
 
 import { GlobalFileNames } from "../../shared/globalFileNames"
@@ -16,6 +16,18 @@ export type BoardTaskMove = {
 	to: BoardStage
 	/** Where this board's storage lives, so a notifier can reach the card's conversation. */
 	globalStoragePath: string
+}
+
+/**
+ * What the extension host was configured with when a move happened, stamped onto the
+ * activity log. Resolved at move time rather than stored, because neither belongs to
+ * the board: the mode comes from the card's column when it has one, and the API
+ * configuration is whichever profile is selected. Both are optional — the mobile server
+ * and tests drive the store with no host settings behind it.
+ */
+export type BoardActivityContext = {
+	mode?: string
+	apiConfigName?: string
 }
 
 const EMPTY_STATE: BoardState = {
@@ -45,6 +57,14 @@ export class BoardStore {
 	private static moveNotifier: ((move: BoardTaskMove) => Promise<void>) | undefined
 
 	/**
+	 * Where the activity log gets the mode and API configuration a move happened under. Static
+	 * for the same reason as {@link moveNotifier} — the answer is a property of the
+	 * extension host, not of whichever window's store recorded the move. Synchronous
+	 * because it is called from inside a mutation, which must not await mid-write.
+	 */
+	private static activityContext: (() => BoardActivityContext) | undefined
+
+	/**
 	 * One store per storage path, shared by every `ClineProvider` in the extension
 	 * host. Each provider used to build its own store over the same `board.json`,
 	 * and since a store reads that file exactly once (see `initialize`) and then
@@ -66,11 +86,20 @@ export class BoardStore {
 	static resetInstancesForTests(): void {
 		BoardStore.instances.clear()
 		BoardStore.moveNotifier = undefined
+		BoardStore.activityContext = undefined
 	}
 
 	/** See {@link BoardStore.moveNotifier}. `undefined` leaves moves unreported. */
 	static setMoveNotifier(notifier: ((move: BoardTaskMove) => Promise<void>) | undefined): void {
 		BoardStore.moveNotifier = notifier
+	}
+
+	/**
+	 * See {@link BoardStore.activityContext}. `undefined` logs moves without a mode or
+	 * API configuration rather than not logging them.
+	 */
+	static setActivityContext(resolve: (() => BoardActivityContext) | undefined): void {
+		BoardStore.activityContext = resolve
 	}
 
 	static getInstance(globalStoragePath: string, log?: (message: string) => void): BoardStore {
@@ -274,6 +303,8 @@ export class BoardStore {
 			this.requireWorkspace(state, id)
 			state.workspaces = state.workspaces.filter((workspace) => workspace.id !== id)
 			state.tasks = state.tasks.filter((task) => task.workspaceId !== id)
+			// The log is read per workspace, so entries for a deleted one are unreachable.
+			state.activity = state.activity?.filter((entry) => entry.workspaceId !== id)
 			if (state.selectedWorkspaceId === id) state.selectedWorkspaceId = state.workspaces[0]?.id
 		})
 	}
@@ -504,8 +535,40 @@ export class BoardStore {
 	private moveToStage(state: BoardState, task: BoardTask, stage: BoardStage): void {
 		if (task.stage === stage) return
 		this.pendingMoves.push({ taskId: task.id, from: task.stage, to: stage })
+		this.recordActivity(state, task, stage)
 		task.stage = stage
 		task.position = this.nextPosition(state, task.workspaceId, stage)
+	}
+
+	/**
+	 * Write the move into the activity log. Called before the card is moved, so the
+	 * card's current stage is still the column it is leaving.
+	 *
+	 * The mode recorded is the one the column the card is *leaving* runs in: that is
+	 * the column whose work produced this move — refinement runs from backlog, execution
+	 * from approved, validation from QA validation.
+	 */
+	private recordActivity(state: BoardState, task: BoardTask, stage: BoardStage): void {
+		const context = BoardStore.activityContext?.() ?? {}
+		const columnMode = state.workspaces.find((workspace) => workspace.id === task.workspaceId)?.columnModes?.[
+			task.stage
+		]
+		const activity = state.activity ?? []
+		activity.push({
+			id: uuidv7(),
+			workspaceId: task.workspaceId,
+			taskId: task.id,
+			taskNumber: task.number,
+			taskTitle: task.title,
+			from: task.stage,
+			to: stage,
+			outcome: boardActivityOutcomeFor(task.stage, stage),
+			mode: columnMode ?? context.mode,
+			apiConfigName: context.apiConfigName,
+			at: Date.now(),
+		})
+		// Oldest first, so trimming from the front keeps the most recent window.
+		state.activity = activity.slice(-BOARD_ACTIVITY_LIMIT)
 	}
 
 	private nextPosition(state: BoardState, workspaceId: string, stage: BoardStage): number {
