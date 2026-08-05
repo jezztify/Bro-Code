@@ -228,6 +228,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		taskHistory: [],
 		boardState: { version: 1, workspaces: [], tasks: [], migrations: {} },
 		runningTaskIds: [],
+		awaitingTaskIds: [],
 		shouldShowAnnouncement: false,
 		allowedCommands: [],
 		deniedCommands: [],
@@ -516,8 +517,14 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 				}
 				case "runningTaskIdsUpdated": {
 					// Pushed as tasks start, finish, or are cancelled, so the board's
-					// in-progress cards stop offering Stop for a run that has ended.
-					setState((prevState) => ({ ...prevState, runningTaskIds: message.runningTaskIds ?? [] }))
+					// in-progress cards stop offering Stop for a run that has ended. Also
+					// pushed when a run stops to ask the user something, which changes what
+					// a card should say without changing whether it is live.
+					setState((prevState) => ({
+						...prevState,
+						runningTaskIds: message.runningTaskIds ?? [],
+						awaitingTaskIds: message.awaitingTaskIds ?? [],
+					}))
 					break
 				}
 			}

@@ -7,6 +7,27 @@ export type BoardStage = z.infer<typeof boardStageSchema>
 export const BOARD_STAGE_ORDER = boardStageSchema.options
 
 /**
+ * The stages that mean a card is being worked on right now. Capped by
+ * {@link BOARD_ACTIVE_TASK_LIMIT}, which is what keeps the board to one card in
+ * flight: a card is only finished with these two once it reaches done.
+ */
+export const BOARD_ACTIVE_STAGES = ["in_progress", "qa_validation"] as const satisfies readonly BoardStage[]
+
+/**
+ * How many cards may occupy {@link BOARD_ACTIVE_STAGES} at once. One: a card that
+ * has started is carried through to done before another is picked up, so two runs
+ * never edit the same workspace at the same time.
+ */
+export const BOARD_ACTIVE_TASK_LIMIT = 1
+
+/**
+ * The section a validation run appends to a card it is sending back, and the section
+ * the manager reads back out to tell the next execution run what to fix. Shared so
+ * the two prompts cannot drift apart into writing and looking for different headings.
+ */
+export const BOARD_QA_FINDINGS_HEADING = "## QA findings"
+
+/**
  * Whether a move carried its card forward or sent it back. The QA validation column
  * is what this exists for — a validated card goes on to done, one with unmet criteria
  * is returned to in_progress — but it reads the same for every other column: a card
@@ -17,6 +38,46 @@ export type BoardActivityOutcome = z.infer<typeof boardActivityOutcomeSchema>
 
 export const boardActivityOutcomeFor = (from: BoardStage, to: BoardStage): BoardActivityOutcome =>
 	BOARD_STAGE_ORDER.indexOf(to) > BOARD_STAGE_ORDER.indexOf(from) ? "passed" : "blocked"
+
+/**
+ * What a run introduces its verdict with, if it introduces it at all — `Result:`,
+ * `Status:` — along with the list, heading and emphasis markers a model wraps such a
+ * line in. Stripped so the label can be matched at the start of what is left.
+ */
+const BOARD_VERDICT_KEY = /^[\s>#*_`-]*(?:(?:result|status|verdict|outcome)\s*[:=]\s*)?/i
+/**
+ * The label itself. Uppercase only, and only at the start of the line: a status label
+ * is written `BLOCKED`, whereas "the dev server is blocked" is prose, and
+ * `C[Check 3: PASS]` inside a report's diagram is a row rather than a verdict.
+ */
+const BOARD_VERDICT_LABEL = /^[*_`]*(PASS(?:ED)?|BLOCKED)\b/
+
+/**
+ * The verdict a run signed off with, read out of its `attempt_completion` text.
+ *
+ * Modes are asked to end with exactly one status label, so the search runs from the
+ * bottom up: a report that recounts what was blocked earlier still finishes with the
+ * verdict that actually applies. Undefined means the run never stated one, which is
+ * the case for every mode that signals its outcome by moving the card instead — those
+ * keep their existing behaviour rather than being second-guessed.
+ */
+export const parseBoardCompletionVerdict = (text: string | undefined): BoardActivityOutcome | undefined => {
+	if (!text) return undefined
+	// `split` hands back a fresh array, so reversing it in place costs nothing.
+	for (const line of text.split("\n").reverse()) {
+		const label = BOARD_VERDICT_LABEL.exec(line.replace(BOARD_VERDICT_KEY, ""))?.[1]
+		if (label) return label === "BLOCKED" ? "blocked" : "passed"
+	}
+	return undefined
+}
+
+/**
+ * How many times a card may be sent back from validation before the manager stops
+ * picking it up. Three: two runs at the same defect is a bad patch, but a third means
+ * the validator and the implementer disagree about what done means, and no further
+ * round trip is going to settle that — only the user can.
+ */
+export const BOARD_MAX_REWORK_CYCLES = 3
 
 /**
  * Mode per board column, keyed by stage. A card is run in the mode of the column
@@ -37,6 +98,26 @@ export const boardColumnModesSchema = z
 	.partial()
 export type BoardColumnModes = z.infer<typeof boardColumnModesSchema>
 
+/**
+ * The autopilot that walks cards from backlog to done without anyone clicking:
+ * it presses the same Refine / Start / Validate the cards offer, one action at a
+ * time, and waits for each run to finish before choosing the next. Deliberately
+ * not a model of its own — every decision it makes is a rule (see `BoardManager`),
+ * so the intelligence stays where the work is, in the mode each column runs.
+ *
+ * `enabled` is persisted with the board rather than held in the webview because a
+ * board window that is popped out, reloaded, or closed tears its React state down;
+ * an autopilot that quietly stopped on a window move would be worse than none.
+ */
+export const boardManagerSchema = z.object({
+	enabled: z.boolean(),
+	/** Fills in for a column with no mode of its own; a column's own mode still wins. */
+	mode: z.string().min(1).optional(),
+	/** The provider profile every run the manager launches uses. Columns have no equivalent. */
+	apiConfigName: z.string().min(1).optional(),
+})
+export type BoardManager = z.infer<typeof boardManagerSchema>
+
 export const boardWorkspaceSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().trim().min(1),
@@ -44,6 +125,7 @@ export const boardWorkspaceSchema = z.object({
 	updatedAt: z.number().finite(),
 	linkedWorkspacePath: z.string().optional(),
 	columnModes: boardColumnModesSchema.optional(),
+	manager: boardManagerSchema.optional(),
 })
 export type BoardWorkspace = z.infer<typeof boardWorkspaceSchema>
 
@@ -69,6 +151,23 @@ export const boardTaskSchema = z.object({
 	linkedValidationTaskId: z.string().min(1).optional(),
 })
 export type BoardTask = z.infer<typeof boardTaskSchema>
+
+/**
+ * Cards read top-down in the order they reached a column — a queue. Done is the
+ * exception: it only grows, so the work that finished most recently is what a
+ * reader wants at the top rather than buried under everything ever completed.
+ * Position is the arrival order within a column, so reversing it is enough.
+ *
+ * Shared with the extension host rather than kept in the webview, because the
+ * manager works a column in the order the board displays it: "top to bottom" has
+ * to mean the same thing to the autopilot as it does to the person watching it.
+ */
+export const compareBoardTasks =
+	(stage: BoardStage) =>
+	(a: BoardTask, b: BoardTask): number => {
+		const arrivalOrder = a.position - b.position || a.createdAt - b.createdAt
+		return stage === "done" ? -arrivalOrder : arrivalOrder
+	}
 
 export const BOARD_TASK_NUMBER_PREFIX = "TASK"
 
@@ -159,6 +258,14 @@ export const setBoardColumnModeInputSchema = z.object({
 	stage: boardStageSchema,
 	// null clears the column's mode, returning it to "use current mode".
 	mode: z.string().min(1).nullable(),
+})
+export const setBoardManagerInputSchema = z.object({
+	workspaceId: z.string().min(1),
+	enabled: z.boolean().optional(),
+	// null clears the manager's mode, returning it to "use the column's mode".
+	mode: z.string().min(1).nullable().optional(),
+	// null clears the manager's profile, leaving runs on whichever one is selected.
+	apiConfigName: z.string().min(1).nullable().optional(),
 })
 export const createBoardTaskInputSchema = z.object({
 	workspaceId: z.string().min(1),

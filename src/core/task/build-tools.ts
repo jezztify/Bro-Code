@@ -10,6 +10,7 @@ import type { ClineProvider } from "../webview/ClineProvider"
 import { getRooDirectoriesForCwd } from "../../services/roo-config/index.js"
 import { getModeBySlug, defaultModeSlug } from "../../shared/modes"
 import { Package } from "../../shared/package"
+import { BOARD_REVIEW_RUN_WITHHELD_TOOLS, lockedBoardReviewRun } from "../board/boardReviewRun"
 
 import { getNativeTools, getMcpServerTools } from "../prompts/tools/native-tools"
 import {
@@ -27,6 +28,11 @@ interface BuildToolsOptions {
 	apiConfiguration: ProviderSettings | undefined
 	disabledTools?: string[]
 	modelInfo?: ModelInfo
+	/**
+	 * The conversation these tools are for. Only needed to recognise a board review run,
+	 * which is offered neither of the tools that would let it out of its column's mode.
+	 */
+	taskId?: string
 	/**
 	 * If true, returns all tools without mode filtering, but also includes
 	 * the list of allowed tool names for use with allowedFunctionNames.
@@ -92,10 +98,18 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		apiConfiguration,
 		disabledTools,
 		modelInfo,
+		taskId,
 		includeAllToolsWithRestrictions,
 	} = options
 
 	const mcpHub = provider.getMcpHub()
+
+	// A board refinement or validation run is pinned to the mode its column assigned it,
+	// so the two always-available tools that could move it out are not offered at all. The
+	// tools themselves refuse as well — this only saves the model finding that out a turn
+	// at a time.
+	const pinnedReviewRun =
+		taskId !== undefined && lockedBoardReviewRun({ taskId, providerRef: { deref: () => provider } }) !== undefined
 
 	// Get CodeIndexManager for feature checking.
 	const { CodeIndexManager } = await import("../../services/code-index/manager")
@@ -104,7 +118,7 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 	// Build settings object for tool filtering.
 	const filterSettings = {
 		todoListEnabled: apiConfiguration?.todoListEnabled ?? true,
-		disabledTools,
+		disabledTools: pinnedReviewRun ? [...(disabledTools ?? []), ...BOARD_REVIEW_RUN_WITHHELD_TOOLS] : disabledTools,
 		modelInfo,
 	}
 

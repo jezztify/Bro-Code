@@ -12,6 +12,7 @@ import { vscode } from "@/utils/vscode"
 import { Tab, TabContent, TabHeader } from "../common/Tab"
 
 import BoardActivityColumn from "./BoardActivityColumn"
+import BoardManagerCard from "./BoardManagerCard"
 import { COLUMNS, compareBoardTasks } from "./boardStage"
 import { sumBoardWorkspaceTokens } from "./boardTokenTotals"
 import TaskBoardColumn from "./TaskBoardColumn"
@@ -67,26 +68,32 @@ const WorkspaceCreateForm = ({ onDismiss }: { onDismiss?: () => void }) => {
 
 const TaskBoardView = () => {
 	const { t } = useAppTranslation()
-	const { boardState, boardPlanning, customModes, taskHistory, runningTaskIds } = useExtensionState()
+	const { boardState, boardPlanning, customModes, taskHistory, runningTaskIds, awaitingTaskIds, listApiConfigMeta } =
+		useExtensionState()
 	const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false)
 	const [search, setSearch] = useState("")
 	const selectedWorkspace = boardState.workspaces.find((workspace) => workspace.id === boardState.selectedWorkspaceId)
 	// Pushed by the extension host as runs start and end, so an In Progress card whose
 	// run is no longer live re-renders from Stop back to Start without a reload.
 	const runningTaskIdSet = useMemo(() => new Set(runningTaskIds ?? []), [runningTaskIds])
+	// A run that has stopped to ask the user something is still live, so it is a subset
+	// of the above rather than a state of its own: the card stays stoppable, but says
+	// what it is actually waiting for.
+	const awaitingTaskIdSet = useMemo(() => new Set(awaitingTaskIds ?? []), [awaitingTaskIds])
+	const workspaceTasks = useMemo(
+		() => (selectedWorkspace ? boardState.tasks.filter((task) => task.workspaceId === selectedWorkspace.id) : []),
+		[boardState.tasks, selectedWorkspace],
+	)
 	// Ordering is per column (see compareBoardTasks), so this only narrows the cards.
 	const tasks = useMemo(() => {
 		const query = search.trim().toLowerCase()
-		return selectedWorkspace
-			? boardState.tasks.filter(
+		return query
+			? workspaceTasks.filter(
 					(task) =>
-						task.workspaceId === selectedWorkspace.id &&
-						(!query ||
-							task.title.toLowerCase().includes(query) ||
-							task.description?.toLowerCase().includes(query)),
+						task.title.toLowerCase().includes(query) || task.description?.toLowerCase().includes(query),
 				)
-			: []
-	}, [boardState.tasks, search, selectedWorkspace])
+			: workspaceTasks
+	}, [search, workspaceTasks])
 	// The log is a record of what happened, not a view of the cards, so the search box
 	// deliberately does not narrow it — but it is still scoped to the open workspace.
 	const activity = useMemo(
@@ -250,7 +257,18 @@ const TaskBoardView = () => {
 			</TabHeader>
 			<TabContent className="bg-vscode-editor-background px-4 py-4">
 				<div className="flex h-full min-w-max gap-4 overflow-x-auto pr-2">
-					<BoardActivityColumn entries={activity} />
+					{/* The manager and the log share one column: neither holds cards, and both
+					are about the board as a whole rather than about any one stage of it. */}
+					<div className="flex h-full w-[272px] shrink-0 flex-col gap-4">
+						<BoardManagerCard
+							workspaceId={selectedWorkspace.id}
+							manager={selectedWorkspace.manager}
+							tasks={workspaceTasks}
+							customModes={customModes}
+							apiConfigs={listApiConfigMeta ?? []}
+						/>
+						<BoardActivityColumn entries={activity} />
+					</div>
 					{COLUMNS.map((column) => (
 						<TaskBoardColumn
 							key={column.stage}
@@ -262,6 +280,7 @@ const TaskBoardView = () => {
 							customModes={customModes}
 							mode={selectedWorkspace.columnModes?.[column.stage]}
 							runningTaskIds={runningTaskIdSet}
+							awaitingTaskIds={awaitingTaskIdSet}
 						/>
 					))}
 				</div>

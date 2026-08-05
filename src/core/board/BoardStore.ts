@@ -1,12 +1,25 @@
 import * as fs from "fs/promises"
+import { unwatchFile, watchFile } from "fs"
 import * as path from "path"
 
-import type { BoardStage, BoardState, BoardTask, BoardWorkspace, HistoryItem } from "@roo-code/types"
+import type {
+	BoardActivityOutcome,
+	BoardStage,
+	BoardState,
+	BoardTask,
+	BoardWorkspace,
+	HistoryItem,
+} from "@roo-code/types"
 import { BOARD_ACTIVITY_LIMIT, boardActivityOutcomeFor, boardStateSchema } from "@roo-code/types"
 import { v7 as uuidv7 } from "uuid"
 
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { safeWriteJson } from "../../utils/safeWriteJson"
+
+import { isBoardManagerHeld } from "./BoardManagerLock"
+
+/** How often `board.json` is checked for edits made by another VS Code window. */
+const EXTERNAL_CHANGE_POLL_MS = 1_000
 
 /** A card that has just changed column, reported to {@link BoardStore.setMoveNotifier}. */
 export type BoardTaskMove = {
@@ -46,6 +59,12 @@ export class BoardStore {
 	private initializeStarted = false
 	/** Moves made by the mutation currently running, drained once it has been written. */
 	private pendingMoves: Array<{ taskId: string; from: BoardStage; to: BoardStage }> = []
+	/**
+	 * What the file looked like when `state` was last read from it or written to it, so
+	 * an edit made by another VS Code window can be told apart from this store's own.
+	 */
+	private diskSignature?: string
+	private watching = false
 
 	/**
 	 * What to do when a card changes column - writing a note into the card's
@@ -67,10 +86,13 @@ export class BoardStore {
 	/**
 	 * One store per storage path, shared by every `ClineProvider` in the extension
 	 * host. Each provider used to build its own store over the same `board.json`,
-	 * and since a store reads that file exactly once (see `initialize`) and then
-	 * writes its whole in-memory copy back on every mutation, a second provider -
-	 * the popped-out board window is one - would serve stale cards and silently
-	 * revert the other's edits the next time it saved anything.
+	 * and since a store then wrote its whole in-memory copy back on every mutation,
+	 * a second provider - the popped-out board window is one - would serve stale
+	 * cards and silently revert the other's edits the next time it saved anything.
+	 *
+	 * Sharing only reaches as far as this extension host. A second VS Code window has
+	 * its own, which is why the file is also polled for outside edits and re-read
+	 * before every write (see {@link reloadIfChangedOnDisk}).
 	 *
 	 * The constructor stays public for tests, which need genuinely independent
 	 * instances to exercise reload-from-disk. Production code must use this.
@@ -84,6 +106,7 @@ export class BoardStore {
 	 * global `beforeEach` in `vitest.setup.ts`, not from production code.
 	 */
 	static resetInstancesForTests(): void {
+		for (const instance of BoardStore.instances.values()) instance.dispose()
 		BoardStore.instances.clear()
 		BoardStore.moveNotifier = undefined
 		BoardStore.activityContext = undefined
@@ -178,24 +201,140 @@ export class BoardStore {
 		this.initializeStarted = true
 
 		try {
-			const filePath = this.getFilePath()
-			const raw = await fs.readFile(filePath, "utf8")
-			const parsed = boardStateSchema.safeParse(JSON.parse(raw))
-			if (!parsed.success) {
-				this.log("[BoardStore] Invalid board snapshot; starting with an empty board")
-				this.state = structuredClone(EMPTY_STATE)
-			} else {
-				this.state = parsed.data
-			}
-		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-				this.log(`[BoardStore] Unable to read board snapshot; starting empty: ${String(error)}`)
-			}
-			this.state = structuredClone(EMPTY_STATE)
+			const loaded = await this.readFromDisk()
+			this.state = loaded ?? structuredClone(EMPTY_STATE)
 		} finally {
 			this.resolveInitialized()
 		}
+		this.watchForExternalChanges()
+		await this.stopManagers()
 		await this.backfillTaskNumbers()
+	}
+
+	/**
+	 * The board as the file currently has it, or `undefined` when the file cannot stand
+	 * in for what is already in memory - it is missing, half-written, or no longer
+	 * parses. Records what was read, so this store's own writes are not later mistaken
+	 * for another window's edit.
+	 */
+	private async readFromDisk(): Promise<BoardState | undefined> {
+		const filePath = this.getFilePath()
+		try {
+			// Sampled before the read, so a write that lands mid-read leaves this store
+			// looking out of date - which costs one more reload rather than a missed edit.
+			const signature = await this.readSignature()
+			const raw = await fs.readFile(filePath, "utf8")
+			const parsed = boardStateSchema.safeParse(JSON.parse(raw))
+			if (!parsed.success) {
+				this.log("[BoardStore] Invalid board snapshot; keeping the board already loaded")
+				return undefined
+			}
+			this.diskSignature = signature
+			return parsed.data
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+				this.log(`[BoardStore] Unable to read board snapshot: ${String(error)}`)
+				return undefined
+			}
+			// No file yet: an empty board is the honest answer, and writing one is what
+			// creates it.
+			this.diskSignature = undefined
+			return structuredClone(EMPTY_STATE)
+		}
+	}
+
+	/** How the file identifies itself, cheaply. `undefined` once it is gone. */
+	private async readSignature(): Promise<string | undefined> {
+		try {
+			const stats = await fs.stat(this.getFilePath())
+			return `${stats.mtimeMs}:${stats.size}`
+		} catch {
+			return undefined
+		}
+	}
+
+	/**
+	 * Take up an edit made outside this extension host, if there is one. Returns whether
+	 * the in-memory board actually changed.
+	 *
+	 * Every VS Code window loads its own copy of `board.json`, so without this a window
+	 * serves whatever it read at startup and overwrites the rest wholesale on its next
+	 * save - which is how a card acquires an execution run in one window and still looks
+	 * unstarted in another.
+	 */
+	private async reloadIfChangedOnDisk(): Promise<boolean> {
+		const signature = await this.readSignature()
+		if (signature === this.diskSignature) return false
+		const loaded = await this.readFromDisk()
+		if (!loaded) return false
+		this.state = loaded
+		return true
+	}
+
+	/**
+	 * Poll for edits made by another window. Polled rather than watched because the file
+	 * is replaced rather than written in place (see `safeWriteJson`), which drops a
+	 * watch on the inode; `watchFile` stats a path and survives that.
+	 */
+	private watchForExternalChanges(): void {
+		if (this.watching) return
+		this.watching = true
+		const watcher = watchFile(this.getFilePath(), { interval: EXTERNAL_CHANGE_POLL_MS }, () => {
+			void this.reloadIfChangedOnDisk()
+				.then(async (changed) => {
+					// Only the window that made the move reports it into the card's
+					// conversation, so a reload broadcasts the new board and nothing else.
+					if (changed) await this.emitChange()
+				})
+				.catch((error) => this.log(`[BoardStore] Unable to reload the board: ${String(error)}`))
+		})
+		// A poll for other windows' edits is never a reason to keep the process alive.
+		watcher.unref?.()
+	}
+
+	/** Stop polling. The store outlives individual providers, so only the host ends it. */
+	dispose(): void {
+		if (!this.watching) return
+		this.watching = false
+		unwatchFile(this.getFilePath())
+	}
+
+	/**
+	 * Every board opens with its autopilot switched off. The manager launches runs by
+	 * itself, so a flag left on from the last session would have it working cards the
+	 * moment the extension activates - before anyone has looked at the board, and
+	 * possibly in a window opened for something else entirely. Switching it on stays a
+	 * deliberate act, once per session.
+	 *
+	 * Only the first store for a storage path initializes (see {@link initialize}), so
+	 * this does not reach across a popped-out board window or the mobile server: those
+	 * share the instance that already loaded, and keep whatever the user switched on.
+	 *
+	 * A board another VS Code window is already driving is left switched on. The flag
+	 * lives on the board rather than on a window, so switching it off here would stop an
+	 * autopilot mid-card just because a second window opened.
+	 */
+	private async stopManagers(): Promise<void> {
+		if (!this.state.workspaces.some((workspace) => workspace.manager?.enabled)) {
+			return
+		}
+		try {
+			const driven = new Set<string>()
+			for (const workspace of this.state.workspaces) {
+				if (workspace.manager?.enabled && (await isBoardManagerHeld(this.globalStoragePath, workspace.id))) {
+					driven.add(workspace.id)
+				}
+			}
+			await this.mutate((state) => {
+				for (const workspace of state.workspaces) {
+					if (workspace.manager?.enabled && !driven.has(workspace.id)) {
+						workspace.manager.enabled = false
+					}
+				}
+			})
+		} catch (error) {
+			this.log(`[BoardStore] Unable to stop the board manager on startup: ${String(error)}`)
+		}
 	}
 
 	/**
@@ -298,6 +437,26 @@ export class BoardStore {
 		})
 	}
 
+	/**
+	 * Turn the autopilot on or off, and set what it runs cards under. Each field is
+	 * left alone when absent, so flipping the switch does not disturb the mode and
+	 * profile the user picked; `null` clears one back to unset.
+	 */
+	async setManager(
+		workspaceId: string,
+		input: { enabled?: boolean; mode?: string | null; apiConfigName?: string | null },
+	): Promise<BoardState> {
+		return this.mutate((state) => {
+			const workspace = this.requireWorkspace(state, workspaceId)
+			const manager = { ...workspace.manager, enabled: workspace.manager?.enabled ?? false }
+			if (input.enabled !== undefined) manager.enabled = input.enabled
+			if (input.mode !== undefined) manager.mode = input.mode ?? undefined
+			if (input.apiConfigName !== undefined) manager.apiConfigName = input.apiConfigName ?? undefined
+			workspace.manager = manager
+			workspace.updatedAt = Date.now()
+		})
+	}
+
 	async deleteWorkspace(id: string): Promise<BoardState> {
 		return this.mutate((state) => {
 			this.requireWorkspace(state, id)
@@ -390,9 +549,12 @@ export class BoardStore {
 	async linkValidationTask(id: string, historyTaskId: string): Promise<BoardState> {
 		return this.mutate((state) => {
 			const task = this.requireTask(state, id)
+			// Moved first: arriving in the column is what drops the previous pass's chat,
+			// so a card being validated afresh links cleanly, while one already sitting in
+			// validation does not move and so still guards against a second linked chat.
+			this.moveToStage(state, task, "qa_validation")
 			if (task.linkedValidationTaskId) throw new Error("Board task is already linked to a validation chat")
 			task.linkedValidationTaskId = historyTaskId
-			this.moveToStage(state, task, "qa_validation")
 			task.updatedAt = Date.now()
 		})
 	}
@@ -448,19 +610,26 @@ export class BoardStore {
 	 * validator sent back for more work returns here when the execution run reports
 	 * finishing again, so fixes get re-validated. Cards already in validation or
 	 * retired to done are left where they are.
+	 *
+	 * `verdict` is what the run itself signed off with. A run that reported BLOCKED has
+	 * not built what the card asked for — handing that to a validator only spends a run
+	 * rediscovering what the implementer already said, and the card comes straight back.
+	 * So a blocked card stays in implementation, where the manager's rework budget can
+	 * see it and, once that runs out, stop and leave it for the user.
 	 */
-	async moveLinkedHistoryTaskToQaValidation(historyTaskId: string): Promise<BoardState> {
+	async moveLinkedHistoryTaskToQaValidation(
+		historyTaskId: string,
+		verdict?: BoardActivityOutcome,
+	): Promise<BoardState> {
 		return this.mutate((state) => {
 			for (const task of state.tasks) {
 				if (
 					task.linkedHistoryTaskId === historyTaskId &&
 					task.stage !== "qa_validation" &&
-					task.stage !== "done"
+					task.stage !== "done" &&
+					verdict !== "blocked"
 				) {
 					this.moveToStage(state, task, "qa_validation")
-					// The implementation has changed since the last check, so its verdict no
-					// longer applies: the card needs a fresh validation run, not the old chat.
-					task.linkedValidationTaskId = undefined
 					task.updatedAt = Date.now()
 				}
 			}
@@ -468,15 +637,20 @@ export class BoardStore {
 	}
 
 	/**
-	 * Retire a card whose validation run has finished. Only cards still in validation
-	 * move: a validator that found unmet criteria sends its card back itself, and
-	 * that decision outranks the completion that follows it.
+	 * Settle a card whose validation run has finished. Only cards still in validation
+	 * are settled here: a validator that found unmet criteria sends its card back
+	 * itself, and that decision outranks the completion that follows it.
+	 *
+	 * A validator that reported BLOCKED without moving the card gets the same outcome
+	 * anyway. Not every mode a column can be pointed at knows to move a card it fails —
+	 * some are written to report a verdict and nothing else — and retiring a card its
+	 * own validator just failed is the one outcome that must never happen.
 	 */
-	async moveLinkedValidationTaskToDone(historyTaskId: string): Promise<BoardState> {
+	async completeLinkedValidationTask(historyTaskId: string, verdict?: BoardActivityOutcome): Promise<BoardState> {
 		return this.mutate((state) => {
 			for (const task of state.tasks) {
 				if (task.linkedValidationTaskId === historyTaskId && task.stage === "qa_validation") {
-					this.moveToStage(state, task, "done")
+					this.moveToStage(state, task, verdict === "blocked" ? "in_progress" : "done")
 					task.updatedAt = Date.now()
 				}
 			}
@@ -489,12 +663,16 @@ export class BoardStore {
 		let moves: BoardTaskMove[] = []
 		const operation = this.writeLock.then(async () => {
 			await this.initialized
+			// Another window may have written since this store last looked. Taking that up
+			// first is what turns a whole-file save into an edit rather than a revert.
+			await this.reloadIfChangedOnDisk()
 			this.pendingMoves = []
 			const next = structuredClone(this.state)
 			mutator(next)
 			const validated = boardStateSchema.parse(next)
 			await safeWriteJson(this.getFilePath(), validated)
 			this.state = validated
+			this.diskSignature = await this.readSignature()
 			moves = this.pendingMoves.flatMap(({ taskId, from, to }) => {
 				// A card the same mutation went on to delete has no move worth reporting.
 				const task = validated.tasks.find((candidate) => candidate.id === taskId)
@@ -536,6 +714,11 @@ export class BoardStore {
 		if (task.stage === stage) return
 		this.pendingMoves.push({ taskId: task.id, from: task.stage, to: stage })
 		this.recordActivity(state, task, stage)
+		// Arriving in validation begins a new pass, and a pass gets its own chat: the
+		// previous validator has already signed off, so reopening it would only show an
+		// old verdict on work it never saw. Cleared here rather than in the handful of
+		// callers that move a card here, because a card also arrives by being dragged.
+		if (stage === "qa_validation") task.linkedValidationTaskId = undefined
 		task.stage = stage
 		task.position = this.nextPosition(state, task.workspaceId, stage)
 	}

@@ -271,6 +271,8 @@ const openAiSchema = baseProviderSettingsSchema.extend({
 	openAiStreamingEnabled: z.boolean().optional(),
 	openAiHostHeader: z.string().optional(), // Keep temporarily for backward compatibility during migration.
 	openAiHeaders: z.record(z.string(), z.string()).optional(),
+	// Extra top-level key/value pairs merged into the JSON request body, e.g. `{ custom_key: true }`.
+	openAiBodyParams: z.record(z.string(), z.unknown()).optional(),
 })
 
 const ollamaSchema = baseProviderSettingsSchema.extend({

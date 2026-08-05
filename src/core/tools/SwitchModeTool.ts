@@ -3,6 +3,7 @@ import delay from "delay"
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
 import { getModeBySlug } from "../../shared/modes"
+import { boardReviewRunRefusal, lockedBoardReviewRun } from "../board/boardReviewRun"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
 
@@ -27,6 +28,18 @@ export class SwitchModeTool extends BaseTool<"switch_mode"> {
 			}
 
 			task.consecutiveMistakeCount = 0
+
+			// A board refinement or validation run is pinned to the mode its column set,
+			// which is the only thing keeping it from writing code it is not there to write.
+			// Refused before the approval ask, so auto-approve cannot wave it through.
+			const reviewRun = lockedBoardReviewRun(task)
+
+			if (reviewRun) {
+				task.recordToolError("switch_mode")
+				task.didToolFailInCurrentTurn = true
+				pushToolResult(formatResponse.toolError(boardReviewRunRefusal(reviewRun, "switch_mode")))
+				return
+			}
 
 			// Verify the mode exists
 			const targetMode = getModeBySlug(mode_slug, (await task.providerRef.deref()?.getState())?.customModes)

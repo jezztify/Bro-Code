@@ -17,6 +17,7 @@ import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button, StandardTooltip } from "@src/components/ui"
 
 import { convertHeadersToObject } from "../utils/headers"
+import { convertBodyParamsToObject, convertObjectToBodyParams } from "../utils/bodyParams"
 import { inputEventTransform, noTransform } from "../transforms"
 import { ModelPicker } from "../ModelPicker"
 import { R1FormatSetting } from "../R1FormatSetting"
@@ -85,6 +86,51 @@ export const OpenAICompatible = ({
 	const handleRemoveCustomHeader = useCallback((index: number) => {
 		setCustomHeaders((prev) => prev.filter((_, i) => i !== index))
 	}, [])
+
+	const [customBodyParams, setCustomBodyParams] = useState<[string, string][]>(() =>
+		convertObjectToBodyParams(apiConfiguration?.openAiBodyParams),
+	)
+
+	const handleAddCustomBodyParam = useCallback(() => {
+		// Only update the local state to show the new row in the UI.
+		setCustomBodyParams((prev) => [...prev, ["", ""]])
+	}, [])
+
+	const handleUpdateBodyParamKey = useCallback((index: number, newKey: string) => {
+		setCustomBodyParams((prev) => {
+			const updated = [...prev]
+
+			if (updated[index]) {
+				updated[index] = [newKey, updated[index][1]]
+			}
+
+			return updated
+		})
+	}, [])
+
+	const handleUpdateBodyParamValue = useCallback((index: number, newValue: string) => {
+		setCustomBodyParams((prev) => {
+			const updated = [...prev]
+
+			if (updated[index]) {
+				updated[index] = [updated[index][0], newValue]
+			}
+
+			return updated
+		})
+	}, [])
+
+	const handleRemoveCustomBodyParam = useCallback((index: number) => {
+		setCustomBodyParams((prev) => prev.filter((_, i) => i !== index))
+	}, [])
+
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setApiConfigurationField("openAiBodyParams", convertBodyParamsToObject(customBodyParams), false)
+		}, 300)
+
+		return () => clearTimeout(timer)
+	}, [customBodyParams, setApiConfigurationField])
 
 	// Helper to convert array of tuples to object
 
@@ -230,6 +276,48 @@ export const OpenAICompatible = ({
 							/>
 							<StandardTooltip content={t("settings:common.remove")}>
 								<VSCodeButton appearance="icon" onClick={() => handleRemoveCustomHeader(index)}>
+									<span className="codicon codicon-trash"></span>
+								</VSCodeButton>
+							</StandardTooltip>
+						</div>
+					))
+				)}
+			</div>
+
+			{/* Custom Body Parameters UI */}
+			<div className="mb-4">
+				<div className="flex justify-between items-center mb-2">
+					<label className="block font-medium">{t("settings:providers.customBodyParams")}</label>
+					<StandardTooltip content={t("settings:common.add")}>
+						<VSCodeButton appearance="icon" onClick={handleAddCustomBodyParam}>
+							<span className="codicon codicon-add"></span>
+						</VSCodeButton>
+					</StandardTooltip>
+				</div>
+				<div className="text-sm text-vscode-descriptionForeground mb-2">
+					{t("settings:providers.customBodyParamsDescription")}
+				</div>
+				{!customBodyParams.length ? (
+					<div className="text-sm text-vscode-descriptionForeground">
+						{t("settings:providers.noCustomBodyParams")}
+					</div>
+				) : (
+					customBodyParams.map(([key, value], index) => (
+						<div key={index} className="flex items-center mb-2">
+							<VSCodeTextField
+								value={key}
+								className="flex-1 mr-2"
+								placeholder={t("settings:providers.bodyParamName")}
+								onInput={(e: any) => handleUpdateBodyParamKey(index, e.target.value)}
+							/>
+							<VSCodeTextField
+								value={value}
+								className="flex-1 mr-2"
+								placeholder={t("settings:providers.bodyParamValue")}
+								onInput={(e: any) => handleUpdateBodyParamValue(index, e.target.value)}
+							/>
+							<StandardTooltip content={t("settings:common.remove")}>
+								<VSCodeButton appearance="icon" onClick={() => handleRemoveCustomBodyParam(index)}>
 									<span className="codicon codicon-trash"></span>
 								</VSCodeButton>
 							</StandardTooltip>

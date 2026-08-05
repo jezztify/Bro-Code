@@ -1446,11 +1446,21 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				if (type === "tool" || type === "command" || type === "use_mcp_server") {
 					// For tool approvals, we need to approve first, then send
 					// the message if there's text/images.
-					this.handleWebviewAskResponse("yesButtonClicked", message.text, message.images, message.reasoningEffort)
+					this.handleWebviewAskResponse(
+						"yesButtonClicked",
+						message.text,
+						message.images,
+						message.reasoningEffort,
+					)
 				} else {
 					// For other ask types (like followup or command_output), fulfill the ask
 					// directly.
-					this.handleWebviewAskResponse("messageResponse", message.text, message.images, message.reasoningEffort)
+					this.handleWebviewAskResponse(
+						"messageResponse",
+						message.text,
+						message.images,
+						message.reasoningEffort,
+					)
 				}
 			}
 		}
@@ -1471,9 +1481,19 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						// If this is a tool approval ask, we need to approve first (yesButtonClicked)
 						// and include any queued text/images.
 						if (type === "tool" || type === "command" || type === "use_mcp_server") {
-							this.handleWebviewAskResponse("yesButtonClicked", message.text, message.images, message.reasoningEffort)
+							this.handleWebviewAskResponse(
+								"yesButtonClicked",
+								message.text,
+								message.images,
+								message.reasoningEffort,
+							)
 						} else {
-							this.handleWebviewAskResponse("messageResponse", message.text, message.images, message.reasoningEffort)
+							this.handleWebviewAskResponse(
+								"messageResponse",
+								message.text,
+								message.images,
+								message.reasoningEffort,
+							)
 						}
 					}
 				}
@@ -1704,6 +1724,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				apiConfiguration,
 				disabledTools: state?.disabledTools,
 				modelInfo,
+				taskId: this.taskId,
 				includeAllToolsWithRestrictions: false,
 			})
 			allTools = toolsResult.tools
@@ -4018,6 +4039,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				apiConfiguration,
 				disabledTools: state?.disabledTools,
 				modelInfo,
+				taskId: this.taskId,
 				includeAllToolsWithRestrictions: false,
 			})
 			allTools = toolsResult.tools
@@ -4158,9 +4180,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			reasoningEffortCaptured?: boolean
 		} = {},
 	): ApiStream {
-		const requestReasoningEffort = options.reasoningEffortCaptured
-			? options.reasoningEffort
-			: this._reasoningEffort
+		const requestReasoningEffort = options.reasoningEffortCaptured ? options.reasoningEffort : this._reasoningEffort
 		const state = await this.providerRef.deref()?.getState()
 
 		const {
@@ -4262,6 +4282,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						apiConfiguration,
 						disabledTools: state?.disabledTools,
 						modelInfo,
+						taskId: this.taskId,
 						includeAllToolsWithRestrictions: false,
 					})
 					contextMgmtTools = toolsResult.tools
@@ -4433,6 +4454,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				apiConfiguration,
 				disabledTools: state?.disabledTools,
 				modelInfo,
+				taskId: this.taskId,
 				includeAllToolsWithRestrictions: supportsAllowedFunctionNames,
 			})
 			allTools = toolsResult.tools
@@ -4530,8 +4552,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// Retry the request after handling the context window error
 				yield* this.attemptApiRequest(retryAttempt + 1, {
 					reasoningEffort: requestReasoningEffort,
-				reasoningEffortCaptured: true,
-			})
+					reasoningEffortCaptured: true,
+				})
 				return
 			}
 
@@ -4560,8 +4582,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// same-profile backoff budget before escalating further.
 					yield* this.attemptApiRequest(0, {
 						reasoningEffort: requestReasoningEffort,
-					reasoningEffortCaptured: true,
-				})
+						reasoningEffortCaptured: true,
+					})
 					return
 				}
 				// No fallback available/remaining: fall through to fail-loud handling.
@@ -4585,8 +4607,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// incremented retry count.
 				yield* this.attemptApiRequest(retryAttempt + 1, {
 					reasoningEffort: requestReasoningEffort,
-				reasoningEffortCaptured: true,
-			})
+					reasoningEffortCaptured: true,
+				})
 
 				return
 			} else {
@@ -5095,9 +5117,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				const queued = this.messageQueueService.dequeueMessage()
 				if (queued) {
 					setTimeout(() => {
-						this.submitUserMessage(queued.text, queued.images, undefined, undefined, queued.reasoningEffort).catch((err) =>
-							console.error(`[Task] Failed to submit queued message:`, err),
-						)
+						this.submitUserMessage(
+							queued.text,
+							queued.images,
+							undefined,
+							undefined,
+							queued.reasoningEffort,
+						).catch((err) => console.error(`[Task] Failed to submit queued message:`, err))
 					}, 0)
 				}
 			}

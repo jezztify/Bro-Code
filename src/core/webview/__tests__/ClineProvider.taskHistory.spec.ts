@@ -125,6 +125,7 @@ vi.mock("vscode", () => ({
 			get: vi.fn().mockReturnValue([]),
 			update: vi.fn(),
 		}),
+		onDidChangeWorkspaceFolders: vi.fn(() => ({ dispose: vi.fn() })),
 		onDidChangeConfiguration: vi.fn().mockImplementation(() => {
 			return {
 				dispose: vi.fn(),
@@ -890,7 +891,9 @@ describe("ClineProvider Task History Synchronization", () => {
 
 			const firstStart = provider.startBoardTask(card.id)
 			const secondStart = provider.startBoardTask(card.id)
-			await Promise.resolve()
+			// createTask stays blocked until releaseCreate, so this only has to outlast
+			// the claim being taken - not a particular number of microtasks.
+			await new Promise((resolve) => setTimeout(resolve, 0))
 			expect(createTask).toHaveBeenCalledTimes(1)
 			releaseCreate()
 			await Promise.all([firstStart, secondStart])
@@ -914,7 +917,7 @@ describe("ClineProvider Task History Synchronization", () => {
 
 			await provider.startBoardTask(card.id)
 
-			expect(createTask).toHaveBeenCalledWith("Board task", undefined, undefined, { initialMode: "code" })
+			expect(createTask).toHaveBeenCalledWith("Board task", undefined, undefined, { initialMode: "code" }, {})
 		})
 
 		it("starts a card in the current mode when its column has none", async () => {
@@ -925,7 +928,7 @@ describe("ClineProvider Task History Synchronization", () => {
 
 			await provider.startBoardTask(card.id)
 
-			expect(createTask).toHaveBeenCalledWith("Board task", undefined, undefined, {})
+			expect(createTask).toHaveBeenCalledWith("Board task", undefined, undefined, {}, {})
 		})
 
 		it("carries the refined description into the execution task", async () => {
@@ -1103,7 +1106,9 @@ describe("ClineProvider Task History Synchronization", () => {
 
 			const first = provider.refineBoardTask(card.id)
 			const second = provider.refineBoardTask(card.id)
-			await Promise.resolve()
+			// createTask stays blocked until releaseCreate, so this only has to outlast
+			// the claim being taken - not a particular number of microtasks.
+			await new Promise((resolve) => setTimeout(resolve, 0))
 			expect(createTask).toHaveBeenCalledTimes(1)
 			releaseCreate()
 			await Promise.all([first, second])
@@ -1249,7 +1254,9 @@ describe("ClineProvider Task History Synchronization", () => {
 
 			const first = provider.validateBoardTask(card.id)
 			const second = provider.validateBoardTask(card.id)
-			await Promise.resolve()
+			// createTask stays blocked until releaseCreate, so this only has to outlast
+			// the claim being taken - not a particular number of microtasks.
+			await new Promise((resolve) => setTimeout(resolve, 0))
 			expect(createTask).toHaveBeenCalledTimes(1)
 			releaseCreate()
 			await Promise.all([first, second])
@@ -1337,6 +1344,47 @@ describe("ClineProvider Task History Synchronization", () => {
 			expect((await provider.getStateToPostToWebview()).runningTaskIds).not.toContain("execution-1")
 		})
 
+		it("stops reporting a run that was cancelled from the chat view", async () => {
+			await createStartedCard()
+			// Cancelling rehydrates the task, so it is resident again and only the ask it
+			// is parked on says it has stopped. A card reading residency would go on
+			// offering to stop a run that is already over.
+			const run = { taskId: "execution-1", abort: false, abandoned: false, resumableAsk: undefined as any }
+			;(provider as any).taskRegistry.push(run)
+
+			expect((await provider.getStateToPostToWebview()).runningTaskIds).toContain("execution-1")
+
+			run.resumableAsk = { type: "ask", ask: "resume_task", ts: 1 }
+
+			expect((await provider.getStateToPostToWebview()).runningTaskIds).not.toContain("execution-1")
+		})
+
+		it("stops reporting a run parked on the result it signed off with", async () => {
+			await createStartedCard()
+			const run = { taskId: "execution-1", abort: false, abandoned: false, idleAsk: undefined as any }
+			;(provider as any).taskRegistry.push(run)
+			run.idleAsk = { type: "ask", ask: "completion_result", ts: 1 }
+
+			expect((await provider.getStateToPostToWebview()).runningTaskIds).not.toContain("execution-1")
+		})
+
+		it("reports a run that has stopped to ask the user something", async () => {
+			await createStartedCard()
+			const run = { taskId: "execution-1", abort: false, abandoned: false, interactiveAsk: undefined as any }
+			;(provider as any).taskRegistry.push(run)
+
+			// Working: nothing is being waited on that the user could answer.
+			expect((await provider.getStateToPostToWebview()).awaitingTaskIds).not.toContain("execution-1")
+
+			// A tool or command approval, or a follow-up question. The run stays live, so
+			// the board would otherwise show a card that looks busy but cannot progress.
+			run.interactiveAsk = { type: "ask", ask: "use_mcp_server", ts: 1 }
+
+			const state = await provider.getStateToPostToWebview()
+			expect(state.awaitingTaskIds).toContain("execution-1")
+			expect(state.runningTaskIds).toContain("execution-1")
+		})
+
 		it("still resets the card when the execution task is no longer running", async () => {
 			const card = await createStartedCard()
 			vi.spyOn((provider as any).taskRegistry, "hasRunning").mockReturnValue(false)
@@ -1346,6 +1394,169 @@ describe("ClineProvider Task History Synchronization", () => {
 
 			expect(cancelTask).not.toHaveBeenCalled()
 			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({ stage: "approved" })
+		})
+
+		it("cancels a card's refinement run without dropping the conversation", async () => {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title: "Board task", stage: "backlog" })
+			const card = provider.boardStore.getSnapshot().tasks[0]!
+			await provider.boardStore.linkRefinementTask(card.id, "stop-refine-1")
+			vi.spyOn((provider as any).taskRegistry, "hasRunning").mockReturnValue(true)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "stop-refine-1" } as any)
+			const cancelTask = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
+
+			await provider.stopBoardRefinement(card.id)
+
+			expect(cancelTask).toHaveBeenCalledTimes(1)
+			// Refinement is a discussion with the user, so what was said before the run was
+			// called off is kept - pressing Refine again returns to the same chat.
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({
+				stage: "backlog",
+				linkedRefinementTaskId: "stop-refine-1",
+			})
+		})
+
+		/**
+		 * A card being checked. The run ids are per-test because
+		 * `ClineProvider.activeInstances` outlives a test: a test that expects to find
+		 * nothing running would otherwise match a previous test's registry entry.
+		 */
+		async function createValidatingCard(executionTaskId: string, validationTaskId: string) {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title: "Board task", stage: "approved" })
+			const cardId = provider.boardStore.getSnapshot().tasks[0]!.id
+			await provider.boardStore.linkTaskToHistory(cardId, executionTaskId)
+			await provider.boardStore.moveLinkedHistoryTaskToQaValidation(executionTaskId)
+			await provider.boardStore.linkValidationTask(cardId, validationTaskId)
+			return provider.boardStore.getSnapshot().tasks[0]!
+		}
+
+		it("cancels the running validation task and leaves the card in qa validation", async () => {
+			const card = await createValidatingCard("stop-execution-1", "stop-validate-1")
+			vi.spyOn((provider as any).taskRegistry, "hasRunning").mockReturnValue(true)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "stop-validate-1" } as any)
+			const cancelTask = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
+
+			await provider.stopBoardValidation(card.id)
+
+			expect(cancelTask).toHaveBeenCalledTimes(1)
+			// The implementation is untouched by a cancelled check, so the card stays where
+			// it is - only the half-finished check is dropped, so Validate starts a new one.
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({
+				stage: "qa_validation",
+				linkedHistoryTaskId: "stop-execution-1",
+			})
+			expect(provider.boardStore.getSnapshot().tasks[0]?.linkedValidationTaskId).toBeUndefined()
+		})
+
+		it("focuses the validation task before cancelling when another task is current", async () => {
+			const card = await createValidatingCard("stop-execution-2", "stop-validate-2")
+			vi.spyOn((provider as any).taskRegistry, "hasRunning").mockReturnValue(true)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "other-task" } as any)
+			const setCurrent = vi.spyOn((provider as any).taskRegistry, "setCurrent").mockReturnValue(undefined)
+			const cancelTask = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
+
+			await provider.stopBoardValidation(card.id)
+
+			expect(setCurrent).toHaveBeenCalledWith("stop-validate-2")
+			expect(cancelTask).toHaveBeenCalledTimes(1)
+		})
+
+		it("still drops the validation link when the validation task is no longer running", async () => {
+			// The window was reloaded out from under the check: the card is still linked to
+			// a conversation nobody is hosting, and pressing Stop has to clear it anyway.
+			const card = await createValidatingCard("stop-execution-3", "stop-validate-3")
+			// Earlier tests' providers linger in `activeInstances` with their registries
+			// stubbed to claim every run, so this is the only way to say "nothing is running".
+			vi.spyOn(ClineProvider, "getAllInstances").mockReturnValue([provider])
+			const cancelTask = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
+
+			await provider.stopBoardValidation(card.id)
+
+			expect(cancelTask).not.toHaveBeenCalled()
+			expect(provider.boardStore.getSnapshot().tasks[0]?.linkedValidationTaskId).toBeUndefined()
+		})
+
+		it("resumes a card's parked run by telling it what to do next", async () => {
+			const card = await createStartedCard()
+			// A run that has called attempt_completion is still resident: it holds its
+			// result open rather than ending, which is exactly the state a card returned
+			// by validation finds its run in.
+			const run = {
+				taskId: "execution-1",
+				abort: false,
+				abandoned: false,
+				idleAsk: { ts: 1 },
+				resumableAsk: undefined,
+				handleWebviewAskResponse: vi.fn(function (this: any) {
+					this.idleAsk = undefined
+				}),
+			}
+			;(provider as any).taskRegistry.push(run)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue(run as any)
+
+			await provider.resumeBoardTask(card.id, "Fix the found issues")
+
+			expect(run.handleWebviewAskResponse).toHaveBeenCalledWith("messageResponse", "Fix the found issues")
+		})
+
+		it("reads a validation run's verdict off its live conversation", async () => {
+			await createStartedCard()
+			// A run parked on its completion holds messages its last save may not have
+			// reached, so the resident copy is the one that has to be read.
+			;(provider as any).taskRegistry.push({
+				taskId: "validate-1",
+				abort: false,
+				abandoned: false,
+				clineMessages: [
+					{ type: "say", say: "text", text: "Checking the criteria...", ts: 1 },
+					{ type: "say", say: "completion_result", text: "Criterion 2 not met: parser.ts:88.", ts: 2 },
+				],
+			})
+
+			await expect((provider as any).readBoardCompletionMessage("validate-1")).resolves.toBe(
+				"Criterion 2 not met: parser.ts:88.",
+			)
+		})
+
+		it("takes the most recent verdict when a run has signed off more than once", async () => {
+			await createStartedCard()
+			;(provider as any).taskRegistry.push({
+				taskId: "validate-twice",
+				abort: false,
+				abandoned: false,
+				clineMessages: [
+					{ type: "say", say: "completion_result", text: "First pass: two criteria unmet.", ts: 1 },
+					{ type: "say", say: "completion_result", text: "Second pass: one criterion unmet.", ts: 2 },
+				],
+			})
+
+			await expect((provider as any).readBoardCompletionMessage("validate-twice")).resolves.toBe(
+				"Second pass: one criterion unmet.",
+			)
+		})
+
+		it("reports no verdict for a run that never signed off", async () => {
+			await createStartedCard()
+			;(provider as any).taskRegistry.push({
+				taskId: "validate-unfinished",
+				abort: false,
+				abandoned: false,
+				clineMessages: [{ type: "say", say: "text", text: "Still checking", ts: 1 }],
+			})
+
+			await expect((provider as any).readBoardCompletionMessage("validate-unfinished")).resolves.toBeUndefined()
+		})
+
+		it("refuses to resume a card that was never started", async () => {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title: "Board task", stage: "approved" })
+			const card = provider.boardStore.getSnapshot().tasks[0]!
+
+			await expect(provider.resumeBoardTask(card.id, "Carry on")).rejects.toThrow("no execution run")
 		})
 
 		it("moves an in-progress card to qa validation when its execution task reports completion", async () => {
@@ -1382,6 +1593,147 @@ describe("ClineProvider Task History Synchronization", () => {
 			await provider.markBoardTaskCompleted("validate-1")
 
 			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({ stage: "in_progress" })
+		})
+
+		/**
+		 * A run parked on the verdict it signed off with. `ClineProvider.activeInstances`
+		 * outlives a test, so every run here is named distinctly — reusing an id would
+		 * find a previous test's registry entry instead of this one.
+		 */
+		const signOff = (taskId: string, text: string) =>
+			(provider as any).taskRegistry.push({
+				taskId,
+				abort: false,
+				abandoned: false,
+				clineMessages: [{ type: "say", say: "completion_result", text, ts: 1 }],
+			})
+
+		/** A run that has stopped and is parked waiting to be told what to do next. */
+		const parkedRun = (taskId: string) => {
+			const run = {
+				taskId,
+				abort: false,
+				abandoned: false,
+				idleAsk: { ts: 1 },
+				resumableAsk: undefined,
+				clineMessages: [],
+				handleWebviewAskResponse: vi.fn(function (this: any) {
+					this.idleAsk = undefined
+				}),
+			}
+			;(provider as any).taskRegistry.push(run)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue(run as any)
+			return run
+		}
+
+		it("tells a card's parked run to carry on rather than only reopening it", async () => {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title: "Board task", stage: "approved" })
+			const card = provider.boardStore.getSnapshot().tasks[0]!
+			await provider.boardStore.linkTaskToHistory(card.id, "execution-parked")
+			const run = parkedRun("execution-parked")
+
+			await provider.startBoardTask(card.id)
+
+			// Reopening a conversation does not make it do anything, so a card whose run
+			// died would otherwise offer a button that appears to do nothing.
+			expect(run.handleWebviewAskResponse).toHaveBeenCalledWith(
+				"messageResponse",
+				expect.stringContaining("Continue this task"),
+			)
+		})
+
+		it("does not start a second run for a card that already has one", async () => {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title: "Board task", stage: "approved" })
+			const card = provider.boardStore.getSnapshot().tasks[0]!
+			await provider.boardStore.linkTaskToHistory(card.id, "execution-kept")
+			parkedRun("execution-kept")
+			const createTask = vi.spyOn(provider, "createTask")
+
+			await provider.startBoardTask(card.id)
+
+			expect(createTask).not.toHaveBeenCalled()
+			// Picked back up, so the card belongs in the column that says work is happening.
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({
+				stage: "in_progress",
+				linkedHistoryTaskId: "execution-kept",
+			})
+		})
+
+		it("hands a card validation sent back the validator's verdict when started by hand", async () => {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title: "Board task", stage: "approved" })
+			const card = provider.boardStore.getSnapshot().tasks[0]!
+			await provider.boardStore.linkTaskToHistory(card.id, "execution-sent-back")
+			await provider.boardStore.linkValidationTask(card.id, "validate-sent-back")
+			// The validator wrote its findings onto the card and returned it for more work.
+			await provider.boardStore.updateTask(card.id, { stage: "in_progress" })
+			signOff("validate-sent-back", "BLOCKED — criterion 2 unmet: parser.ts:88 is never reached.")
+			const run = parkedRun("execution-sent-back")
+
+			await provider.startBoardTask(card.id)
+
+			expect(run.handleWebviewAskResponse).toHaveBeenCalledWith(
+				"messageResponse",
+				expect.stringContaining("parser.ts:88"),
+			)
+		})
+
+		it("leaves a live run alone rather than interrupting it", async () => {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title: "Board task", stage: "approved" })
+			const card = provider.boardStore.getSnapshot().tasks[0]!
+			await provider.boardStore.linkTaskToHistory(card.id, "execution-live")
+			const run = { taskId: "execution-live", abort: false, abandoned: false, handleWebviewAskResponse: vi.fn() }
+			;(provider as any).taskRegistry.push(run)
+
+			await provider.startBoardTask(card.id)
+
+			// Start is not a way to interrupt work that is already going.
+			expect(run.handleWebviewAskResponse).not.toHaveBeenCalled()
+		})
+
+		it("keeps a card in progress when its execution run reported BLOCKED", async () => {
+			await provider.boardStore.createWorkspace("Planning")
+			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
+			await provider.boardStore.createTask({ workspaceId, title: "Board task", stage: "approved" })
+			const card = provider.boardStore.getSnapshot().tasks[0]!
+			await provider.boardStore.linkTaskToHistory(card.id, "execution-blocked")
+			signOff("execution-blocked", "BLOCKED — the approved plan needs a schema change I cannot make here.")
+
+			await provider.markBoardTaskCompleted("execution-blocked")
+
+			// Handing this to a validator would spend a run rediscovering what the
+			// implementer already said, and the card would come straight back.
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({ stage: "in_progress" })
+		})
+
+		it("sends a card back when its validator reported BLOCKED without moving it", async () => {
+			const card = await createStartedCard()
+			await provider.boardStore.linkValidationTask(card.id, "validate-blocked")
+			// A validation mode written to report a verdict rather than to move the card.
+			signOff("validate-blocked", "BLOCKED\n\nPRODUCT DEFECT: the delete flow never confirms.")
+
+			await provider.markBoardTaskCompleted("validate-blocked")
+
+			// Retiring a card its own validator just failed is the one outcome that must
+			// never happen, whatever mode the column is pointed at.
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({ stage: "in_progress" })
+		})
+
+		it("still retires a card whose validator signed off PASSED", async () => {
+			const card = await createStartedCard()
+			await provider.boardStore.linkValidationTask(card.id, "validate-passed")
+			signOff("validate-passed", "PASSED — every criterion is met.")
+
+			await provider.markBoardTaskCompleted("validate-passed")
+
+			expect(provider.boardStore.getSnapshot().tasks[0]).toMatchObject({ stage: "done" })
 		})
 
 		it("ignores completion of a task that is not an execution run for any card", async () => {

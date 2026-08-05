@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { mkdtemp, readFile, writeFile } from "fs/promises"
 import { tmpdir } from "os"
 import { join } from "path"
@@ -27,6 +27,59 @@ describe("BoardStore", () => {
 		})
 	})
 
+	// Every VS Code window has its own store over one `board.json`. These are the two
+	// halves of keeping them honest: a write must build on what is already on disk, and
+	// an outside edit must reach the window watching it.
+	describe("another window's edits", () => {
+		it("keeps the execution run a card was given in another window", async () => {
+			const directory = await mkdtemp(join(tmpdir(), "board-store-"))
+			const one = new BoardStore(directory)
+			await one.initialize()
+			await one.createWorkspace("Planning")
+			const workspaceId = one.getSnapshot().selectedWorkspaceId!
+			await one.createTask({ workspaceId, title: "Card", stage: "approved" })
+			const taskId = one.getSnapshot().tasks[0]!.id
+
+			// Opened before the card was started, which is every window that was already
+			// running when the autopilot picked the card up.
+			const two = new BoardStore(directory)
+			await two.initialize()
+			await one.linkTaskToHistory(taskId, "run-1")
+
+			// Left to its stale copy this write would revert the link, and the next thing
+			// to read the card would see work that had never been started.
+			await two.updateTask(taskId, { title: "Card, renamed" })
+
+			const card = two.getSnapshot().tasks[0]!
+			expect(card).toMatchObject({ title: "Card, renamed", linkedHistoryTaskId: "run-1", stage: "in_progress" })
+			expect(JSON.parse(await readFile(join(directory, "board.json"), "utf8")).tasks[0]).toMatchObject({
+				linkedHistoryTaskId: "run-1",
+			})
+		})
+
+		it("broadcasts a card another window moved", async () => {
+			const directory = await mkdtemp(join(tmpdir(), "board-store-"))
+			const one = new BoardStore(directory)
+			await one.initialize()
+			await one.createWorkspace("Planning")
+			const workspaceId = one.getSnapshot().selectedWorkspaceId!
+			await one.createTask({ workspaceId, title: "Card", stage: "approved" })
+
+			const two = new BoardStore(directory)
+			await two.initialize()
+			const seen: number[] = []
+			two.onDidChange((state) => void seen.push(state.tasks.length))
+
+			await one.createTask({ workspaceId, title: "Second card", stage: "approved" })
+
+			// Polled, so this is a wait rather than an assertion on the next tick.
+			await vi.waitFor(() => expect(two.getSnapshot().tasks).toHaveLength(2), { timeout: 10_000 })
+			expect(seen.at(-1)).toBe(2)
+			two.dispose()
+			one.dispose()
+		}, 15_000)
+	})
+
 	it("persists a mode per column and clears it again", async () => {
 		const directory = await mkdtemp(join(tmpdir(), "board-store-"))
 		const store = new BoardStore(directory)
@@ -44,6 +97,46 @@ describe("BoardStore", () => {
 
 		await reopened.setColumnMode(workspaceId, "approved", null)
 		expect(reopened.getSnapshot().workspaces[0]?.columnModes).toEqual({ backlog: "architect" })
+	})
+
+	it("reopens with the manager stopped, and each of its settings independent", async () => {
+		const directory = await mkdtemp(join(tmpdir(), "board-store-"))
+		const store = new BoardStore(directory)
+		await store.initialize()
+		await store.createWorkspace("Planning")
+		const workspaceId = store.getSnapshot().selectedWorkspaceId!
+
+		await store.setManager(workspaceId, { mode: "architect", apiConfigName: "Sonnet" })
+		expect(store.getSnapshot().workspaces[0]?.manager).toEqual({
+			enabled: false,
+			mode: "architect",
+			apiConfigName: "Sonnet",
+		})
+
+		// Switching it on must not disturb what it was told to run cards under.
+		await store.setManager(workspaceId, { enabled: true })
+		expect(store.getSnapshot().workspaces[0]?.manager).toEqual({
+			enabled: true,
+			mode: "architect",
+			apiConfigName: "Sonnet",
+		})
+
+		// A fresh extension host starts the autopilot off - and says so on disk, so the
+		// next window to read the board does not see it running either. What it was told
+		// to run cards under is kept, ready for whenever it is switched back on.
+		const reopened = new BoardStore(directory)
+		await reopened.initialize()
+		expect(reopened.getSnapshot().workspaces[0]?.manager).toEqual({
+			enabled: false,
+			mode: "architect",
+			apiConfigName: "Sonnet",
+		})
+		expect(JSON.parse(await readFile(join(directory, "board.json"), "utf8")).workspaces[0].manager).toMatchObject({
+			enabled: false,
+		})
+
+		await reopened.setManager(workspaceId, { mode: null })
+		expect(reopened.getSnapshot().workspaces[0]?.manager).toEqual({ enabled: false, apiConfigName: "Sonnet" })
 	})
 
 	it("imports top-level history only once", async () => {
@@ -346,7 +439,7 @@ describe("BoardStore", () => {
 		const { store, taskId } = await seedTask()
 		await store.linkValidationTask(taskId, "validate-1")
 
-		await store.moveLinkedValidationTaskToDone("validate-1")
+		await store.completeLinkedValidationTask("validate-1")
 
 		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "done" })
 	})
@@ -357,9 +450,46 @@ describe("BoardStore", () => {
 		// A failed validation writes its findings and returns the card for more work.
 		await store.updateTask(taskId, { stage: "in_progress" })
 
-		await store.moveLinkedValidationTaskToDone("validate-1")
+		await store.completeLinkedValidationTask("validate-1")
 
 		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "in_progress" })
+	})
+
+	it("sends a card back rather than retiring it when its validator reports BLOCKED", async () => {
+		const { store, taskId } = await seedTask()
+		await store.linkTaskToHistory(taskId, "execution-1")
+		await store.linkValidationTask(taskId, "validate-1")
+
+		// A validator whose mode reports a verdict instead of moving the card itself.
+		await store.completeLinkedValidationTask("validate-1", "blocked")
+
+		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "in_progress" })
+		// The verdict has to stay readable: it is what the implementation run gets told.
+		expect(store.getSnapshot().tasks[0]?.linkedValidationTaskId).toBe("validate-1")
+	})
+
+	it("keeps a blocked execution run's card in progress instead of handing it to validation", async () => {
+		const { store, taskId } = await seedTask()
+		await store.linkTaskToHistory(taskId, "execution-1")
+
+		await store.moveLinkedHistoryTaskToQaValidation("execution-1", "blocked")
+
+		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "in_progress" })
+	})
+
+	it("drops the previous validation chat whenever a card arrives back in validation", async () => {
+		const { store, taskId } = await seedTask()
+		await store.linkTaskToHistory(taskId, "execution-1")
+		await store.linkValidationTask(taskId, "validate-1")
+		// Sent back, then returned by hand rather than by the execution run completing —
+		// a drag across the board, which is the only thing that moved the card.
+		await store.updateTask(taskId, { stage: "in_progress" })
+		await store.updateTask(taskId, { stage: "qa_validation" })
+
+		// Without this the card would reopen a chat that has already signed off, and the
+		// board would sit still waiting for a run that is never going to say anything.
+		expect(store.getSnapshot().tasks[0]?.linkedValidationTaskId).toBeUndefined()
+		await expect(store.linkValidationTask(taskId, "validate-2")).resolves.toBeDefined()
 	})
 
 	it("does not retire a card from an execution task completing", async () => {
@@ -367,7 +497,7 @@ describe("BoardStore", () => {
 		await store.linkTaskToHistory(taskId, "execution-1")
 		await store.moveLinkedHistoryTaskToQaValidation("execution-1")
 
-		await store.moveLinkedValidationTaskToDone("execution-1")
+		await store.completeLinkedValidationTask("execution-1")
 
 		expect(store.getSnapshot().tasks[0]).toMatchObject({ stage: "qa_validation" })
 	})

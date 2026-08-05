@@ -1513,6 +1513,118 @@ describe("OpenAiHandler", () => {
 			)
 		})
 	})
+
+	describe("custom body params", () => {
+		const systemPrompt = "You are a helpful assistant."
+		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+
+		it("should merge custom body params into streaming requests", async () => {
+			const handlerWithBodyParams = new OpenAiHandler({
+				...mockOptions,
+				openAiBodyParams: { custom_key: true, sessionId: "abc123", nested: { a: 1 } },
+			})
+
+			const stream = handlerWithBodyParams.createMessage(systemPrompt, messages)
+			for await (const _chunk of stream) {
+				// Drain the stream.
+			}
+
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					custom_key: true,
+					sessionId: "abc123",
+					nested: { a: 1 },
+				}),
+				{},
+			)
+		})
+
+		it("should merge custom body params into non-streaming requests", async () => {
+			const handlerWithBodyParams = new OpenAiHandler({
+				...mockOptions,
+				openAiStreamingEnabled: false,
+				openAiBodyParams: { custom_key: true },
+			})
+
+			const stream = handlerWithBodyParams.createMessage(systemPrompt, messages)
+			for await (const _chunk of stream) {
+				// Drain the stream.
+			}
+
+			expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ custom_key: true }), {})
+		})
+
+		it("should merge custom body params into O3 family requests", async () => {
+			const handlerWithBodyParams = new OpenAiHandler({
+				...mockOptions,
+				openAiModelId: "o3-mini",
+				openAiBodyParams: { custom_key: true },
+			})
+
+			const stream = handlerWithBodyParams.createMessage(systemPrompt, messages)
+			for await (const _chunk of stream) {
+				// Drain the stream.
+			}
+
+			expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ custom_key: true }), {})
+		})
+
+		it("should merge custom body params into completePrompt requests", async () => {
+			const handlerWithBodyParams = new OpenAiHandler({
+				...mockOptions,
+				openAiBodyParams: { custom_key: true },
+			})
+
+			await handlerWithBodyParams.completePrompt("Hello!")
+
+			expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ custom_key: true }), {})
+		})
+
+		it("should let custom body params override handler defaults", async () => {
+			const handlerWithBodyParams = new OpenAiHandler({
+				...mockOptions,
+				modelTemperature: 0.5,
+				includeMaxTokens: true,
+				modelMaxTokens: 1000,
+				openAiBodyParams: { temperature: 0.9, max_completion_tokens: 4096 },
+			})
+
+			const stream = handlerWithBodyParams.createMessage(systemPrompt, messages)
+			for await (const _chunk of stream) {
+				// Drain the stream.
+			}
+
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({ temperature: 0.9, max_completion_tokens: 4096 }),
+				{},
+			)
+		})
+
+		it("should ignore reserved and empty keys", async () => {
+			const handlerWithBodyParams = new OpenAiHandler({
+				...mockOptions,
+				openAiBodyParams: {
+					model: "hijacked-model",
+					messages: [],
+					stream: false,
+					stream_options: null,
+					"   ": "ignored",
+				},
+			})
+
+			const stream = handlerWithBodyParams.createMessage(systemPrompt, messages)
+			for await (const _chunk of stream) {
+				// Drain the stream.
+			}
+
+			const callArgs = mockCreate.mock.calls[0][0]
+			expect(callArgs.model).toBe("gpt-4")
+			expect(callArgs.messages.length).toBeGreaterThan(0)
+			expect(callArgs.stream).toBe(true)
+			expect(callArgs.stream_options).toEqual({ include_usage: true })
+			expect(Object.keys(callArgs)).not.toContain("   ")
+		})
+	})
 })
 
 describe("getOpenAiModels", () => {

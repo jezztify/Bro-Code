@@ -42,7 +42,7 @@ import { McpOAuthClientProvider } from "./McpOAuthClientProvider"
 import { arePathsEqual, getWorkspacePath } from "../../utils/path"
 import { injectVariables } from "../../utils/config"
 import { safeWriteJson } from "../../utils/safeWriteJson"
-import { sanitizeMcpName, toolNamesMatch } from "../../utils/mcp-name"
+import { buildMcpServerSegment, sanitizeMcpName, toolNamesMatch } from "../../utils/mcp-name"
 
 // Discriminated union for connection states
 export type ConnectedMcpConnection = {
@@ -669,9 +669,11 @@ export class McpHub {
 		// Remove existing connection if it exists with the same source
 		await this.deleteConnection(name, source)
 
-		// Register the sanitized name for O(1) lookup
+		// Register the sanitized name for O(1) lookup. Long server names are additionally
+		// shortened when building function names, so register that form too.
 		const sanitizedName = sanitizeMcpName(name)
 		this.sanitizedNameRegistry.set(sanitizedName, name)
+		this.sanitizedNameRegistry.set(buildMcpServerSegment(name), name)
 
 		// Check if MCP is globally enabled
 		const mcpEnabled = await this.isMcpEnabled()
@@ -1560,6 +1562,7 @@ export class McpHub {
 		if (remainingConnections.length === 0) {
 			const sanitizedName = sanitizeMcpName(name)
 			this.sanitizedNameRegistry.delete(sanitizedName)
+			this.sanitizedNameRegistry.delete(buildMcpServerSegment(name))
 		}
 	}
 

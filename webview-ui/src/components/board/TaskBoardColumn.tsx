@@ -22,6 +22,7 @@ const TaskBoardColumn = ({
 	customModes,
 	mode,
 	runningTaskIds,
+	awaitingTaskIds,
 }: {
 	column: BoardColumn
 	tasks: BoardTask[]
@@ -29,8 +30,10 @@ const TaskBoardColumn = ({
 	customModes: ModeConfig[]
 	/** The mode every card in this column runs in; undefined uses the current mode. */
 	mode?: string
-	/** Execution tasks live in the extension host right now (see `ExtensionState.runningTaskIds`). */
+	/** Tasks working in the extension host right now (see `ExtensionState.runningTaskIds`). */
 	runningTaskIds: ReadonlySet<string>
+	/** Live tasks parked on a question for the user (see `ExtensionState.awaitingTaskIds`). */
+	awaitingTaskIds: ReadonlySet<string>
 }) => {
 	const { t } = useAppTranslation()
 	const modes = useMemo(() => {
@@ -127,6 +130,16 @@ const TaskBoardColumn = ({
 						key={task.id}
 						task={task}
 						isRunning={!!task.linkedHistoryTaskId && runningTaskIds.has(task.linkedHistoryTaskId)}
+						isRefining={!!task.linkedRefinementTaskId && runningTaskIds.has(task.linkedRefinementTaskId)}
+						isValidating={!!task.linkedValidationTaskId && runningTaskIds.has(task.linkedValidationTaskId)}
+						// Any of the card's runs, not just its execution one: a validation run
+						// stopping to ask about a tool holds the card up exactly the same way,
+						// and that is the run the card opens when clicked.
+						isAwaitingInput={[
+							task.linkedValidationTaskId,
+							task.linkedHistoryTaskId,
+							task.linkedRefinementTaskId,
+						].some((id) => !!id && awaitingTaskIds.has(id))}
 					/>
 				))}
 			</div>

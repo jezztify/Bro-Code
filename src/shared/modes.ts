@@ -1,5 +1,3 @@
-import * as vscode from "vscode"
-
 import {
 	type GroupEntry,
 	type ModeConfig,
@@ -10,7 +8,6 @@ import {
 } from "@roo-code/types"
 
 import { addCustomInstructions } from "../core/prompts/sections/custom-instructions"
-import { readScopedState } from "../core/config/scopedState"
 
 import { TOOL_GROUPS, ALWAYS_AVAILABLE_TOOLS } from "./tools"
 
@@ -158,13 +155,18 @@ export const defaultPrompts: Readonly<CustomModePrompts> = Object.freeze(
 	),
 )
 
-// Helper function to get all modes with their prompt overrides from extension state
-export async function getAllModesWithPrompts(context: vscode.ExtensionContext): Promise<ModeConfig[]> {
-	const customModes = readScopedState<ModeConfig[]>(context, "customModes") || []
-	const customModePrompts = readScopedState<CustomModePrompts>(context, "customModePrompts") || {}
-
-	const allModes = getAllModes(customModes)
-	return allModes.map((mode) => ({
+/**
+ * Apply prompt overrides from extension state to the full mode list.
+ *
+ * Kept separate from the state read itself: this module is imported by the webview (as
+ * `@roo/modes`), so it must not reach into extension-host-only code. See
+ * `getAllModesWithPrompts` in core/prompts/sections/modes.ts for the host-side caller.
+ */
+export function applyModePromptOverrides(
+	customModes: ModeConfig[],
+	customModePrompts: CustomModePrompts,
+): ModeConfig[] {
+	return getAllModes(customModes).map((mode) => ({
 		...mode,
 		roleDefinition: customModePrompts[mode.slug]?.roleDefinition ?? mode.roleDefinition,
 		whenToUse: customModePrompts[mode.slug]?.whenToUse ?? mode.whenToUse,

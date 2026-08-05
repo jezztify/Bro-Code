@@ -33,6 +33,7 @@ import {
 	type BoardTask,
 	type BoardStage,
 	type BoardWorkspace,
+	type BoardActivityOutcome,
 	type BoardPlanningSessionState,
 	type CloudUserInfo,
 	type CloudOrganizationMembership,
@@ -57,6 +58,8 @@ import {
 	isRetiredProvider,
 	providerIdentifiers,
 	parseBoardTaskNumber,
+	parseBoardCompletionVerdict,
+	BOARD_QA_FINDINGS_HEADING,
 } from "@roo-code/types"
 import { RateLimitClock, createRateLimitClock } from "../task/RateLimitClock"
 import { TaskRegistry } from "../task/TaskRegistry"
@@ -108,6 +111,8 @@ import { ProviderSettingsManager } from "../config/ProviderSettingsManager"
 import { CustomModesManager } from "../config/CustomModesManager"
 import { Task } from "../task/Task"
 import { BoardStore } from "../board/BoardStore"
+import { BoardManager, boardResumeReason, buildBoardResumeGuidance, type BoardRunOptions } from "../board/BoardManager"
+import { BoardManagerLock } from "../board/BoardManagerLock"
 import { postBoardTaskMoveNotice } from "../board/boardTaskMoveNotice"
 import { BoardPlanningSession } from "../board/BoardPlanningSession"
 import { buildApiHandler } from "../../api"
@@ -239,6 +244,15 @@ export class ClineProvider
 	public readonly boardStore: BoardStore
 	/** Detaches this provider from the shared BoardStore's change event on dispose. */
 	private readonly unsubscribeFromBoardStore: () => void
+	/**
+	 * The board's autopilot. Host-wide rather than per-provider for the same reason as
+	 * `BoardStore.moveNotifier`: a board open in two windows must be managed once.
+	 */
+	private static boardManager?: BoardManager
+	/** How long a rehydrated run is given to offer to resume before its card is set aside. */
+	private static readonly BOARD_RESUME_ASK_TIMEOUT_MS = 30000
+	/** How long a resumed run is given to take its instruction up before it looks stalled. */
+	private static readonly BOARD_RESUME_SETTLE_TIMEOUT_MS = 5000
 	private boardPlanningSession?: BoardPlanningSession
 	/** Last set broadcast by {@link broadcastRunningTaskIds}, so unchanged sets stay silent. */
 	private lastBroadcastRunningTaskIds?: string
@@ -337,7 +351,19 @@ export class ClineProvider
 			if (this.isViewLaunched) {
 				await this.postMessageToWebview({ type: "boardStateUpdated", boardState })
 			}
+			// Every card move is a reason to reconsider what the autopilot should do next,
+			// and a card leaving its column is how it learns an action has finished.
+			ClineProvider.boardManager?.tick()
 		})
+		// One manager for the host, pointed at whichever provider registered last - the
+		// same "last one wins" the move notifier and activity context above rely on. The
+		// lock narrows that further: one manager for the *machine*, since every open VS
+		// Code window has a host of its own and they all read the same board.
+		ClineProvider.boardManager ??= new BoardManager(
+			this.boardStore,
+			new BoardManagerLock(this.contextProxy.globalStorageUri.fsPath, (message) => this.log(message)),
+		)
+		ClineProvider.boardManager.setHost(this.asBoardManagerHost())
 		// Static on both sides, so the note a move leaves in a conversation is written
 		// once for the host rather than once per open window. Re-registering from a
 		// second provider replaces the hook with an equivalent one.
@@ -358,6 +384,17 @@ export class ClineProvider
 		TelemetryService.instance.setProvider(this)
 
 		this._workspaceTracker = new WorkspaceTracker(this)
+
+		// Task history is stamped with the workspace a task ran in, and every chat surface
+		// (dock task switcher, recent-tasks preview, prompt history) filters on the `cwd`
+		// this provider reports. Without this listener that `cwd` is only sampled at
+		// construction, so opening/closing a folder in this window leaves the chat lists
+		// scoped to the previous workspace.
+		this.disposables.push(
+			vscode.workspace.onDidChangeWorkspaceFolders(async () => {
+				await this.refreshWorkspace()
+			}),
+		)
 
 		this.providerSettingsManager = new ProviderSettingsManager(this.context)
 
@@ -402,9 +439,11 @@ export class ClineProvider
 						await this.updateTaskHistory({ ...existing, status: "completed" })
 					}
 					// An execution run hands its card to QA validation; a validation run is
-					// what retires it. Neither touches a card of the other kind.
-					await this.boardStore.moveLinkedHistoryTaskToQaValidation(taskId)
-					await this.boardStore.moveLinkedValidationTaskToDone(taskId)
+					// what retires it. Neither touches a card of the other kind, and both
+					// defer to the verdict the run signed off with.
+					const verdict = await this.readBoardVerdict(taskId)
+					await this.boardStore.moveLinkedHistoryTaskToQaValidation(taskId, verdict)
+					await this.boardStore.completeLinkedValidationTask(taskId, verdict)
 				} catch (err) {
 					this.log(
 						`[onTaskCompleted] Failed to write completed status for ${taskId}: ${err instanceof Error ? err.message : String(err)}`,
@@ -447,10 +486,27 @@ export class ClineProvider
 			}
 			const onTaskFocused = () => this.emit(RooCodeEventName.TaskFocused, instance.taskId)
 			const onTaskUnfocused = () => this.emit(RooCodeEventName.TaskUnfocused, instance.taskId)
-			const onTaskActive = (taskId: string) => this.emit(RooCodeEventName.TaskActive, taskId)
-			const onTaskInteractive = (taskId: string) => this.emit(RooCodeEventName.TaskInteractive, taskId)
+			// Stopping to ask the user something, and picking back up once answered, are
+			// both invisible to the run lifecycle — the task stays resident either way — so
+			// the board is told here or its cards never learn a run is waiting on a person.
+			const onTaskActive = (taskId: string) => {
+				ClineProvider.broadcastRunningTaskIds()
+				this.emit(RooCodeEventName.TaskActive, taskId)
+			}
+			const onTaskInteractive = (taskId: string) => {
+				ClineProvider.broadcastRunningTaskIds()
+				this.emit(RooCodeEventName.TaskInteractive, taskId)
+			}
 			const onTaskResumable = (taskId: string) => this.emit(RooCodeEventName.TaskResumable, taskId)
-			const onTaskIdle = (taskId: string) => this.emit(RooCodeEventName.TaskIdle, taskId)
+			const onTaskIdle = (taskId: string) => {
+				// A run parking on its completion is the moment it stops working, and it is
+				// not a lifecycle change `broadcastRunningTaskIds` hears about: the task is
+				// still resident, holding its result open. Without this the manager would
+				// sit waiting on a validation run that has already had its say - which is
+				// exactly how a card sent back for more work reaches it.
+				ClineProvider.boardManager?.tick()
+				this.emit(RooCodeEventName.TaskIdle, taskId)
+			}
 			const onTaskPaused = (taskId: string) => this.emit(RooCodeEventName.TaskPaused, taskId)
 			const onTaskUnpaused = (taskId: string) => this.emit(RooCodeEventName.TaskUnpaused, taskId)
 			const onTaskSpawned = (taskId: string) => this.emit(RooCodeEventName.TaskSpawned, taskId)
@@ -575,17 +631,43 @@ export class ClineProvider
 	}
 
 	/**
-	 * Every task live in this extension host, not just the ones this provider owns. A
-	 * detached board window is its own provider with its own (empty) registry, so a
-	 * provider-local answer would tell that window nothing is running.
+	 * Every task that is actually working in this extension host, not just the ones this
+	 * provider owns. A detached board window is its own provider with its own (empty)
+	 * registry, so a provider-local answer would tell that window nothing is running.
+	 *
+	 * Resident is not the same as running, which is why this is not simply the registry:
+	 * cancelling a task rehydrates it, so a run stopped from the chat view is still in
+	 * the registry, parked on the ask that offers to resume it. A board reading residency
+	 * would go on offering to stop a run that has already stopped.
 	 */
 	private static getRunningTaskIds(): string[] {
 		const taskIds = new Set<string>()
 		for (const instance of ClineProvider.activeInstances) {
-			for (const task of instance.taskRegistry.getRunning()) taskIds.add(task.taskId)
+			for (const task of instance.taskRegistry.getRunning()) {
+				if (ClineProvider.isTaskWorking(task)) taskIds.add(task.taskId)
+			}
 		}
 		// Sorted so the set has one canonical spelling and {@link broadcastRunningTaskIds}
 		// can compare successive ones as strings.
+		return [...taskIds].sort()
+	}
+
+	/**
+	 * Every live task that has stopped to ask the user something — a tool or command to
+	 * approve, or a follow-up question.
+	 *
+	 * Such a run is deliberately not "stopped": nothing in the pipeline will move it
+	 * along, because the answer it needs is one only the user can give. Reported so the
+	 * board can say so, rather than leaving a card that is waiting on a person looking
+	 * exactly like one that is working.
+	 */
+	private static getAwaitingTaskIds(): string[] {
+		const taskIds = new Set<string>()
+		for (const instance of ClineProvider.activeInstances) {
+			for (const task of instance.taskRegistry.getRunning()) {
+				if (task.interactiveAsk !== undefined) taskIds.add(task.taskId)
+			}
+		}
 		return [...taskIds].sort()
 	}
 
@@ -612,17 +694,26 @@ export class ClineProvider
 	 */
 	private static broadcastRunningTaskIds(): void {
 		const runningTaskIds = ClineProvider.getRunningTaskIds()
-		const fingerprint = runningTaskIds.join(",")
+		const awaitingTaskIds = ClineProvider.getAwaitingTaskIds()
+		// Both sets, so a run that stops to ask the user something reaches the board even
+		// though the set of live tasks has not changed.
+		const fingerprint = `${runningTaskIds.join(",")}|${awaitingTaskIds.join(",")}`
+
+		// The single choke point for run lifecycle changes, so it is also where the
+		// autopilot learns that something it was waiting on has stopped.
+		ClineProvider.boardManager?.tick()
 
 		for (const instance of ClineProvider.activeInstances) {
 			// A view that has not launched yet gets the set from its first full state post.
 			if (!instance.isViewLaunched || instance.lastBroadcastRunningTaskIds === fingerprint) continue
 			instance.lastBroadcastRunningTaskIds = fingerprint
-			instance.postMessageToWebview({ type: "runningTaskIdsUpdated", runningTaskIds }).catch((error) => {
-				instance.log(
-					`[broadcastRunningTaskIds] Failed to post: ${error instanceof Error ? error.message : error}`,
-				)
-			})
+			instance
+				.postMessageToWebview({ type: "runningTaskIdsUpdated", runningTaskIds, awaitingTaskIds })
+				.catch((error) => {
+					instance.log(
+						`[broadcastRunningTaskIds] Failed to post: ${error instanceof Error ? error.message : error}`,
+					)
+				})
 		}
 	}
 
@@ -989,6 +1080,12 @@ export class ClineProvider
 		this.flushGlobalStateWriteThrough()
 		this.log("Disposed all disposables")
 		ClineProvider.activeInstances.delete(this)
+		// The manager runs the board through whichever provider it was pointed at, so a
+		// closed window has to hand it to a surviving one - or stand it down if this was
+		// the last surface open.
+		const successor = ClineProvider.getAllInstances()[0]
+		ClineProvider.boardManager?.setHost(successor?.asBoardManagerHost())
+		if (!successor) await ClineProvider.boardManager?.standDown()
 		// Hands focus to a surviving surface if this was the active one, so a phone
 		// mirroring a closed editor tab lands on a still-open window rather than going blank.
 		WebviewHub.unregister(this.providerId)
@@ -1641,11 +1738,17 @@ export class ClineProvider
 			console.error("[ClineProvider:Vite] Failed to read Vite port file:", err)
 		}
 
-		const localServerUrl = `localhost:${localPort}`
+		// Use the IPv4 loopback rather than "localhost": the extension host (Node) and the
+		// webview (Chromium) do not resolve "localhost" the same way, so a server reachable
+		// from here is not necessarily the one the webview loads.
+		const localServerUrl = `127.0.0.1:${localPort}`
+		const file = "src/index.tsx"
 
-		// Check if local dev server is running.
+		// Check that the dev server is running *and* that it is serving this webview. Another
+		// project's dev server can hold the same port, which would otherwise pass a bare
+		// liveness check and then render a blank panel with no error to explain it.
 		try {
-			await axios.get(`http://${localServerUrl}`)
+			await axios.get(`http://${localServerUrl}/${file}`)
 		} catch (error) {
 			vscode.window.showErrorMessage(t("common:errors.hmr_not_running"))
 			return this.getHtmlContent(webview)
@@ -1675,12 +1778,11 @@ export class ClineProvider
 		const imagesUri = getUri(webview, this.contextProxy.extensionUri, ["assets", "images"])
 		const audioUri = getUri(webview, this.contextProxy.extensionUri, ["webview-ui", "audio"])
 
-		const file = "src/index.tsx"
 		const scriptUri = `http://${localServerUrl}/${file}`
 
 		const reactRefresh = /*html*/ `
 			<script nonce="${nonce}" type="module">
-				import RefreshRuntime from "http://localhost:${localPort}/@react-refresh"
+				import RefreshRuntime from "http://${localServerUrl}/@react-refresh"
 				RefreshRuntime.injectIntoGlobalHook(window)
 				window.$RefreshReg$ = () => {}
 				window.$RefreshSig$ = () => (type) => type
@@ -2561,6 +2663,8 @@ export class ClineProvider
 
 	async refreshWorkspace() {
 		this.currentWorkspacePath = getWorkspacePath()
+		// getRecentTasks() only keeps tasks whose workspace matches the old path.
+		this.recentTasksCache = undefined
 		await this.postStateToWebview()
 	}
 
@@ -2896,6 +3000,7 @@ export class ClineProvider
 			taskHistory: this.taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task),
 			boardState: this.boardStore.getSnapshot(),
 			runningTaskIds: ClineProvider.getRunningTaskIds(),
+			awaitingTaskIds: ClineProvider.getAwaitingTaskIds(),
 			soundEnabled: soundEnabled ?? false,
 			ttsEnabled: ttsEnabled ?? false,
 			ttsSpeed: ttsSpeed ?? 1.0,
@@ -3148,6 +3253,7 @@ export class ClineProvider
 			taskHistory: this.taskHistoryStore.getAll(),
 			boardState: this.boardStore.getSnapshot(),
 			runningTaskIds: ClineProvider.getRunningTaskIds(),
+			awaitingTaskIds: ClineProvider.getAwaitingTaskIds(),
 			allowedCommands: stateValues.allowedCommands,
 			deniedCommands: stateValues.deniedCommands,
 			soundEnabled: stateValues.soundEnabled ?? false,
@@ -3337,6 +3443,92 @@ export class ClineProvider
 		await this.boardStore.selectWorkspace(id)
 	}
 
+	/**
+	 * What the autopilot can do, handed to it as a narrow surface so its rules can be
+	 * tested without a provider, a webview, or a model behind them.
+	 */
+	private asBoardManagerHost() {
+		return {
+			refineBoardTask: (id: string, options?: BoardRunOptions) => this.refineBoardTask(id, options),
+			startBoardTask: (id: string, options?: BoardRunOptions) => this.startBoardTask(id, options),
+			validateBoardTask: (id: string, options?: BoardRunOptions) => this.validateBoardTask(id, options),
+			resumeBoardTask: (id: string, guidance: string, options?: BoardRunOptions) =>
+				this.resumeBoardTask(id, guidance, options),
+			isConversationWorking: (taskId: string) => ClineProvider.isConversationWorking(taskId),
+			readCompletionMessage: (taskId: string) => this.readBoardCompletionMessage(taskId),
+			log: (message: string) => this.log(message),
+		}
+	}
+
+	/**
+	 * What a conversation signed off with — the text of its last `attempt_completion`.
+	 *
+	 * A validation run's is its verdict, which is what a card it sent back has to be
+	 * told; the summary the validator wrote onto the card is only ever an abridgement
+	 * of it. Read from the live conversation where there is one, because a run parked
+	 * on its completion holds messages that its last save may not have reached yet.
+	 */
+	private async readBoardCompletionMessage(taskId: string): Promise<string | undefined> {
+		const live = ClineProvider.findLiveConversation(taskId)
+		const messages =
+			live?.clineMessages ??
+			(await readTaskMessages({ taskId, globalStoragePath: this.contextProxy.globalStorageUri.fsPath }).catch(
+				(error) => {
+					this.log(`[readBoardCompletionMessage] Unable to read ${taskId}: ${String(error)}`)
+					return []
+				},
+			))
+		// The last one: a run sent back for more work and validated again has signed off
+		// more than once, and only the most recent verdict still applies.
+		const completion = findLast(
+			messages,
+			(message) => message.type === "say" && message.say === "completion_result",
+		)
+		return completion?.text?.trim() || undefined
+	}
+
+	/**
+	 * Whether a conversation is still doing something, rather than parked waiting to be
+	 * told what to do next.
+	 *
+	 * A finished board run does not go away: `attempt_completion` leaves it holding its
+	 * result open, waiting to be accepted or argued with. So "is it still in the
+	 * registry" answers the wrong question — the manager would wait on it forever. A run
+	 * parked on an idle ask (its completion) or a resumable one (it was interrupted) has
+	 * stopped; one waiting on a question the *user* has been asked has not, and is left
+	 * alone to be answered by the person it was asked of.
+	 */
+	private static isConversationWorking(taskId: string): boolean {
+		for (const instance of ClineProvider.activeInstances) {
+			const task = instance.taskRegistry.getById(taskId)
+			if (!task || task.abort || task.abandoned) continue
+			return ClineProvider.isTaskWorking(task)
+		}
+		return false
+	}
+
+	/**
+	 * The same question asked of a task already in hand: parked on its own completion
+	 * (idle) or on the offer to resume it (interrupted) means stopped. A task waiting on
+	 * something only the *user* can answer is still working — it has not given up, and
+	 * the board says so separately.
+	 */
+	private static isTaskWorking(task: Task): boolean {
+		return task.idleAsk === undefined && task.resumableAsk === undefined
+	}
+
+	/** Turn the board's autopilot on or off, and set what it runs cards under. */
+	async setBoardManager(
+		workspaceId: string,
+		input: { enabled?: boolean; mode?: string | null; apiConfigName?: string | null },
+	): Promise<void> {
+		if (input.mode && !getModeBySlug(input.mode, await this.customModesManager.getCustomModes())) {
+			throw new Error(`Mode ${input.mode} is not available`)
+		}
+		await this.boardStore.setManager(workspaceId, input)
+		// The store's change event ticks the manager, so switching it on starts it.
+	}
+
 	async setBoardColumnMode(workspaceId: string, stage: BoardStage, mode: string | null): Promise<void> {
 		if (mode && !getModeBySlug(mode, await this.customModesManager.getCustomModes())) {
 			throw new Error(`Mode ${mode} is not available`)
@@ -3416,11 +3608,11 @@ export class ClineProvider
 		await this.boardStore.deleteTask(id)
 	}
 
-	async startBoardTask(id: string): Promise<void> {
+	async startBoardTask(id: string, options?: BoardRunOptions): Promise<void> {
 		const existingClaim = this.boardTaskStartClaims.get(id)
 		if (existingClaim) return existingClaim
 
-		const claim = this.startBoardTaskOnce(id)
+		const claim = this.startBoardTaskOnce(id, options)
 		this.boardTaskStartClaims.set(id, claim)
 		try {
 			await claim
@@ -3429,29 +3621,47 @@ export class ClineProvider
 		}
 	}
 
-	private async startBoardTaskOnce(id: string): Promise<void> {
+	private async startBoardTaskOnce(id: string, options?: BoardRunOptions): Promise<void> {
 		await this.boardStore.initialized
 		const snapshot = this.boardStore.getSnapshot()
 		const task = snapshot.tasks.find((candidate) => candidate.id === id)
 		if (!task) throw new Error("Board task does not exist")
 		if (task.linkedHistoryTaskId) {
-			await this.showTaskWithId(task.linkedHistoryTaskId)
+			// A run that is still going only needs showing — Start is not a way to
+			// interrupt work in progress. One that has stopped is a different thing
+			// entirely: cancelled from the chat view, lost to a window reload, or parked
+			// on its own completion. Reopening a conversation does not make it do
+			// anything, so a stopped run has to be told to carry on, or the card sits
+			// there offering a button that appears to do nothing.
+			if (ClineProvider.isConversationWorking(task.linkedHistoryTaskId)) {
+				await this.showTaskWithId(task.linkedHistoryTaskId)
+				return
+			}
+			// Resumed with the same reasoning the autopilot uses, so a card picked up by
+			// hand is told exactly what it would have been told automatically — including
+			// the validator's verdict when this is a card validation sent back.
+			const reason = boardResumeReason(snapshot, task)
+			const verdict =
+				reason.kind === "fix" && reason.validationTaskId
+					? await this.readBoardCompletionMessage(reason.validationTaskId)
+					: undefined
+			await this.resumeBoardTask(id, buildBoardResumeGuidance(reason, verdict), options)
+			// Work is happening again, so the card belongs in the column that says so.
+			// Moved after the resume rather than before: until the run is visibly working
+			// the manager reads a card in In Progress with a parked run as its own to pick
+			// up, and would resume it a second time.
+			if (task.stage !== "in_progress") await this.updateBoardTask(id, { stage: "in_progress" })
 			return
 		}
 		if (!task.title.trim()) throw new Error("A board task needs a title before it can be started")
 		// The mode belongs to the column the card is started from, not to the card.
-		const columnMode = ClineProvider.getBoardColumnMode(snapshot, task)
-		if (columnMode) {
-			const customModes = await this.customModesManager.getCustomModes()
-			if (!getModeBySlug(columnMode, customModes)) {
-				throw new Error(`Mode ${columnMode} assigned to this column is no longer available`)
-			}
-		}
+		const columnMode = await this.resolveBoardRunMode(snapshot, task, options)
 		const executionTask = await this.createTask(
 			ClineProvider.buildBoardExecutePrompt(task),
 			undefined,
 			undefined,
 			columnMode ? { initialMode: columnMode } : {},
+			ClineProvider.boardRunConfiguration(options),
 		)
 		try {
 			await this.boardStore.linkTaskToHistory(id, executionTask.taskId)
@@ -3472,6 +3682,41 @@ export class ClineProvider
 	 */
 	private static getBoardColumnMode(state: BoardState, task: BoardTask): string | undefined {
 		return state.workspaces.find((workspace) => workspace.id === task.workspaceId)?.columnModes?.[task.stage]
+	}
+
+	/**
+	 * The mode a board run happens in, and a check that it still exists. The card's own
+	 * column wins — it is the more specific answer, chosen per stage — and the manager's
+	 * mode only fills in where a column was left on "use current mode". Undefined means
+	 * neither was set, and the caller falls back to whatever suits the run it is starting.
+	 */
+	private async resolveBoardRunMode(
+		state: BoardState,
+		task: BoardTask,
+		options?: BoardRunOptions,
+	): Promise<string | undefined> {
+		const columnMode = ClineProvider.getBoardColumnMode(state, task)
+		const mode = columnMode ?? options?.fallbackMode
+		if (mode) {
+			const customModes = await this.customModesManager.getCustomModes()
+			if (!getModeBySlug(mode, customModes)) {
+				throw new Error(
+					columnMode
+						? `Mode ${mode} assigned to this column is no longer available`
+						: `Mode ${mode} assigned to the board manager is no longer available`,
+				)
+			}
+		}
+		return mode
+	}
+
+	/**
+	 * The provider profile a manager-launched run uses. Columns carry no profile of
+	 * their own, so this is the only place the board can express one; `createTask`
+	 * activates it exactly as picking it from the dropdown would.
+	 */
+	private static boardRunConfiguration(options?: BoardRunOptions): RooCodeSettings {
+		return options?.apiConfigName ? { currentApiConfigName: options.apiConfigName } : {}
 	}
 
 	/**
@@ -3499,11 +3744,11 @@ export class ClineProvider
 	 * Open the card's refinement chat, creating it on first use. Idempotent: a card
 	 * always returns to the same conversation rather than starting a new one.
 	 */
-	async refineBoardTask(id: string): Promise<void> {
+	async refineBoardTask(id: string, options?: BoardRunOptions): Promise<void> {
 		const existingClaim = this.boardTaskRefineClaims.get(id)
 		if (existingClaim) return existingClaim
 
-		const claim = this.refineBoardTaskOnce(id)
+		const claim = this.refineBoardTaskOnce(id, options)
 		this.boardTaskRefineClaims.set(id, claim)
 		try {
 			await claim
@@ -3512,7 +3757,7 @@ export class ClineProvider
 		}
 	}
 
-	private async refineBoardTaskOnce(id: string): Promise<void> {
+	private async refineBoardTaskOnce(id: string, options?: BoardRunOptions): Promise<void> {
 		await this.boardStore.initialized
 		const snapshot = this.boardStore.getSnapshot()
 		const task = snapshot.tasks.find((candidate) => candidate.id === id)
@@ -3526,19 +3771,14 @@ export class ClineProvider
 
 		// Refinement runs in the mode of the column the card is refined from, falling
 		// back to the dedicated refiner when that column has no mode of its own.
-		const columnMode = ClineProvider.getBoardColumnMode(snapshot, task)
-		if (columnMode) {
-			const customModes = await this.customModesManager.getCustomModes()
-			if (!getModeBySlug(columnMode, customModes)) {
-				throw new Error(`Mode ${columnMode} assigned to this column is no longer available`)
-			}
-		}
+		const columnMode = await this.resolveBoardRunMode(snapshot, task, options)
 		const workspace = snapshot.workspaces.find((candidate) => candidate.id === task.workspaceId)
 		const refinementTask = await this.createTask(
 			ClineProvider.buildBoardRefinePrompt(task, workspace),
 			undefined,
 			undefined,
 			{ initialMode: columnMode ?? "board-refine" },
+			ClineProvider.boardRunConfiguration(options),
 		)
 		try {
 			await this.boardStore.linkRefinementTask(id, refinementTask.taskId)
@@ -3605,11 +3845,11 @@ export class ClineProvider
 	 * runs. A card whose implementation has since changed arrives here with its old
 	 * link already cleared, so the next click validates the new work.
 	 */
-	async validateBoardTask(id: string): Promise<void> {
+	async validateBoardTask(id: string, options?: BoardRunOptions): Promise<void> {
 		const existingClaim = this.boardTaskValidateClaims.get(id)
 		if (existingClaim) return existingClaim
 
-		const claim = this.validateBoardTaskOnce(id)
+		const claim = this.validateBoardTaskOnce(id, options)
 		this.boardTaskValidateClaims.set(id, claim)
 		try {
 			await claim
@@ -3618,7 +3858,7 @@ export class ClineProvider
 		}
 	}
 
-	private async validateBoardTaskOnce(id: string): Promise<void> {
+	private async validateBoardTaskOnce(id: string, options?: BoardRunOptions): Promise<void> {
 		await this.boardStore.initialized
 		const snapshot = this.boardStore.getSnapshot()
 		const task = snapshot.tasks.find((candidate) => candidate.id === id)
@@ -3640,19 +3880,14 @@ export class ClineProvider
 
 		// Validation runs in the mode of the column the card is validated from, falling
 		// back to the dedicated validator when that column has no mode of its own.
-		const columnMode = ClineProvider.getBoardColumnMode(snapshot, task)
-		if (columnMode) {
-			const customModes = await this.customModesManager.getCustomModes()
-			if (!getModeBySlug(columnMode, customModes)) {
-				throw new Error(`Mode ${columnMode} assigned to this column is no longer available`)
-			}
-		}
+		const columnMode = await this.resolveBoardRunMode(snapshot, task, options)
 		const workspace = snapshot.workspaces.find((candidate) => candidate.id === task.workspaceId)
 		const validationTask = await this.createTask(
 			ClineProvider.buildBoardValidatePrompt(task, workspace),
 			undefined,
 			undefined,
 			{ initialMode: columnMode ?? "board-qa" },
+			ClineProvider.boardRunConfiguration(options),
 		)
 		try {
 			await this.boardStore.linkValidationTask(id, validationTask.taskId)
@@ -3702,8 +3937,79 @@ export class ClineProvider
 			"- Any regression or edge case you found, whether or not a criterion covers it.",
 			"- Your overall verdict on whether this card is done.",
 			"",
-			'Do not write or edit product code or tests — fixing what you find is a separate run. If every criterion is met, finish with `attempt_completion` and the card is retired to done. If anything is not met, first call `update_board_task` with the card\'s `task_id` to append a `## QA findings` section to the existing description and set `stage` to `"in_progress"`, then finish with `attempt_completion`.',
+			// The heading is shared with the manager, which reads this section back out to
+			// whichever run picks the card up next.
+			`Do not write or edit product code or tests — fixing what you find is a separate run. If every criterion is met, finish with \`attempt_completion\` and the card is retired to done. If anything is not met, first call \`update_board_task\` with the card's \`task_id\` to append a \`${BOARD_QA_FINDINGS_HEADING}\` section to the existing description and set \`stage\` to \`"in_progress"\`, then finish with \`attempt_completion\`.`,
 		].join("\n")
+	}
+
+	/**
+	 * Pick a card's execution run back up and tell it what to do next.
+	 *
+	 * Distinct from {@link startBoardTask}, which only ever *opens* a card that already
+	 * has a run — reopening a conversation does not make it do anything, and a card
+	 * whose run has stopped needs saying to, not showing. Two things stop a board run
+	 * short: it finished and is parked on its completion result (which is where a card
+	 * validation sent back finds its run), or it was interrupted and is waiting to be
+	 * resumed. Both are answered the same way: with a message.
+	 */
+	async resumeBoardTask(id: string, guidance: string, options?: BoardRunOptions): Promise<void> {
+		await this.boardStore.initialized
+		const task = this.boardStore.getSnapshot().tasks.find((candidate) => candidate.id === id)
+		if (!task) throw new Error("Board task does not exist")
+		const executionTaskId = task.linkedHistoryTaskId
+		if (!executionTaskId) throw new Error("This board task has no execution run to resume")
+
+		// The run belongs to whichever provider started it, which is not necessarily this
+		// one - a detached board window has its own registry.
+		const owner = [this, ...ClineProvider.getAllInstances()].find((instance) =>
+			instance.taskRegistry.hasRunning(executionTaskId),
+		)
+		const resident = owner?.taskRegistry.getById(executionTaskId)
+		if (owner && resident) {
+			if (owner.getCurrentTask()?.taskId !== executionTaskId) owner.taskRegistry.setCurrent(executionTaskId)
+			// Answering the ask it is parked on is what drives the next model turn; the
+			// text arrives as feedback on whatever it was waiting for.
+			await resident.handleWebviewAskResponse("messageResponse", guidance)
+			await ClineProvider.waitForConversationToResume(resident)
+			await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+			return
+		}
+
+		// Nothing hosts the run any more - the window was reloaded, or the task was
+		// evicted. Rehydrating it raises a resume ask, which the guidance then answers.
+		if (options?.apiConfigName) await this.setProviderProfile(options.apiConfigName)
+		const { historyItem } = await this.getTaskWithId(executionTaskId)
+		const rehydrated = await this.createTaskWithHistoryItem(historyItem)
+		try {
+			// The ask is raised a beat after the task is built (it reads its own history
+			// back first), so the response has to wait for something to answer.
+			await pWaitFor(() => rehydrated.resumableAsk !== undefined || rehydrated.idleAsk !== undefined, {
+				interval: 100,
+				timeout: ClineProvider.BOARD_RESUME_ASK_TIMEOUT_MS,
+			})
+		} catch {
+			throw new Error(`Task ${executionTaskId} was reopened but never offered to resume`)
+		}
+		await rehydrated.handleWebviewAskResponse("messageResponse", guidance)
+		await ClineProvider.waitForConversationToResume(rehydrated)
+		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+	}
+
+	/**
+	 * Wait for a conversation that has just been answered to actually take the answer up.
+	 *
+	 * The ask it was parked on only clears when its own poll notices the response, so for
+	 * a moment after being told what to do the task still looks parked. That moment is
+	 * long enough for the board manager to read it as a run that never restarted and set
+	 * the card aside, so resuming is not finished until the task is visibly working
+	 * again. A task that never picks up is left to be reported by whatever asked it to.
+	 */
+	private static async waitForConversationToResume(task: Task): Promise<void> {
+		await pWaitFor(() => task.idleAsk === undefined && task.resumableAsk === undefined, {
+			interval: 50,
+			timeout: ClineProvider.BOARD_RESUME_SETTLE_TIMEOUT_MS,
+		}).catch(() => undefined)
 	}
 
 	/**
@@ -3715,26 +4021,62 @@ export class ClineProvider
 		const task = this.boardStore.getSnapshot().tasks.find((candidate) => candidate.id === id)
 		if (!task) throw new Error("Board task does not exist")
 
-		const executionTaskId = task.linkedHistoryTaskId
-		// The run belongs to whichever provider started it, which is not necessarily this
-		// one: a detached board window has its own registry, so a card started there is
-		// stopped from the sidebar and vice versa. A run nobody hosts is already over,
-		// and only needs unlinking.
-		const owner = executionTaskId
-			? [this, ...ClineProvider.getAllInstances()].find((instance) =>
-					instance.taskRegistry.hasRunning(executionTaskId),
-				)
-			: undefined
-		if (owner && executionTaskId) {
-			// Board execution tasks are top-level, so the running one is normally the
-			// current task; focus it first if some other task has taken over the UI.
-			if (owner.getCurrentTask()?.taskId !== executionTaskId) {
-				owner.taskRegistry.setCurrent(executionTaskId)
-			}
-			await owner.cancelTask()
-		}
-
+		await this.cancelBoardRun(task.linkedHistoryTaskId)
 		await this.boardStore.unlinkExecutionTask(id)
+	}
+
+	/**
+	 * Cancel a card's in-flight refinement run.
+	 *
+	 * The conversation is kept and stays linked, unlike the other two stops: refinement
+	 * is a discussion with the user, so what was said before the run was called off is
+	 * worth coming back to, and it is a backlog card's only conversation. Pressing
+	 * Refine again reopens it rather than starting the card over.
+	 */
+	async stopBoardRefinement(id: string): Promise<void> {
+		await this.boardStore.initialized
+		const task = this.boardStore.getSnapshot().tasks.find((candidate) => candidate.id === id)
+		if (!task) throw new Error("Board task does not exist")
+
+		await this.cancelBoardRun(task.linkedRefinementTaskId)
+	}
+
+	/**
+	 * Cancel a card's in-flight validation run, leaving the card in the QA validation
+	 * column so it can be checked again. Only the check is thrown away, not the
+	 * implementation it was checking, which is why — unlike {@link stopBoardTask} —
+	 * the card does not travel back up the board.
+	 */
+	async stopBoardValidation(id: string): Promise<void> {
+		await this.boardStore.initialized
+		const task = this.boardStore.getSnapshot().tasks.find((candidate) => candidate.id === id)
+		if (!task) throw new Error("Board task does not exist")
+
+		await this.cancelBoardRun(task.linkedValidationTaskId)
+		// The cancelled conversation stops partway through its checklist, so reopening it
+		// would only ever show a verdict it never reached. Dropping the link is what turns
+		// the card's button back into Validate and starts the next check afresh.
+		await this.boardStore.unlinkValidationTask(id)
+	}
+
+	/**
+	 * Cancel a run started for a board card, wherever it is hosted.
+	 *
+	 * The run belongs to whichever provider started it, which is not necessarily this
+	 * one: a detached board window has its own registry, so a card started there is
+	 * stopped from the sidebar and vice versa. A run nobody hosts is already over, and
+	 * only needs unlinking by the caller.
+	 */
+	private async cancelBoardRun(taskId: string | undefined): Promise<void> {
+		const owner = taskId
+			? [this, ...ClineProvider.getAllInstances()].find((instance) => instance.taskRegistry.hasRunning(taskId))
+			: undefined
+		if (!owner || !taskId) return
+
+		// Board runs are top-level, so the running one is normally the current task;
+		// focus it first if some other task has taken over the UI.
+		if (owner.getCurrentTask()?.taskId !== taskId) owner.taskRegistry.setCurrent(taskId)
+		await owner.cancelTask()
 	}
 
 	/**
@@ -3745,10 +4087,30 @@ export class ClineProvider
 	 * task (or a subtask) changes nothing.
 	 */
 	async markBoardTaskCompleted(historyTaskId: string): Promise<void> {
-		await this.boardStore.moveLinkedHistoryTaskToQaValidation(historyTaskId)
-		await this.boardStore.moveLinkedValidationTaskToDone(historyTaskId)
+		const verdict = await this.readBoardVerdict(historyTaskId)
+		await this.boardStore.moveLinkedHistoryTaskToQaValidation(historyTaskId, verdict)
+		await this.boardStore.completeLinkedValidationTask(historyTaskId, verdict)
 		// The last call returns the full state, so it carries the earlier changes.
 		await this.boardStore.moveLinkedRefinementTaskToScoped(historyTaskId)
+	}
+
+	/**
+	 * The verdict a board run signed off with, or undefined if it is not a board run or
+	 * never stated one.
+	 *
+	 * Guarded on the card lookup so an ordinary task — or a subtask, of which a single
+	 * board run can produce many — never pays for reading a conversation back off disk
+	 * just to find it has no card to advance.
+	 */
+	private async readBoardVerdict(historyTaskId: string): Promise<BoardActivityOutcome | undefined> {
+		await this.boardStore.initialized
+		const isBoardRun = this.boardStore
+			.getSnapshot()
+			.tasks.some(
+				(task) => task.linkedHistoryTaskId === historyTaskId || task.linkedValidationTaskId === historyTaskId,
+			)
+		if (!isBoardRun) return undefined
+		return parseBoardCompletionVerdict(await this.readBoardCompletionMessage(historyTaskId))
 	}
 
 	async approveBoardTask(id: string): Promise<void> {

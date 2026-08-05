@@ -27,6 +27,7 @@ import {
 	createBoardTaskInputSchema,
 	createBoardWorkspaceInputSchema,
 	setBoardColumnModeInputSchema,
+	setBoardManagerInputSchema,
 	updateBoardTaskInputSchema,
 	updateBoardWorkspaceInputSchema,
 } from "@roo-code/types"
@@ -949,6 +950,25 @@ export const webviewMessageHandler = async (
 			}
 			break
 		}
+		case "setBoardManager": {
+			const parsed = setBoardManagerInputSchema.safeParse({
+				workspaceId: message.workspaceId,
+				...message.boardManager,
+			})
+			if (!parsed.success) {
+				provider.log("[setBoardManager] Ignoring malformed message")
+				break
+			}
+			const { workspaceId, ...input } = parsed.data
+			try {
+				await provider.setBoardManager(workspaceId, input)
+			} catch (error) {
+				const reason = error instanceof Error ? error.message : String(error)
+				provider.log(`[setBoardManager] Failed: ${reason}`)
+				vscode.window.showErrorMessage(reason)
+			}
+			break
+		}
 		case "createBoardTask": {
 			const parsed = createBoardTaskInputSchema.safeParse({
 				workspaceId: message.workspaceId,
@@ -975,6 +995,8 @@ export const webviewMessageHandler = async (
 		case "refineBoardTask":
 		case "validateBoardTask":
 		case "stopBoardTask":
+		case "stopBoardRefinement":
+		case "stopBoardValidation":
 		case "approveBoardTask": {
 			if (typeof message.taskId !== "string" || !message.taskId) {
 				provider.log(`[${message.type}] Ignoring malformed message`)
@@ -999,6 +1021,12 @@ export const webviewMessageHandler = async (
 						break
 					case "stopBoardTask":
 						await provider.stopBoardTask(message.taskId)
+						break
+					case "stopBoardRefinement":
+						await provider.stopBoardRefinement(message.taskId)
+						break
+					case "stopBoardValidation":
+						await provider.stopBoardValidation(message.taskId)
 						break
 					case "approveBoardTask":
 						await provider.approveBoardTask(message.taskId)

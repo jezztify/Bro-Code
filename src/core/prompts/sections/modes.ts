@@ -1,9 +1,23 @@
 import * as vscode from "vscode"
 
-import type { ModeConfig } from "@roo-code/types"
+import type { CustomModePrompts, ModeConfig } from "@roo-code/types"
 
-import { getAllModesWithPrompts } from "../../../shared/modes"
+import { applyModePromptOverrides } from "../../../shared/modes"
+import { readScopedState } from "../../config/scopedState"
 import { ensureSettingsDirectoryExists } from "../../../utils/globalContext"
+
+/**
+ * Read the custom modes and prompt overrides out of extension state and merge them.
+ *
+ * Lives here rather than in shared/modes.ts because `readScopedState` pulls in the logger,
+ * which pulls in `fs`/`path` — and shared/modes.ts is imported by the webview.
+ */
+export async function getAllModesWithPrompts(context: vscode.ExtensionContext): Promise<ModeConfig[]> {
+	const customModes = readScopedState<ModeConfig[]>(context, "customModes") || []
+	const customModePrompts = readScopedState<CustomModePrompts>(context, "customModePrompts") || {}
+
+	return applyModePromptOverrides(customModes, customModePrompts)
+}
 
 export async function getModesSection(context: vscode.ExtensionContext): Promise<string> {
 	// Make sure path gets created

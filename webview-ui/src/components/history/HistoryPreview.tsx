@@ -19,6 +19,12 @@ const HistoryPreview = () => {
 	// Show up to 4 groups (parent + subtasks count as 1 block)
 	const displayGroups = groups.slice(0, 4)
 
+	// useTaskSearch scopes tasks to the current workspace, so a workspace with no chats of
+	// its own gets nothing here - not a "Recent Tasks" heading over an empty list.
+	if (displayGroups.length === 0) {
+		return null
+	}
+
 	return (
 		<div className="flex flex-col gap-1">
 			<div className="flex flex-wrap items-center justify-between mt-4 mb-2">
@@ -30,19 +36,15 @@ const HistoryPreview = () => {
 					{t("history:viewAllHistory")}
 				</button>
 			</div>
-			{displayGroups.length !== 0 && (
-				<>
-					{displayGroups.map((group) => (
-						<TaskGroupItem
-							key={group.parent.id}
-							group={group}
-							variant="compact"
-							onToggleExpand={() => toggleExpand(group.parent.id)}
-							onToggleSubtaskExpand={toggleExpand}
-						/>
-					))}
-				</>
-			)}
+			{displayGroups.map((group) => (
+				<TaskGroupItem
+					key={group.parent.id}
+					group={group}
+					variant="compact"
+					onToggleExpand={() => toggleExpand(group.parent.id)}
+					onToggleSubtaskExpand={toggleExpand}
+				/>
+			))}
 		</div>
 	)
 }

@@ -279,6 +279,20 @@ describe("MobileServer", () => {
 		expect(response.headers.get("set-cookie")).toContain("zoo_mobile_session=")
 	})
 
+	// A phone reaching the server over Tailscale/VPN or a second NIC hits a host
+	// that isn't the detected LAN address; the injected socket URL has to follow
+	// the request rather than pinning the page to an address that route can't reach.
+	it("points the injected WebSocket URL at the host the request arrived on", async () => {
+		const { origin, token } = await startServer()
+		const port = new URL(origin).port
+
+		const response = await fetch(`http://127.0.0.1:${port}/?token=${token}`)
+		const body = await response.text()
+
+		expect(response.status).toBe(200)
+		expect(body).toContain(`window.ZOO_MOBILE_WS_URL = "ws://127.0.0.1:${port}/ws?token=${token}";`)
+	})
+
 	it("serves subsequent requests using only the session cookie (no ?token= needed)", async () => {
 		const { origin, token } = await startServer()
 

@@ -21,7 +21,9 @@ const BoardActivityColumn = ({ entries }: { entries: readonly BoardActivityEntry
 	return (
 		<div
 			data-testid="board-column-activity"
-			className="flex h-full w-[272px] shrink-0 flex-col overflow-hidden rounded-xl border border-vscode-panel-border bg-vscode-sideBar-background">
+			// Sized by the column it shares with the manager card rather than by itself,
+			// and min-h-0 so a long log scrolls inside instead of pushing that card away.
+			className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-vscode-panel-border bg-vscode-sideBar-background">
 			<div className="flex flex-col gap-2 border-b border-vscode-panel-border px-3 py-3">
 				<h4 className="m-0 flex items-center gap-2 text-sm font-semibold text-vscode-foreground">
 					<History className="size-4 shrink-0" />

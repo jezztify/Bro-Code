@@ -220,6 +220,8 @@ export interface ExtensionMessage {
 	boardPlanning?: BoardPlanningSessionState
 	/** For runningTaskIdsUpdated: the tasks that are live in this host right now. */
 	runningTaskIds?: string[]
+	/** For runningTaskIdsUpdated: the live tasks that are parked on a question for the user. */
+	awaitingTaskIds?: string[]
 	/** For taskHistoryItemUpdated: single updated/added history item */
 	taskHistoryItem?: HistoryItem
 	// Worktree response properties
@@ -371,6 +373,15 @@ export type ExtensionState = Pick<
 	 */
 	runningTaskIds?: string[]
 
+	/**
+	 * The subset of {@link runningTaskIds} that has stopped to ask the user something —
+	 * a tool or command to approve, or a follow-up question. Such a run is still live,
+	 * so nothing in the pipeline will move it along; only an answer will. The board
+	 * shows it, because otherwise a card whose run is waiting looks identical to one
+	 * that is working, and the autopilot's silence has no visible cause.
+	 */
+	awaitingTaskIds?: string[]
+
 	writeDelayMs: number
 	diffFuzzyThreshold: number
 
@@ -520,6 +531,7 @@ export interface WebviewMessage {
 		| "deleteBoardWorkspace"
 		| "selectBoardWorkspace"
 		| "setBoardColumnMode"
+		| "setBoardManager"
 		| "createBoardTask"
 		| "updateBoardTask"
 		| "deleteBoardTask"
@@ -527,6 +539,8 @@ export interface WebviewMessage {
 		| "refineBoardTask"
 		| "validateBoardTask"
 		| "stopBoardTask"
+		| "stopBoardRefinement"
+		| "stopBoardValidation"
 		| "approveBoardTask"
 		| "startBoardPlanning"
 		| "approveBoardPlanning"
@@ -713,6 +727,15 @@ export interface WebviewMessage {
 	linkedWorkspacePath?: string
 	/** The board column a `setBoardColumnMode` message targets. */
 	stage?: BoardStage
+	/**
+	 * What a `setBoardManager` message changes about the board's autopilot. Each field
+	 * is left alone when absent; `null` clears one back to unset.
+	 */
+	boardManager?: {
+		enabled?: boolean
+		mode?: string | null
+		apiConfigName?: string | null
+	}
 	boardTask?: {
 		title?: string
 		description?: string

@@ -3,6 +3,7 @@ import { formatResponse } from "../prompts/responses"
 import type { ToolUse } from "../../shared/tools"
 import { getSuggestionMode } from "@roo-code/types"
 
+import { lockedBoardReviewRun } from "../board/boardReviewRun"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 
 interface Suggestion {
@@ -63,10 +64,19 @@ export class AskFollowupQuestionTool extends BaseTool<"ask_followup_question"> {
 				return
 			}
 
+			// A suggestion carries an optional mode, and clicking it switches to that mode as
+			// well as answering. In a board review run that is an escape from the read-only
+			// mode its column assigned, dressed up as the user answering a question: the
+			// suggestions stay, the modes attached to them do not.
+			const pinned = lockedBoardReviewRun(task) !== undefined
+
 			// Transform follow_up suggestions to the format expected by task.ask
 			const follow_up_json = {
 				question,
-				suggest: follow_up.map((s) => ({ answer: s.text, mode: getSuggestionMode(s.mode) })),
+				suggest: follow_up.map((s) => ({
+					answer: s.text,
+					mode: pinned ? undefined : getSuggestionMode(s.mode),
+				})),
 			}
 
 			task.consecutiveMistakeCount = 0

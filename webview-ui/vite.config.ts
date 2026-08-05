@@ -136,8 +136,13 @@ export default defineConfig(({ mode }) => {
 			},
 		},
 		server: {
+			// Bind the IPv4 loopback explicitly. Left to its default, Vite binds whatever
+			// "localhost" resolves to first, which on Windows is ::1 only — the extension host
+			// (Node, IPv6-first) would then reach it while the webview (Chromium, IPv4-first)
+			// would not, leaving a blank panel with no error.
+			host: "127.0.0.1",
 			hmr: {
-				host: "localhost",
+				host: "127.0.0.1",
 				protocol: "ws",
 			},
 			cors: {

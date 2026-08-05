@@ -24,8 +24,11 @@ const makeTask = (overrides: Partial<BoardTask> = {}): BoardTask => ({
 	...overrides,
 })
 
-const renderCard = (overrides: Partial<BoardTask> = {}, isRunning = false) =>
-	render(<TaskBoardCard task={makeTask(overrides)} isRunning={isRunning} />)
+const renderCard = (
+	overrides: Partial<BoardTask> = {},
+	isRunning = false,
+	live: { isRefining?: boolean; isValidating?: boolean } = {},
+) => render(<TaskBoardCard task={makeTask(overrides)} isRunning={isRunning} {...live} />)
 
 const primaryButton = (labelKey: string) => screen.getByRole("button", { name: labelKey })
 
@@ -80,6 +83,55 @@ describe("TaskBoardCard primary action", () => {
 		fireEvent.click(primaryButton("board:actions.start"))
 
 		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "startBoardTask", taskId: "task-1" })
+	})
+
+	it("offers stop on a card whose refinement run is under way", () => {
+		renderCard({ linkedRefinementTaskId: "refine-1" }, false, { isRefining: true })
+
+		expect(screen.queryByRole("button", { name: "board:actions.refine" })).not.toBeInTheDocument()
+
+		fireEvent.click(primaryButton("board:actions.stop"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "stopBoardRefinement", taskId: "task-1" })
+	})
+
+	it("offers refine again once the card's refinement run is no longer working", () => {
+		renderCard({ linkedRefinementTaskId: "refine-1" })
+
+		expect(screen.queryByRole("button", { name: "board:actions.stop" })).not.toBeInTheDocument()
+
+		fireEvent.click(primaryButton("board:actions.refine"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "refineBoardTask", taskId: "task-1" })
+	})
+
+	it("offers stop on a card whose validation run is under way", () => {
+		renderCard({ stage: "qa_validation", linkedValidationTaskId: "validate-1" }, false, { isValidating: true })
+
+		expect(screen.queryByRole("button", { name: "board:actions.validate" })).not.toBeInTheDocument()
+
+		fireEvent.click(primaryButton("board:actions.stop"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "stopBoardValidation", taskId: "task-1" })
+	})
+
+	it.each([
+		["refinement", {}, { isRefining: true }],
+		["validation", { stage: "qa_validation" as BoardStage }, { isValidating: true }],
+	])("keeps stop enabled on an untitled card whose %s is under way", (_kind, overrides, live) => {
+		renderCard({ title: "", ...overrides }, false, live)
+
+		expect(primaryButton("board:actions.stop")).toBeEnabled()
+	})
+
+	it("offers validate again once the card's validation run is no longer working", () => {
+		renderCard({ stage: "qa_validation", linkedValidationTaskId: "validate-1" })
+
+		expect(screen.queryByRole("button", { name: "board:actions.stop" })).not.toBeInTheDocument()
+
+		fireEvent.click(primaryButton("board:actions.validate"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "validateBoardTask", taskId: "task-1" })
 	})
 
 	it("offers start on an in-progress card that was moved there without ever being run", () => {

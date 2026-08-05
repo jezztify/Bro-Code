@@ -119,8 +119,9 @@ describe("HistoryPreview", () => {
 
 		const { container } = render(<HistoryPreview />)
 
-		// Should render the container but no task groups
-		expect(container.firstChild).toHaveClass("flex", "flex-col", "gap-1")
+		// The current workspace has no chats of its own, so there is no heading to show
+		// over an empty list.
+		expect(container.firstChild).toBeNull()
 		expect(screen.queryByTestId(/task-group-/)).not.toBeInTheDocument()
 	})
 

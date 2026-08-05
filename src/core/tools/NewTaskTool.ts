@@ -8,6 +8,7 @@ import { formatResponse } from "../prompts/responses"
 import { t } from "../../i18n"
 import { parseMarkdownChecklist } from "./UpdateTodoListTool"
 import { Package } from "../../shared/package"
+import { boardReviewRunRefusal, lockedBoardReviewRun } from "../board/boardReviewRun"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
 
@@ -41,6 +42,23 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 				task.recordToolError("new_task")
 				task.didToolFailInCurrentTurn = true
 				pushToolResult(await task.sayAndCreateMissingParamError("new_task", "message"))
+				return
+			}
+
+			// A board refinement or validation run is pinned to the mode its column set. A
+			// subtask is the way round that which does not need a mode switch at all: the
+			// child runs in whatever mode it was handed, and writes what its parent cannot.
+			// Refused before the approval ask, so auto-approve cannot wave it through.
+			const reviewRun = lockedBoardReviewRun(task)
+
+			if (reviewRun) {
+				task.recordToolError("new_task")
+				task.didToolFailInCurrentTurn = true
+				// handlePartial rendered a "wants to create a new subtask" bubble while this
+				// call streamed in. Rejecting before askApproval leaves it dangling, which
+				// shifts every later "View task" link in this task onto the wrong child.
+				await discardDanglingNewTaskAsk(task).catch(() => {})
+				pushToolResult(formatResponse.toolError(boardReviewRunRefusal(reviewRun, "new_task")))
 				return
 			}
 

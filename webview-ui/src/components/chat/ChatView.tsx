@@ -101,7 +101,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		currentTaskTodos,
 		currentTaskId,
 		currentTaskReasoningEffort,
-		taskHistory,
 		apiConfiguration,
 		organizationAllowList,
 		mode,
@@ -703,7 +702,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				) {
 					try {
 						console.log("queueMessage", text, images)
-						vscode.postMessage({ type: "queueMessage", text, images, reasoningEffort: selectedReasoningEffort })
+						vscode.postMessage({
+							type: "queueMessage",
+							text,
+							images,
+							reasoningEffort: selectedReasoningEffort,
+						})
 						setInputValue("")
 						setSelectedImages([])
 					} catch (error) {
@@ -1535,15 +1539,18 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		[handleSendMessage, setInputValue, switchToMode, alwaysAllowModeSwitch, clineAsk, markFollowUpAsAnswered],
 	)
 
-	const handleBatchFileResponse = useCallback((response: { [key: string]: boolean }) => {
-		// Handle batch file response, e.g., for file uploads
-		vscode.postMessage({
-			type: "askResponse",
-			askResponse: "objectResponse",
-			text: JSON.stringify(response),
-			reasoningEffort: selectedReasoningEffort,
-		})
-	}, [selectedReasoningEffort])
+	const handleBatchFileResponse = useCallback(
+		(response: { [key: string]: boolean }) => {
+			// Handle batch file response, e.g., for file uploads
+			vscode.postMessage({
+				type: "askResponse",
+				askResponse: "objectResponse",
+				text: JSON.stringify(response),
+				reasoningEffort: selectedReasoningEffort,
+			})
+		},
+		[selectedReasoningEffort],
+	)
 
 	// Cancel backend auto-approval timeout when FollowUpSuggest's countdown effect cleans up.
 	// This is called when auto-approve is toggled off, a suggestion is clicked, or the component unmounts.
@@ -1812,8 +1819,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						<div className="flex flex-col gap-4 w-full">
 							<RooHero />
 							<RooTips />
-							{/* Everyone should see their task history if any */}
-							{taskHistory.length > 0 && <HistoryPreview />}
+							{/* Renders nothing unless this workspace has task history of its own */}
+							<HistoryPreview />
 						</div>
 					</div>
 				</div>

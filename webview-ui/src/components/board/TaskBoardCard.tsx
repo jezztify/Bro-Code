@@ -1,5 +1,5 @@
 import { memo, useState } from "react"
-import { Check, ClipboardCheck, ExternalLink, Play, Sparkles, Square, X } from "lucide-react"
+import { Check, ClipboardCheck, ExternalLink, MessageCircleQuestion, Play, Sparkles, Square, X } from "lucide-react"
 
 import { formatBoardTaskNumber, type BoardStage, type BoardTask } from "@roo-code/types"
 
@@ -19,6 +19,8 @@ type PrimaryAction = {
 		| "startBoardTask"
 		| "validateBoardTask"
 		| "stopBoardTask"
+		| "stopBoardRefinement"
+		| "stopBoardValidation"
 		| "showTaskWithId"
 	variant: "primary" | "secondary" | "destructive"
 	requiresTitle: boolean
@@ -73,13 +75,48 @@ const PRIMARY_ACTIONS: Record<BoardStage, PrimaryAction> = {
 	},
 }
 
+/**
+ * What a column's own button turns into while the run it started is still going, so
+ * the card offers to call that run off rather than a second press that would only
+ * reopen the conversation. In Progress is not here: its button is already Stop, and
+ * it is the one column whose idle state means something else (see below).
+ *
+ * Stays enabled on an untitled card — a run that is going has to be cancellable
+ * whatever the card says.
+ */
+const STOP_ACTIONS = {
+	backlog: "stopBoardRefinement",
+	qa_validation: "stopBoardValidation",
+} as const
+
+const stopAction = (stage: keyof typeof STOP_ACTIONS): PrimaryAction => ({
+	labelKey: "board:actions.stop",
+	icon: Square,
+	messageType: STOP_ACTIONS[stage],
+	variant: "destructive",
+	requiresTitle: false,
+})
+
 const TaskBoardCard = ({
 	task,
 	isRunning = false,
+	isRefining = false,
+	isValidating = false,
+	isAwaitingInput = false,
 }: {
 	task: BoardTask
-	/** Whether the card's execution run is still live in the extension host. */
+	/** Whether the card's execution run is still working in the extension host. */
 	isRunning?: boolean
+	/** Whether the card's refinement run is still working in the extension host. */
+	isRefining?: boolean
+	/** Whether the card's validation run is still working in the extension host. */
+	isValidating?: boolean
+	/**
+	 * Whether one of the card's runs has stopped to ask the user something. Such a run
+	 * counts as live, so nothing in the pipeline will move it along — only an answer
+	 * will, which is why the card has to say so rather than looking merely busy.
+	 */
+	isAwaitingInput?: boolean
 }) => {
 	const { t } = useAppTranslation()
 	const [title, setTitle] = useState(task.title)
@@ -113,13 +150,21 @@ const TaskBoardCard = ({
 		if (event.target instanceof Element && event.target.closest("input, textarea, button")) return
 		openChat()
 	}
-	// A card stays in In Progress until its run reports completion, but the run itself
+	// A card stays in its column until its run reports completion, but the run itself
 	// only lives in the extension host: cancelling it from the chat view, a failed
 	// stream, or reloading the window all leave the card behind with nothing running.
-	// Stop is only meaningful while the run is live, so an idle card offers Start
-	// instead - which reopens the linked conversation and picks it back up.
+	// Stop is only meaningful while there is something to cancel, so every column reads
+	// the working set rather than the card's link.
+	const stop =
+		(task.stage === "backlog" && isRefining) || (task.stage === "qa_validation" && isValidating)
+			? stopAction(task.stage)
+			: undefined
+	// In Progress is the other way round: the card arrives there already offering Stop,
+	// so it is an idle run that changes the button - to Start, which reopens the linked
+	// conversation and tells it to carry on rather than throwing the run away and
+	// beginning the card again.
 	const primaryAction =
-		task.stage === "in_progress" && !isRunning ? PRIMARY_ACTIONS.approved : PRIMARY_ACTIONS[task.stage]
+		stop ?? (task.stage === "in_progress" && !isRunning ? PRIMARY_ACTIONS.approved : PRIMARY_ACTIONS[task.stage])
 	const PrimaryIcon = primaryAction.icon
 	const primaryDisabled =
 		(primaryAction.requiresTitle && !task.title.trim()) ||
@@ -190,6 +235,18 @@ const TaskBoardCard = ({
 					onClick={() => setDescriptionExpanded((expanded) => !expanded)}>
 					{showExpandedDescription ? "Show less" : "Show full description"}
 				</Button>
+			)}
+			{isAwaitingInput && chatTaskId && (
+				// The board's own explanation for why nothing is moving. Clicking it opens
+				// the conversation holding the question, which is where it gets answered.
+				<button
+					type="button"
+					data-testid={`board-task-awaiting-${task.id}`}
+					onClick={openChat}
+					className="mt-2 flex w-full cursor-pointer items-center gap-1.5 rounded border border-vscode-inputValidation-warningBorder bg-vscode-inputValidation-warningBackground px-2 py-1 text-left text-xs text-vscode-inputValidation-warningForeground">
+					<MessageCircleQuestion className="size-3 shrink-0" />
+					{t("board:card.awaitingInput")}
+				</button>
 			)}
 			<div className="mt-2 flex justify-between">
 				<Button

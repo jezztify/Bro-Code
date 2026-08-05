@@ -512,7 +512,7 @@ export class MobileServer implements vscode.Disposable {
 
 		if (resolved.isIndexHtml) {
 			res.writeHead(200, headers)
-			res.end(this.injectBootstrap(content.toString("utf8")))
+			res.end(this.injectBootstrap(content.toString("utf8"), req.headers.host))
 			return
 		}
 
@@ -553,16 +553,28 @@ export class MobileServer implements vscode.Disposable {
 		}
 
 		const isHtml = contentType.includes("text/html")
-		const body = isHtml ? Buffer.from(this.injectBootstrap(proxied.body.toString("utf8")), "utf8") : proxied.body
+		const body = isHtml
+			? Buffer.from(this.injectBootstrap(proxied.body.toString("utf8"), req.headers.host), "utf8")
+			: proxied.body
 
 		res.writeHead(proxied.status, headers)
 		res.end(body)
 		return true
 	}
 
-	private injectBootstrap(html: string): string {
+	/**
+	 * Builds the WebSocket URL from the `Host` the phone actually used, not from
+	 * the detected LAN address. The two differ whenever the server is reached over
+	 * a secondary route - Tailscale/VPN (which `lanAddress.ts` deliberately ranks
+	 * last), a second NIC, or a hostname - and a hardcoded LAN host would leave the
+	 * page loading fine while its socket dialled an address the phone can't reach.
+	 * Falls back to the LAN address only when the request carried no `Host` header.
+	 */
+	private injectBootstrap(html: string, requestHost: string | undefined): string {
+		const host = requestHost ?? `${this.lanAddress}:${this.port}`
+
 		return injectMobileBootstrap(html, {
-			wsUrl: `ws://${this.lanAddress}:${this.port}/ws?token=${this.token}`,
+			wsUrl: `ws://${host}/ws?token=${this.token}`,
 			imagesBaseUri: "/mobile-assets/images",
 			audioBaseUri: "/mobile-assets/audio",
 			materialIconsBaseUri: "/mobile-assets/material-icons",

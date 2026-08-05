@@ -7,6 +7,8 @@ import {
 	toolNamesMatch,
 	isMcpTool,
 	findClosestToolName,
+	resolveMcpToolSegment,
+	buildMcpServerSegment,
 	MCP_TOOL_SEPARATOR,
 	MCP_TOOL_PREFIX,
 } from "../mcp-name"
@@ -212,6 +214,67 @@ describe("mcp-name utilities", () => {
 			expect(result.startsWith("mcp--")).toBe(true)
 		})
 
+		it("should keep the tool name intact when the server name is what makes the name too long", () => {
+			// A 41-char sanitized server name used to leave only 16 characters for the tool, so
+			// "performance_analyze_insight" reached the model as "performance_anal".
+			const server = "io.github.ChromeDevTools/chrome-devtools-mcp"
+			const result = buildMcpToolName(server, "performance_analyze_insight")
+
+			expect(result.length).toBeLessThanOrEqual(64)
+			expect(result.endsWith("--performance_analyze_insight")).toBe(true)
+			expect(parseMcpToolName(result)?.toolName).toBe("performance_analyze_insight")
+		})
+
+		it("should keep every tool of a long-named server intact and distinct", () => {
+			const server = "io.github.ChromeDevTools/chrome-devtools-mcp"
+			const tools = [
+				"click",
+				"get_console_message",
+				"get_network_request",
+				"list_console_messages",
+				"list_network_requests",
+				"performance_analyze_insight",
+				"performance_start_trace",
+				"performance_stop_trace",
+				"take_memory_snapshot",
+			]
+
+			const built = tools.map((tool) => buildMcpToolName(server, tool))
+
+			for (const name of built) {
+				expect(name.length).toBeLessThanOrEqual(64)
+			}
+			expect(built.map((name) => parseMcpToolName(name)?.toolName)).toEqual(tools)
+			expect(new Set(built).size).toBe(tools.length)
+		})
+
+		it("should not collapse different long server names onto the same function name", () => {
+			const tool = "performance_analyze_insight"
+			const a = buildMcpToolName("io.github.ChromeDevTools/chrome-devtools-mcp", tool)
+			const b = buildMcpToolName("io.github.ChromeDevTools/chrome-devtools-mcp-fork", tool)
+
+			expect(a).not.toBe(b)
+			expect(parseMcpToolName(a)?.toolName).toBe(tool)
+			expect(parseMcpToolName(b)?.toolName).toBe(tool)
+		})
+
+		it("should stay parseable when even the tool name has to be shortened", () => {
+			const server = "io.github.ChromeDevTools/chrome-devtools-mcp"
+			const tool = `${"long_tool_name_".repeat(4)}end`
+			const result = buildMcpToolName(server, tool)
+
+			expect(result.length).toBeLessThanOrEqual(64)
+			const parsed = parseMcpToolName(result)
+			expect(parsed).not.toBeNull()
+			// The shortened segment must still resolve back to the real tool name.
+			expect(resolveMcpToolSegment(server, parsed!.toolName, [tool, "click"])).toBe(tool)
+		})
+
+		it("should never emit a segment containing a separator sequence", () => {
+			const result = buildMcpToolName("my_server_name_that_is_much_too_long_to_fit_", "tool_name_here")
+			expect(result.slice("mcp--".length)).not.toContain("__")
+		})
+
 		it("should handle names starting with numbers", () => {
 			expect(buildMcpToolName("123server", "456tool")).toBe("mcp--_123server--_456tool")
 		})
@@ -227,6 +290,42 @@ describe("mcp-name utilities", () => {
 
 		it("should handle tool names with multiple hyphens", () => {
 			expect(buildMcpToolName("server", "get-user-profile")).toBe("mcp--server--get-user-profile")
+		})
+	})
+
+	describe("buildMcpServerSegment", () => {
+		it("should leave server names that already fit unchanged", () => {
+			expect(buildMcpServerSegment("chrome-devtools")).toBe("chrome-devtools")
+			expect(buildMcpServerSegment("my server")).toBe("my_server")
+		})
+
+		it("should match the server segment that buildMcpToolName emits for long names", () => {
+			const server = "io.github.ChromeDevTools/chrome-devtools-mcp"
+			const built = buildMcpToolName(server, "performance_analyze_insight")
+
+			// McpHub registers this form so the original server name can be recovered.
+			expect(parseMcpToolName(built)?.serverName).toBe(buildMcpServerSegment(server))
+		})
+
+		it("should be stable across calls", () => {
+			const server = "io.github.ChromeDevTools/chrome-devtools-mcp"
+			expect(buildMcpServerSegment(server)).toBe(buildMcpServerSegment(server))
+		})
+	})
+
+	describe("resolveMcpToolSegment", () => {
+		const tools = ["click", "performance_analyze_insight", "take_memory_snapshot"]
+
+		it("should resolve an exact tool name", () => {
+			expect(resolveMcpToolSegment("chrome-devtools", "click", tools)).toBe("click")
+		})
+
+		it("should resolve a name whose hyphens the model turned into underscores", () => {
+			expect(resolveMcpToolSegment("srv", "get_user_profile", ["get-user-profile"])).toBe("get-user-profile")
+		})
+
+		it("should return null when nothing matches", () => {
+			expect(resolveMcpToolSegment("chrome-devtools", "not_a_tool", tools)).toBeNull()
 		})
 	})
 

@@ -123,6 +123,7 @@ vi.mock("vscode", () => {
 			showErrorMessage: vi.fn(),
 		},
 		workspace: {
+			onDidChangeWorkspaceFolders: vi.fn(() => mockDisposable),
 			workspaceFolders: [
 				{
 					uri: { fsPath: "/mock/workspace/path" },

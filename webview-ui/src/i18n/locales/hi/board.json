@@ -24,6 +24,9 @@
 		"stop": "Stop",
 		"open": "Open task"
 	},
+	"card": {
+		"awaitingInput": "आपके उत्तर की प्रतीक्षा है"
+	},
 	"movedNotice": "This task was moved from {{from}} to {{to}}",
 	"activity": {
 		"empty": "No moves recorded yet.",
@@ -33,6 +36,19 @@
 			"passed": "PASSED",
 			"blocked": "BLOCKED"
 		}
+	},
+	"manager": {
+		"title": "Manager",
+		"description": "Walks cards from Backlog to Done on its own, one at a time. Scoped cards stay yours to approve.",
+		"modeLabel": "Mode for manager-run tasks",
+		"useColumnMode": "Use each column's mode",
+		"apiConfigLabel": "API configuration for manager-run tasks",
+		"useCurrentApiConfig": "Use current API configuration",
+		"start": "Start",
+		"stop": "Stop",
+		"running": "Running",
+		"stopped": "Stopped",
+		"inFlight": "{{active}} of {{limit}} in progress"
 	},
 	"columns": {
 		"activityLog": "Activity Log",

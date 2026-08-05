@@ -535,6 +535,13 @@ export class ContextProxy {
 			}
 		}
 
+		// Same for openAiBodyParams.
+		if (values.openAiBodyParams !== undefined) {
+			if (!values.openAiBodyParams || Object.keys(values.openAiBodyParams).length === 0) {
+				values.openAiBodyParams = {}
+			}
+		}
+
 		await this.setValues({
 			...PROVIDER_SETTINGS_KEYS.filter((key) => !isSecretStateKey(key))
 				.filter((key) => !!this.stateCache[key])

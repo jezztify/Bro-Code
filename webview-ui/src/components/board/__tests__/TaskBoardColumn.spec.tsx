@@ -1,5 +1,7 @@
 import React from "react"
 
+import type { BoardStage, BoardTask } from "@roo-code/types"
+
 import { fireEvent, render, screen } from "@/utils/test-utils"
 import { vscode } from "@/utils/vscode"
 
@@ -39,6 +41,7 @@ const renderColumn = (mode?: string) =>
 			customModes={[]}
 			mode={mode}
 			runningTaskIds={new Set()}
+			awaitingTaskIds={new Set()}
 		/>,
 	)
 
@@ -103,7 +106,7 @@ describe("TaskBoardColumn running state", () => {
 		linkedHistoryTaskId: "execution-1",
 	}
 
-	const renderInProgress = (runningTaskIds: Set<string>) =>
+	const renderInProgress = (runningTaskIds: Set<string>, awaitingTaskIds: Set<string> = new Set()) =>
 		render(
 			<TaskBoardColumn
 				column={inProgress}
@@ -111,6 +114,7 @@ describe("TaskBoardColumn running state", () => {
 				workspaceId="workspace-1"
 				customModes={[]}
 				runningTaskIds={runningTaskIds}
+				awaitingTaskIds={awaitingTaskIds}
 			/>,
 		)
 
@@ -124,6 +128,71 @@ describe("TaskBoardColumn running state", () => {
 		renderInProgress(new Set(["some-other-task"]))
 
 		expect(screen.getByRole("button", { name: "board:actions.start" })).toBeInTheDocument()
+	})
+
+	it("says so when the card's run has stopped to ask the user something", () => {
+		// Still live, so still stoppable — but nothing in the pipeline will move it on,
+		// and without this the card is indistinguishable from one that is working.
+		renderInProgress(new Set(["execution-1"]), new Set(["execution-1"]))
+
+		expect(screen.getByTestId("board-task-awaiting-task-1")).toBeInTheDocument()
+		expect(screen.getByRole("button", { name: "board:actions.stop" })).toBeInTheDocument()
+	})
+
+	it("says nothing about input on a run that is simply working", () => {
+		renderInProgress(new Set(["execution-1"]))
+
+		expect(screen.queryByTestId("board-task-awaiting-task-1")).not.toBeInTheDocument()
+	})
+
+	const renderStage = (task: Partial<BoardTask> & { stage: BoardStage }, runningTaskIds: Set<string>) =>
+		render(
+			<TaskBoardColumn
+				column={COLUMNS.find((column) => column.stage === task.stage)!}
+				tasks={[{ ...card, ...task }]}
+				workspaceId="workspace-1"
+				customModes={[]}
+				runningTaskIds={runningTaskIds}
+				awaitingTaskIds={new Set()}
+			/>,
+		)
+
+	it.each([
+		["refinement", { stage: "backlog" as const, linkedRefinementTaskId: "refine-1" }, "refine-1"],
+		["validation", { stage: "qa_validation" as const, linkedValidationTaskId: "validate-1" }, "validate-1"],
+	])("offers stop while the card's %s task is working", (_kind, task, runId) => {
+		renderStage(task, new Set([runId]))
+
+		expect(screen.getByRole("button", { name: "board:actions.stop" })).toBeInTheDocument()
+	})
+
+	it.each([
+		["refine", { stage: "backlog" as const, linkedRefinementTaskId: "refine-1" }],
+		["validate", { stage: "qa_validation" as const, linkedValidationTaskId: "validate-1" }],
+	])("offers %s again once that task has stopped working", (action, task) => {
+		// The link outlives the run — a cancelled run stays resident, parked on the offer
+		// to resume it, and a window reload leaves the card linked to a chat nothing is
+		// hosting at all — so the button follows the working set, not the link.
+		renderStage(task, new Set())
+
+		expect(screen.getByRole("button", { name: `board:actions.${action}` })).toBeInTheDocument()
+	})
+
+	it("notices a validation run waiting on the user, not just the execution run", () => {
+		// The card the user sees blocked is held up by whichever of its runs is asking,
+		// and a QA validation run pausing on a tool approval is the common case.
+		render(
+			<TaskBoardColumn
+				column={inProgress}
+				tasks={[{ ...card, linkedValidationTaskId: "validate-1" }]}
+				workspaceId="workspace-1"
+				customModes={[]}
+				runningTaskIds={new Set(["validate-1"])}
+				awaitingTaskIds={new Set(["validate-1"])}
+			/>,
+		)
+
+		expect(screen.getByTestId("board-task-awaiting-task-1")).toBeInTheDocument()
 	})
 })
 

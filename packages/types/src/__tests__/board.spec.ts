@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest"
 
-import { formatBoardTaskNumber, parseBoardTaskNumber } from "../board.js"
+import { formatBoardTaskNumber, parseBoardCompletionVerdict, parseBoardTaskNumber } from "../board.js"
 
 describe("formatBoardTaskNumber", () => {
 	it("renders a card's number the way the board shows it", () => {
@@ -28,4 +28,52 @@ describe("parseBoardTaskNumber", () => {
 			expect(parseBoardTaskNumber(reference)).toBeUndefined()
 		},
 	)
+})
+
+describe("parseBoardCompletionVerdict", () => {
+	it.each([
+		["BLOCKED — the dev server exits before it binds a port.", "blocked"],
+		["PASSED — every criterion is met.", "passed"],
+		["PASS", "passed"],
+		["**BLOCKED**", "blocked"],
+		["## Status: BLOCKED", "blocked"],
+		["- result: PASSED", "passed"],
+		["Verdict = BLOCKED", "blocked"],
+	])("reads %j as %s", (text, expected) => {
+		expect(parseBoardCompletionVerdict(text)).toBe(expected)
+	})
+
+	it("takes the verdict a report ends on, not the one it recounts", () => {
+		const report = ["The card was BLOCKED on its previous pass.", "", "Result: PASSED"].join("\n")
+
+		expect(parseBoardCompletionVerdict(report)).toBe("passed")
+	})
+
+	it("reads the label through the reason that follows it", () => {
+		const report = [
+			"BLOCKED",
+			"",
+			"PRODUCT DEFECT: the entry list renders before its fetch resolves,",
+			"so the first paint is always empty.",
+		].join("\n")
+
+		expect(parseBoardCompletionVerdict(report)).toBe("blocked")
+	})
+
+	it.each([
+		// Prose, not a status label — a run explaining itself has not declared a verdict.
+		"The build is blocked on a missing dependency.",
+		// A per-check row inside a report, which says nothing about the run as a whole.
+		"  C[Check 3: PASS]",
+		"| build | PASS |",
+		// A field that merely names the blocker rather than being one.
+		"blocker: null",
+		"",
+	])("does not read a verdict out of %j", (text) => {
+		expect(parseBoardCompletionVerdict(text)).toBeUndefined()
+	})
+
+	it("has no verdict for a run that never stated one", () => {
+		expect(parseBoardCompletionVerdict(undefined)).toBeUndefined()
+	})
 })

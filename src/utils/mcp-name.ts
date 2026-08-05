@@ -20,6 +20,63 @@ export const MCP_TOOL_SEPARATOR = "--"
 export const MCP_TOOL_PREFIX = "mcp"
 
 /**
+ * Maximum length of a generated function name. 64 is the strictest limit across providers
+ * (Gemini and OpenAI); Anthropic allows more.
+ */
+export const MCP_TOOL_NAME_MAX_LENGTH = 64
+
+/**
+ * Maximum length of the server segment once a name has to be shortened. Chosen so the tool
+ * segment always keeps at least 33 characters, which covers essentially every real MCP tool name.
+ */
+export const MCP_SERVER_SEGMENT_MAX_LENGTH = 24
+
+/**
+ * Length of the disambiguating hash appended to a shortened segment.
+ */
+const SEGMENT_HASH_LENGTH = 4
+
+/**
+ * FNV-1a 32-bit hash, rendered in base36. Used only to keep shortened segments distinct from
+ * each other — it is not security-relevant.
+ */
+function hashSegment(value: string): string {
+	let hash = 0x811c9dc5
+	for (let i = 0; i < value.length; i++) {
+		hash ^= value.charCodeAt(i)
+		hash = Math.imul(hash, 0x01000193) >>> 0
+	}
+	return hash.toString(36).padStart(SEGMENT_HASH_LENGTH, "0").slice(-SEGMENT_HASH_LENGTH)
+}
+
+/**
+ * Shorten a single name segment to fit `maxLength`, appending a hash of the full segment so that
+ * two different names never collapse onto the same shortened form.
+ *
+ * Trailing separators are stripped before the hash is appended so the result can never contain
+ * "__" or "--", either of which would be mistaken for a segment boundary when parsing.
+ */
+function capSegment(segment: string, maxLength: number): string {
+	if (segment.length <= maxLength) {
+		return segment
+	}
+
+	const keep = segment.slice(0, Math.max(0, maxLength - SEGMENT_HASH_LENGTH - 1)).replace(/[-_]+$/, "")
+	return `${keep}_${hashSegment(segment)}`
+}
+
+/**
+ * Build the server segment of an MCP function name, shortened to fit if necessary.
+ * Exported so McpHub can register the shortened form for reverse lookup.
+ *
+ * @param serverName - The MCP server name
+ * @returns The (possibly shortened) sanitized server segment
+ */
+export function buildMcpServerSegment(serverName: string): string {
+	return capSegment(sanitizeMcpName(serverName), MCP_SERVER_SEGMENT_MAX_LENGTH)
+}
+
+/**
  * Normalize a string for comparison by treating hyphens and underscores as equivalent.
  * This is used to match tool names when models convert hyphens to underscores.
  *
@@ -120,7 +177,13 @@ export function sanitizeMcpName(name: string): string {
  * Build a full MCP tool function name from server and tool names.
  * The format is: mcp--{sanitized_server_name}--{sanitized_tool_name}
  *
- * The total length is capped at 64 characters to conform to API limits.
+ * The total length is capped at 64 characters to conform to API limits. When the name is too
+ * long, the *server* segment is shortened first: the original server name is recovered by lookup
+ * (McpHub.findServerNameBySanitizedName), whereas the tool segment is handed straight back to the
+ * MCP server by callTool() and has to survive intact. Blindly truncating the whole string chopped
+ * the tool segment instead, so the model was handed a name like
+ * "mcp--iogithubChromeDevToolschrome-devtools-mcp--performance_anal" and was then told that
+ * "performance_anal" does not exist on the server.
  *
  * @param serverName - The MCP server name
  * @param toolName - The tool name
@@ -130,15 +193,51 @@ export function buildMcpToolName(serverName: string, toolName: string): string {
 	const sanitizedServer = sanitizeMcpName(serverName)
 	const sanitizedTool = sanitizeMcpName(toolName)
 
-	// Build the full name: mcp--{server}--{tool}
-	const fullName = `${MCP_TOOL_PREFIX}${MCP_TOOL_SEPARATOR}${sanitizedServer}${MCP_TOOL_SEPARATOR}${sanitizedTool}`
+	const separatorOverhead = MCP_TOOL_PREFIX.length + MCP_TOOL_SEPARATOR.length * 2
+	const build = (server: string, tool: string) =>
+		`${MCP_TOOL_PREFIX}${MCP_TOOL_SEPARATOR}${server}${MCP_TOOL_SEPARATOR}${tool}`
 
-	// Truncate if necessary (max 64 chars for Gemini)
-	if (fullName.length > 64) {
-		return fullName.slice(0, 64)
+	const fullName = build(sanitizedServer, sanitizedTool)
+	if (fullName.length <= MCP_TOOL_NAME_MAX_LENGTH) {
+		return fullName
 	}
 
-	return fullName
+	// Over the limit: reclaim room from the server segment, then give the tool everything left.
+	const serverSegment = buildMcpServerSegment(serverName)
+	const toolBudget = MCP_TOOL_NAME_MAX_LENGTH - separatorOverhead - serverSegment.length
+
+	return build(serverSegment, capSegment(sanitizedTool, toolBudget))
+}
+
+/**
+ * Resolve the tool segment of a function name back to the server's actual tool name.
+ *
+ * Normally the segment is the tool name verbatim (or with hyphens mangled into underscores by the
+ * model, which `toolNamesMatch` handles). For the rare tool name long enough that even a shortened
+ * server segment leaves no room, the segment is a hashed short form, so fall back to rebuilding
+ * each candidate's segment and comparing.
+ *
+ * @param serverName - The original (unsanitized) MCP server name
+ * @param encodedToolSegment - The tool segment as it came back from the model
+ * @param availableToolNames - The server's actual tool names
+ * @returns The matching tool name, or null when nothing matches
+ */
+export function resolveMcpToolSegment(
+	serverName: string,
+	encodedToolSegment: string,
+	availableToolNames: string[],
+): string | null {
+	const direct = availableToolNames.find((name) => toolNamesMatch(name, encodedToolSegment))
+	if (direct) {
+		return direct
+	}
+
+	const rebuilt = availableToolNames.find((name) => {
+		const parsed = parseMcpToolName(buildMcpToolName(serverName, name))
+		return parsed !== null && toolNamesMatch(parsed.toolName, encodedToolSegment)
+	})
+
+	return rebuilt ?? null
 }
 
 /**

@@ -33,6 +33,7 @@ vi.mock("vscode", () => ({
 			get: vi.fn().mockReturnValue([]),
 			update: vi.fn(),
 		}),
+		onDidChangeWorkspaceFolders: vi.fn(() => ({ dispose: vi.fn() })),
 		onDidChangeConfiguration: vi.fn().mockImplementation(() => {
 			return {
 				dispose: vi.fn(),

@@ -182,6 +182,7 @@ vi.mock("vscode", () => ({
 			update: vi.fn(),
 		}),
 		getWorkspaceFolder: vi.fn(),
+		onDidChangeWorkspaceFolders: vi.fn(() => ({ dispose: vi.fn() })),
 		onDidChangeConfiguration: vi.fn().mockImplementation(() => {
 			return {
 				dispose: vi.fn(),
@@ -4719,5 +4720,77 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				expect(handleSpy).toHaveBeenCalledWith("current-token")
 			})
 		})
+	})
+})
+
+describe("Workspace scoping", () => {
+	let provider: ClineProvider
+	let mockContext: vscode.ExtensionContext
+	let mockOutputChannel: vscode.OutputChannel
+
+	beforeEach(async () => {
+		vi.clearAllMocks()
+		const pathUtils = await import("../../../utils/path")
+		vi.mocked(pathUtils.getWorkspacePath).mockReturnValue("/first/workspace")
+
+		mockContext = {
+			extensionPath: "/test/path",
+			extensionUri: { fsPath: "/test/path" } as vscode.Uri,
+			globalState: {
+				get: vi.fn(),
+				update: vi.fn(),
+				keys: vi.fn().mockReturnValue([]),
+			},
+			secrets: {
+				get: vi.fn(),
+				store: vi.fn(),
+				delete: vi.fn(),
+			},
+			workspaceState: {
+				get: vi.fn().mockReturnValue(undefined),
+				update: vi.fn().mockResolvedValue(undefined),
+				keys: vi.fn().mockReturnValue([]),
+			},
+			subscriptions: [],
+			extension: { packageJSON: { version: "1.0.0" } },
+			globalStorageUri: { fsPath: "/test/storage/path" },
+		} as unknown as vscode.ExtensionContext
+
+		mockOutputChannel = {
+			appendLine: vi.fn(),
+			clear: vi.fn(),
+			dispose: vi.fn(),
+		} as unknown as vscode.OutputChannel
+
+		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+	})
+
+	test("re-reads the workspace path when the window's folders change", async () => {
+		expect(provider.cwd).toBe("/first/workspace")
+
+		const pathUtils = await import("../../../utils/path")
+		vi.mocked(pathUtils.getWorkspacePath).mockReturnValue("/second/workspace")
+
+		const onDidChangeWorkspaceFolders = vi.mocked(vscode.workspace.onDidChangeWorkspaceFolders)
+		expect(onDidChangeWorkspaceFolders).toHaveBeenCalled()
+		await onDidChangeWorkspaceFolders.mock.calls[0][0]({ added: [], removed: [] })
+
+		// The chat surfaces scope task history to this path, so a stale value would keep
+		// showing the previous folder's chats.
+		expect(provider.cwd).toBe("/second/workspace")
+	})
+
+	test("drops the recent-tasks cache when the workspace changes", async () => {
+		const cacheHolder = provider as unknown as { recentTasksCache?: string[] }
+		cacheHolder.recentTasksCache = ["stale-task-id"]
+
+		const pathUtils = await import("../../../utils/path")
+		vi.mocked(pathUtils.getWorkspacePath).mockReturnValue("/second/workspace")
+
+		await provider.refreshWorkspace()
+
+		// getRecentTasks() keeps only tasks stamped with the provider's cwd, so a cache
+		// that survived the move would hand out the previous workspace's task ids.
+		expect(provider.getRecentTasks()).toEqual([])
 	})
 })

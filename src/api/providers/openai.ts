@@ -25,6 +25,10 @@ import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata, Complete
 import { handleOpenAIError } from "./utils/error-handler"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 
+// Body params the handler owns: letting a user-supplied value replace one of
+// these would change the request out from under the streaming/parsing logic.
+const RESERVED_BODY_PARAM_KEYS = new Set(["model", "messages", "stream", "stream_options"])
+
 // TODO: Rename this to OpenAICompatibleHandler. Also, I think the
 // `OpenAINativeHandler` can subclass from this, since it's obviously
 // compatible with the OpenAI API. We can also rename it to `OpenAIHandler`.
@@ -173,6 +177,9 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
+			// Custom body params are applied last so they can override the defaults above.
+			this.applyCustomBodyParams(requestOptions)
+
 			let stream
 			try {
 				stream = await this.client.chat.completions.create(
@@ -239,6 +246,9 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
+
+			// Custom body params are applied last so they can override the defaults above.
+			this.applyCustomBodyParams(requestOptions)
 
 			let response
 			try {
@@ -313,15 +323,15 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
+			// Custom body params are applied last so they can override the defaults above.
+			this.applyCustomBodyParams(requestOptions)
+
 			let response
 			try {
-				response = await this.client.chat.completions.create(
-					requestOptions,
-					{
-						...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
-						...(options?.abortSignal ? { signal: options.abortSignal } : {}),
-					},
-				)
+				response = await this.client.chat.completions.create(requestOptions, {
+					...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+					...(options?.abortSignal ? { signal: options.abortSignal } : {}),
+				})
 			} catch (error) {
 				throw handleOpenAIError(error, this.providerName)
 			}
@@ -379,6 +389,9 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
+			// Custom body params are applied last so they can override the defaults above.
+			this.applyCustomBodyParams(requestOptions)
+
 			let stream
 			try {
 				stream = await this.client.chat.completions.create(
@@ -412,6 +425,9 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// but they do support max_completion_tokens (the modern OpenAI parameter)
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
+
+			// Custom body params are applied last so they can override the defaults above.
+			this.applyCustomBodyParams(requestOptions)
 
 			let response
 			try {
@@ -529,6 +545,33 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 	protected _isAzureAiInference(baseUrl?: string): boolean {
 		const urlHost = this._getUrlHost(baseUrl)
 		return urlHost.endsWith(".services.ai.azure.com")
+	}
+
+	/**
+	 * Merges the user's custom body params into the request body.
+	 *
+	 * Applied last so a custom value wins over a handler default (e.g. `temperature`,
+	 * `max_completion_tokens`), except for the structural keys in
+	 * `RESERVED_BODY_PARAM_KEYS`, which are always left alone.
+	 */
+	protected applyCustomBodyParams<T extends object>(requestOptions: T): T {
+		const bodyParams = this.options.openAiBodyParams
+
+		if (!bodyParams) {
+			return requestOptions
+		}
+
+		for (const [key, value] of Object.entries(bodyParams)) {
+			const trimmedKey = key.trim()
+
+			if (!trimmedKey || RESERVED_BODY_PARAM_KEYS.has(trimmedKey)) {
+				continue
+			}
+
+			;(requestOptions as Record<string, unknown>)[trimmedKey] = value
+		}
+
+		return requestOptions
 	}
 
 	/**

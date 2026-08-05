@@ -1,4 +1,8 @@
-import type { BoardStage, BoardTask } from "@roo-code/types"
+import type { BoardStage } from "@roo-code/types"
+
+// Defined alongside the board schema so the manager running in the extension host
+// works each column in the same order this board paints it.
+export { compareBoardTasks } from "@roo-code/types"
 
 export interface BoardColumn {
 	stage: BoardStage
@@ -47,19 +51,7 @@ export const COLUMNS: readonly BoardColumn[] = [
  * a card describing the move that brought it here calls its columns what the board
  * calls them.
  */
-export const STAGE_LABEL_KEYS = Object.fromEntries(
-	COLUMNS.map((column) => [column.stage, column.labelKey]),
-) as Record<BoardStage, string>
-
-/**
- * Cards read top-down in the order they reached a column — a queue. Done is the
- * exception: it only grows, so the work that finished most recently is what a
- * reader wants at the top rather than buried under everything ever completed.
- * Position is the arrival order within a column, so reversing it is enough.
- */
-export const compareBoardTasks =
-	(stage: BoardStage) =>
-	(a: BoardTask, b: BoardTask): number => {
-		const arrivalOrder = a.position - b.position || a.createdAt - b.createdAt
-		return stage === "done" ? -arrivalOrder : arrivalOrder
-	}
+export const STAGE_LABEL_KEYS = Object.fromEntries(COLUMNS.map((column) => [column.stage, column.labelKey])) as Record<
+	BoardStage,
+	string
+>

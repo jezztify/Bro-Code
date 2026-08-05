@@ -4,7 +4,7 @@ import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
 import { t } from "../../i18n"
 import type { ToolUse } from "../../shared/tools"
-import { toolNamesMatch, findClosestToolName } from "../../utils/mcp-name"
+import { toolNamesMatch, findClosestToolName, resolveMcpToolSegment } from "../../utils/mcp-name"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { ensureMcpServerAllowed } from "./mcpServerRestriction"
@@ -220,6 +220,17 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 			if (!tool) {
 				// Tool not found - provide list of available tools
 				const availableToolNames = server.tools.map((tool) => tool.name)
+
+				// A tool name long enough to be shortened when the native function name was built
+				// comes back in its shortened form. Rebuild each candidate's segment to recover the
+				// real name, so the model is never penalised for calling the name we gave it.
+				const segmentMatch = resolveMcpToolSegment(serverName, toolName, availableToolNames)
+				if (segmentMatch) {
+					const matched = server.tools.find((t) => t.name === segmentMatch)
+					if (matched && matched.enabledForPrompt !== false) {
+						return { isValid: true, availableTools: availableToolNames, resolvedToolName: matched.name }
+					}
+				}
 
 				// Experimental: for weak/local models that truncate or slightly misspell tool
 				// names instead of retrying with the exact name from available_tools, try to

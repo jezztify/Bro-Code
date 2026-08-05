@@ -5,6 +5,7 @@ import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
 import { getModeBySlug } from "../../shared/modes"
+import { lockedBoardReviewRun } from "../board/boardReviewRun"
 import {
 	buildSkillApprovalMessage,
 	buildSkillResult,
@@ -100,8 +101,13 @@ export class RunSlashCommandTool extends BaseTool<"run_slash_command"> {
 				return
 			}
 
-			// Switch mode if specified in the command frontmatter
-			if (command.mode) {
+			// Switch mode if specified in the command frontmatter. A board review run is
+			// pinned to the mode its column set, so it runs the command and stays put — the
+			// command's own instructions are worth having, the mode that came attached is
+			// the same escape `switch_mode` would have been.
+			const pinnedReviewRun = lockedBoardReviewRun(task)
+
+			if (command.mode && !pinnedReviewRun) {
 				const provider = task.providerRef.deref()
 				const targetMode = getModeBySlug(command.mode, (await provider?.getState())?.customModes)
 				if (targetMode) {
@@ -121,7 +127,11 @@ export class RunSlashCommandTool extends BaseTool<"run_slash_command"> {
 			}
 
 			if (command.mode) {
-				result += `\nMode: ${command.mode}`
+				// Said outright rather than left as a bare `Mode:` line the switch never
+				// honoured, or the run spends its next turn believing it moved.
+				result += pinnedReviewRun
+					? `\nMode: ${command.mode} (not switched — a board review run stays in the mode its column assigned it)`
+					: `\nMode: ${command.mode}`
 			}
 
 			if (args) {
