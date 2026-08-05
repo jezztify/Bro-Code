@@ -1,3 +1,5 @@
+import type { ExtensionContext } from "vscode"
+
 import {
 	CLAUDE_CODE_OAUTH_CONFIG,
 	ClaudeCodeOAuthManager,
@@ -20,7 +22,7 @@ const createContext = () => {
 				store: vi.fn(async (key: string, value: string) => void values.set(key, value)),
 				delete: vi.fn(async (key: string) => void values.delete(key)),
 			},
-		} as any,
+		} as unknown as ExtensionContext,
 	}
 }
 

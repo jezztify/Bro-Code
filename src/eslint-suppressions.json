@@ -664,11 +664,6 @@
 			"count": 3
 		}
 	},
-	"core/config/__tests__/ContextProxy.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 5
-		}
-	},
 	"core/config/__tests__/CustomModesManager.exportImportSlugChange.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 5
@@ -1117,11 +1112,6 @@
 	"core/webview/__tests__/ClineProvider.sticky-profile.spec.ts": {
 		"@typescript-eslint/no-explicit-any": {
 			"count": 16
-		}
-	},
-	"core/webview/__tests__/ClineProvider.taskHistory.spec.ts": {
-		"@typescript-eslint/no-explicit-any": {
-			"count": 47
 		}
 	},
 	"core/webview/__tests__/ClineProvider.tierApiConfig.spec.ts": {

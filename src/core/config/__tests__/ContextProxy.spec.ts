@@ -1,6 +1,7 @@
 // npx vitest core/config/__tests__/ContextProxy.spec.ts
 
 import * as vscode from "vscode"
+import type { Mock } from "vitest"
 
 import { GLOBAL_STATE_KEYS, SECRET_STATE_KEYS, GLOBAL_SECRET_KEYS, WORKSPACE_STATE_KEYS } from "@roo-code/types"
 
@@ -18,12 +19,15 @@ vi.mock("vscode", () => ({
 	},
 }))
 
+type MockMemento = { get: Mock; update: Mock }
+type MockSecretStorage = { get: Mock; store: Mock; delete: Mock }
+
 describe("ContextProxy", () => {
 	let proxy: ContextProxy
-	let mockContext: any
-	let mockGlobalState: any
-	let mockWorkspaceState: any
-	let mockSecrets: any
+	let mockContext: vscode.ExtensionContext
+	let mockGlobalState: MockMemento
+	let mockWorkspaceState: MockMemento
+	let mockSecrets: MockSecretStorage
 
 	beforeEach(async () => {
 		// Reset mocks
@@ -59,7 +63,7 @@ describe("ContextProxy", () => {
 			logUri: { path: "/test/logs" },
 			extension: { packageJSON: { version: "1.0.0" } },
 			extensionMode: vscode.ExtensionMode.Development,
-		}
+		} as unknown as vscode.ExtensionContext
 
 		// Create proxy instance
 		proxy = new ContextProxy(mockContext)
@@ -750,13 +754,13 @@ Output only the summary of the conversation so far, without any additional comme
 			await proxyWithCustomPrompt.initialize()
 
 			// Seeding copies the global value into the workspace; the migration must leave it alone.
-			const updateCalls = mockWorkspaceState.update.mock.calls
-			const customSupportPromptsUpdateCalls = updateCalls.filter(
-				(call: any[]) => call[0] === "customSupportPrompts",
-			)
-			expect(customSupportPromptsUpdateCalls.every((call: any[]) => call[1]?.CONDENSE === customPrompt)).toBe(
-				true,
-			)
+			const updateCalls = mockWorkspaceState.update.mock.calls as [string, unknown][]
+			const customSupportPromptsUpdateCalls = updateCalls.filter(([key]) => key === "customSupportPrompts")
+			expect(
+				customSupportPromptsUpdateCalls.every(
+					([, value]) => (value as { CONDENSE?: string } | undefined)?.CONDENSE === customPrompt,
+				),
+			).toBe(true)
 		})
 
 		it("should not fail when customSupportPrompts is undefined", async () => {
@@ -768,10 +772,8 @@ Output only the summary of the conversation so far, without any additional comme
 			await proxyWithNoPrompts.initialize()
 
 			// Should not have called update for customSupportPrompts
-			const updateCalls = mockWorkspaceState.update.mock.calls
-			const customSupportPromptsUpdateCalls = updateCalls.filter(
-				(call: any[]) => call[0] === "customSupportPrompts",
-			)
+			const updateCalls = mockWorkspaceState.update.mock.calls as [string, unknown][]
+			const customSupportPromptsUpdateCalls = updateCalls.filter(([key]) => key === "customSupportPrompts")
 			expect(customSupportPromptsUpdateCalls.length).toBe(0)
 		})
 	})

@@ -1,13 +1,14 @@
 // pnpm --filter roo-cline test core/webview/__tests__/ClineProvider.taskHistory.spec.ts
 
 import * as vscode from "vscode"
-import type { HistoryItem, ExtensionMessage } from "@roo-code/types"
+import type { ClineMessage, HistoryItem, ExtensionMessage } from "@roo-code/types"
 import { RooCodeEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { ContextProxy } from "../../config/ContextProxy"
 import { BoardStore } from "../../board/BoardStore"
 import { ClineProvider } from "../ClineProvider"
+import type { Task } from "../../task/Task"
 
 // Mock setup
 vi.mock("p-wait-for", () => ({
@@ -179,7 +180,7 @@ vi.mock("../../../integrations/workspace/WorkspaceTracker", () => {
 })
 
 vi.mock("../../task/Task", () => ({
-	Task: vi.fn().mockImplementation(function (options: any) {
+	Task: vi.fn().mockImplementation(function (options?: { historyItem?: HistoryItem }) {
 		return {
 			api: undefined,
 			abortTask: vi.fn(),
@@ -275,7 +276,7 @@ describe("ClineProvider Task History Synchronization", () => {
 		// Initialize task history state
 		taskHistoryState = []
 
-		const globalState: Record<string, any> = {
+		const globalState: Record<string, unknown> = {
 			mode: "code",
 			currentApiConfigName: "current-config",
 			taskHistory: taskHistoryState,
@@ -290,10 +291,10 @@ describe("ClineProvider Task History Synchronization", () => {
 				get: vi.fn().mockImplementation((key: string) => {
 					return globalState[key]
 				}),
-				update: vi.fn().mockImplementation((key: string, value: any) => {
+				update: vi.fn().mockImplementation((key: string, value: unknown) => {
 					globalState[key] = value
 					if (key === "taskHistory") {
-						taskHistoryState = value
+						taskHistoryState = value as HistoryItem[]
 					}
 				}),
 				keys: vi.fn().mockImplementation(() => {
@@ -359,7 +360,7 @@ describe("ClineProvider Task History Synchronization", () => {
 		await new Promise((resolve) => setTimeout(resolve, 10))
 
 		// Mock the custom modes manager
-		;(provider as any).customModesManager = {
+		;(provider as unknown as { customModesManager: unknown }).customModesManager = {
 			updateCustomMode: vi.fn().mockResolvedValue(undefined),
 			getCustomModes: vi.fn().mockResolvedValue([]),
 			dispose: vi.fn(),
@@ -386,8 +387,24 @@ describe("ClineProvider Task History Synchronization", () => {
 	})
 
 	// Helper to find calls by message type
-	const findCallsByType = (calls: any[][], type: string) => {
+	const findCallsByType = (calls: ExtensionMessage[][], type: string) => {
 		return calls.filter((call) => call[0]?.type === type)
+	}
+
+	// The Task module is mocked, so a run only ever needs to carry its id.
+	const taskHandle = (taskId: string) => ({ taskId }) as unknown as Task
+
+	// Runs are pushed as partial stand-ins for a resident Task.
+	const pushRun = (run: unknown) => provider["taskRegistry"].push(run as unknown as Task)
+
+	/** The fields of a resident run that these tests read or mutate. */
+	type RunAsks = {
+		taskId: string
+		abort: boolean
+		abandoned: boolean
+		idleAsk?: ClineMessage
+		resumableAsk?: ClineMessage
+		interactiveAsk?: ClineMessage
 	}
 
 	describe("updateTaskHistory", () => {
@@ -410,7 +427,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			const lastCall = taskHistoryItemUpdatedCalls[taskHistoryItemUpdatedCalls.length - 1]
 			expect(lastCall[0].type).toBe("taskHistoryItemUpdated")
 			expect(lastCall[0].taskHistoryItem).toBeDefined()
-			expect(lastCall[0].taskHistoryItem.id).toBe("task-1")
+			expect(lastCall[0].taskHistoryItem?.id).toBe("task-1")
 		})
 
 		it("does not broadcast when broadcast option is false", async () => {
@@ -589,7 +606,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			)
 
 			// Verify the history is sorted (newest first)
-			const calls = mockPostMessage.mock.calls as any[][]
+			const calls = mockPostMessage.mock.calls as ExtensionMessage[][]
 			const call = calls.find((c) => c[0]?.type === "taskHistoryUpdated")
 			const sentHistory = call?.[0]?.taskHistory as HistoryItem[]
 			expect(sentHistory[0].id).toBe("new") // Newest should be first
@@ -612,7 +629,7 @@ describe("ClineProvider Task History Synchronization", () => {
 
 			await provider.broadcastTaskHistoryUpdate(items)
 
-			const calls = mockPostMessage.mock.calls as any[][]
+			const calls = mockPostMessage.mock.calls as ExtensionMessage[][]
 			const call = calls.find((c) => c[0]?.type === "taskHistoryUpdated")
 			const sentHistory = call?.[0]?.taskHistory as HistoryItem[]
 
@@ -636,7 +653,7 @@ describe("ClineProvider Task History Synchronization", () => {
 
 			await provider.broadcastTaskHistoryUpdate()
 
-			const calls = mockPostMessage.mock.calls as any[][]
+			const calls = mockPostMessage.mock.calls as ExtensionMessage[][]
 			const call = calls.find((c) => c[0]?.type === "taskHistoryUpdated")
 			const sentHistory = call?.[0]?.taskHistory as HistoryItem[]
 
@@ -809,7 +826,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			await provider.updateTaskHistory(existing, { broadcast: false })
 
 			const fakeTask = makeFakeTask("task-cb-1")
-			;(provider as any).taskCreationCallback(fakeTask)
+			provider["taskCreationCallback"](fakeTask as unknown as Task)
 
 			await fakeTask.emit(RooCodeEventName.TaskCompleted, "task-cb-1", {}, {})
 
@@ -824,7 +841,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			const updateSpy = vi.spyOn(provider, "updateTaskHistory")
 
 			const fakeTask = makeFakeTask("task-cb-2")
-			;(provider as any).taskCreationCallback(fakeTask)
+			provider["taskCreationCallback"](fakeTask as unknown as Task)
 
 			await fakeTask.emit(RooCodeEventName.TaskCompleted, "task-cb-2", {}, {})
 
@@ -843,10 +860,10 @@ describe("ClineProvider Task History Synchronization", () => {
 			await provider.updateTaskHistory(existing, { broadcast: false })
 
 			vi.spyOn(provider, "updateTaskHistory").mockRejectedValueOnce(new Error("disk full"))
-			const logSpy = vi.spyOn(provider as any, "log")
+			const logSpy = vi.spyOn(provider, "log")
 
 			const fakeTask = makeFakeTask("task-cb-3")
-			;(provider as any).taskCreationCallback(fakeTask)
+			provider["taskCreationCallback"](fakeTask as unknown as Task)
 
 			await fakeTask.emit(RooCodeEventName.TaskCompleted, "task-cb-3", {}, {})
 
@@ -884,8 +901,8 @@ describe("ClineProvider Task History Synchronization", () => {
 			})
 			const createTask = vi.spyOn(provider, "createTask").mockImplementation(
 				async () =>
-					await new Promise<any>((resolve) => {
-						void createStarted.then(() => resolve({ taskId: "execution-1" }))
+					await new Promise<Task>((resolve) => {
+						void createStarted.then(() => resolve(taskHandle("execution-1")))
 					}),
 			)
 
@@ -913,7 +930,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			const card = await createBoardCard()
 			await provider.boardStore.updateTask(card.id, { stage: "approved" })
 			await provider.boardStore.setColumnMode(card.workspaceId, "approved", "code")
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "execution-mode" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("execution-mode"))
 
 			await provider.startBoardTask(card.id)
 
@@ -924,7 +941,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			const card = await createBoardCard()
 			await provider.boardStore.updateTask(card.id, { stage: "approved" })
 			await provider.boardStore.setColumnMode(card.workspaceId, "backlog", "architect")
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "execution-mode" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("execution-mode"))
 
 			await provider.startBoardTask(card.id)
 
@@ -937,7 +954,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			await provider.boardStore.updateTask(card.id, {
 				description: "Add a toggle to the settings panel.\n\nDone when: the theme persists across reloads.",
 			})
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "execution-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("execution-1"))
 
 			await provider.startBoardTask(card.id)
 
@@ -950,7 +967,7 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("starts an unrefined card from its title alone", async () => {
 			const card = await createBoardCard("Quick fix")
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "execution-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("execution-1"))
 
 			await provider.startBoardTask(card.id)
 
@@ -960,7 +977,7 @@ describe("ClineProvider Task History Synchronization", () => {
 		it("passes a hand-written description without claiming it was refined", async () => {
 			const card = await createBoardCard("Hand written")
 			await provider.boardStore.updateTask(card.id, { description: "Some notes I typed myself." })
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "execution-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("execution-1"))
 
 			await provider.startBoardTask(card.id)
 
@@ -978,7 +995,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			await provider.boardStore.linkTaskToHistory(secondCard.id, "execution-2")
 
 			const fakeTask = makeFakeTask("execution-1")
-			;(provider as any).taskCreationCallback(fakeTask)
+			provider["taskCreationCallback"](fakeTask as unknown as Task)
 			await fakeTask.emit(RooCodeEventName.TaskCompleted, "execution-1", {}, {})
 
 			const cards = provider.boardStore.getSnapshot().tasks
@@ -989,7 +1006,7 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("moves a started card into the in progress column", async () => {
 			const card = await createBoardCard()
-			vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "execution-1" } as any)
+			vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("execution-1"))
 
 			await provider.startBoardTask(card.id)
 
@@ -1011,7 +1028,7 @@ describe("ClineProvider Task History Synchronization", () => {
 		it("refines a card in the mode assigned to its column", async () => {
 			const card = await createBoardCard()
 			await provider.boardStore.setColumnMode(card.workspaceId, "backlog", "architect")
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "refine-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("refine-1"))
 
 			await provider.refineBoardTask(card.id)
 
@@ -1021,7 +1038,7 @@ describe("ClineProvider Task History Synchronization", () => {
 		it("creates a refinement chat in board-refine mode seeded with the card", async () => {
 			const card = await createBoardCard("Add dark mode")
 			await provider.boardStore.updateTask(card.id, { description: "Follow the VS Code theme" })
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "refine-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("refine-1"))
 
 			await provider.refineBoardTask(card.id)
 
@@ -1040,7 +1057,7 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("tells the refiner to investigate the codebase before asking questions", async () => {
 			const card = await createBoardCard()
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "refine-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("refine-1"))
 
 			await provider.refineBoardTask(card.id)
 
@@ -1059,7 +1076,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			// Execution runs out of the approved column, so that is the mode a card will run in.
 			await provider.boardStore.setColumnMode(workspaceId, "approved", "code")
 			const card = provider.boardStore.getSnapshot().tasks[0]!
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "refine-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("refine-1"))
 
 			await provider.refineBoardTask(card.id)
 
@@ -1071,7 +1088,7 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("marks an empty description rather than leaving the refiner a blank field", async () => {
 			const card = await createBoardCard()
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "refine-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("refine-1"))
 
 			await provider.refineBoardTask(card.id)
 
@@ -1080,10 +1097,10 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("reopens the existing refinement chat instead of creating a second one", async () => {
 			const card = await createBoardCard()
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "refine-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("refine-1"))
 			await provider.refineBoardTask(card.id)
 			createTask.mockClear()
-			const showTaskWithId = vi.spyOn(provider, "showTaskWithId").mockResolvedValue(undefined as any)
+			const showTaskWithId = vi.spyOn(provider, "showTaskWithId").mockResolvedValue(undefined)
 
 			await provider.refineBoardTask(card.id)
 
@@ -1099,8 +1116,8 @@ describe("ClineProvider Task History Synchronization", () => {
 			})
 			const createTask = vi.spyOn(provider, "createTask").mockImplementation(
 				async () =>
-					await new Promise<any>((resolve) => {
-						void createStarted.then(() => resolve({ taskId: "refine-1" }))
+					await new Promise<Task>((resolve) => {
+						void createStarted.then(() => resolve(taskHandle("refine-1")))
 					}),
 			)
 
@@ -1127,7 +1144,7 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("tells the refiner its acceptance criteria will be validated later", async () => {
 			const card = await createBoardCard()
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "refine-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("refine-1"))
 
 			await provider.refineBoardTask(card.id)
 
@@ -1151,7 +1168,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			await provider.boardStore.updateTask(card.id, {
 				description: "Done when: the theme persists across reloads.",
 			})
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "validate-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("validate-1"))
 
 			await provider.validateBoardTask(card.id)
 
@@ -1174,7 +1191,7 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("tells the validator to verify the code itself and not to fix it", async () => {
 			const card = await createImplementedCard()
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "validate-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("validate-1"))
 
 			await provider.validateBoardTask(card.id)
 
@@ -1188,7 +1205,7 @@ describe("ClineProvider Task History Synchronization", () => {
 		it("validates a card in the mode assigned to its column", async () => {
 			const card = await createImplementedCard()
 			await provider.boardStore.setColumnMode(card.workspaceId, "qa_validation", "debug")
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "validate-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("validate-1"))
 
 			await provider.validateBoardTask(card.id)
 
@@ -1197,7 +1214,7 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("marks an unscoped card rather than leaving the validator no criteria", async () => {
 			const card = await createImplementedCard()
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "validate-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("validate-1"))
 
 			await provider.validateBoardTask(card.id)
 
@@ -1206,11 +1223,11 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("reopens the existing validation chat instead of creating a second one", async () => {
 			const card = await createImplementedCard()
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "validate-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("validate-1"))
 			await provider.validateBoardTask(card.id)
 			await provider.updateTaskHistory(createHistoryItem({ id: "validate-1", task: "Validate" }))
 			createTask.mockClear()
-			const showTaskWithId = vi.spyOn(provider, "showTaskWithId").mockResolvedValue(undefined as any)
+			const showTaskWithId = vi.spyOn(provider, "showTaskWithId").mockResolvedValue(undefined)
 
 			await provider.validateBoardTask(card.id)
 
@@ -1224,10 +1241,10 @@ describe("ClineProvider Task History Synchronization", () => {
 			const card = await createImplementedCard()
 			const createTask = vi
 				.spyOn(provider, "createTask")
-				.mockResolvedValueOnce({ taskId: "validate-gone" } as any)
-				.mockResolvedValueOnce({ taskId: "validate-2" } as any)
+				.mockResolvedValueOnce(taskHandle("validate-gone"))
+				.mockResolvedValueOnce(taskHandle("validate-2"))
 			await provider.validateBoardTask(card.id)
-			const showTaskWithId = vi.spyOn(provider, "showTaskWithId").mockResolvedValue(undefined as any)
+			const showTaskWithId = vi.spyOn(provider, "showTaskWithId").mockResolvedValue(undefined)
 
 			await provider.validateBoardTask(card.id)
 
@@ -1247,8 +1264,8 @@ describe("ClineProvider Task History Synchronization", () => {
 			})
 			const createTask = vi.spyOn(provider, "createTask").mockImplementation(
 				async () =>
-					await new Promise<any>((resolve) => {
-						void createStarted.then(() => resolve({ taskId: "validate-1" }))
+					await new Promise<Task>((resolve) => {
+						void createStarted.then(() => resolve(taskHandle("validate-1")))
 					}),
 			)
 
@@ -1286,7 +1303,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			const workspaceId = provider.boardStore.getSnapshot().selectedWorkspaceId!
 			await provider.boardStore.createTask({ workspaceId, title: "Hand moved", stage: "qa_validation" })
 			const card = provider.boardStore.getSnapshot().tasks[0]!
-			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue({ taskId: "validate-1" } as any)
+			const createTask = vi.spyOn(provider, "createTask").mockResolvedValue(taskHandle("validate-1"))
 
 			await provider.validateBoardTask(card.id)
 
@@ -1306,8 +1323,8 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("cancels the running execution task and returns the card to approved", async () => {
 			const card = await createStartedCard()
-			vi.spyOn((provider as any).taskRegistry, "hasRunning").mockReturnValue(true)
-			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "execution-1" } as any)
+			vi.spyOn(provider["taskRegistry"], "hasRunning").mockReturnValue(true)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue(taskHandle("execution-1"))
 			const cancelTask = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
 
 			await provider.stopBoardTask(card.id)
@@ -1319,9 +1336,9 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("focuses the linked task before cancelling when another task is current", async () => {
 			const card = await createStartedCard()
-			vi.spyOn((provider as any).taskRegistry, "hasRunning").mockReturnValue(true)
-			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "other-task" } as any)
-			const setCurrent = vi.spyOn((provider as any).taskRegistry, "setCurrent").mockReturnValue(undefined)
+			vi.spyOn(provider["taskRegistry"], "hasRunning").mockReturnValue(true)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue(taskHandle("other-task"))
+			const setCurrent = vi.spyOn(provider["taskRegistry"], "setCurrent").mockReturnValue(undefined)
 			const cancelTask = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
 
 			await provider.stopBoardTask(card.id)
@@ -1333,7 +1350,7 @@ describe("ClineProvider Task History Synchronization", () => {
 		it("reports whether the card's execution run is still live, so the board can pick Stop or Start", async () => {
 			await createStartedCard()
 			const run = { taskId: "execution-1", abort: false, abandoned: false }
-			;(provider as any).taskRegistry.push(run)
+			pushRun(run)
 
 			expect((await provider.getStateToPostToWebview()).runningTaskIds).toContain("execution-1")
 
@@ -1349,8 +1366,8 @@ describe("ClineProvider Task History Synchronization", () => {
 			// Cancelling rehydrates the task, so it is resident again and only the ask it
 			// is parked on says it has stopped. A card reading residency would go on
 			// offering to stop a run that is already over.
-			const run = { taskId: "execution-1", abort: false, abandoned: false, resumableAsk: undefined as any }
-			;(provider as any).taskRegistry.push(run)
+			const run: RunAsks = { taskId: "execution-1", abort: false, abandoned: false, resumableAsk: undefined }
+			pushRun(run)
 
 			expect((await provider.getStateToPostToWebview()).runningTaskIds).toContain("execution-1")
 
@@ -1361,8 +1378,8 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("stops reporting a run parked on the result it signed off with", async () => {
 			await createStartedCard()
-			const run = { taskId: "execution-1", abort: false, abandoned: false, idleAsk: undefined as any }
-			;(provider as any).taskRegistry.push(run)
+			const run: RunAsks = { taskId: "execution-1", abort: false, abandoned: false, idleAsk: undefined }
+			pushRun(run)
 			run.idleAsk = { type: "ask", ask: "completion_result", ts: 1 }
 
 			expect((await provider.getStateToPostToWebview()).runningTaskIds).not.toContain("execution-1")
@@ -1370,8 +1387,8 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("reports a run that has stopped to ask the user something", async () => {
 			await createStartedCard()
-			const run = { taskId: "execution-1", abort: false, abandoned: false, interactiveAsk: undefined as any }
-			;(provider as any).taskRegistry.push(run)
+			const run: RunAsks = { taskId: "execution-1", abort: false, abandoned: false, interactiveAsk: undefined }
+			pushRun(run)
 
 			// Working: nothing is being waited on that the user could answer.
 			expect((await provider.getStateToPostToWebview()).awaitingTaskIds).not.toContain("execution-1")
@@ -1387,7 +1404,7 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("still resets the card when the execution task is no longer running", async () => {
 			const card = await createStartedCard()
-			vi.spyOn((provider as any).taskRegistry, "hasRunning").mockReturnValue(false)
+			vi.spyOn(provider["taskRegistry"], "hasRunning").mockReturnValue(false)
 			const cancelTask = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
 
 			await provider.stopBoardTask(card.id)
@@ -1402,8 +1419,8 @@ describe("ClineProvider Task History Synchronization", () => {
 			await provider.boardStore.createTask({ workspaceId, title: "Board task", stage: "backlog" })
 			const card = provider.boardStore.getSnapshot().tasks[0]!
 			await provider.boardStore.linkRefinementTask(card.id, "stop-refine-1")
-			vi.spyOn((provider as any).taskRegistry, "hasRunning").mockReturnValue(true)
-			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "stop-refine-1" } as any)
+			vi.spyOn(provider["taskRegistry"], "hasRunning").mockReturnValue(true)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue(taskHandle("stop-refine-1"))
 			const cancelTask = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
 
 			await provider.stopBoardRefinement(card.id)
@@ -1435,8 +1452,8 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("cancels the running validation task and leaves the card in qa validation", async () => {
 			const card = await createValidatingCard("stop-execution-1", "stop-validate-1")
-			vi.spyOn((provider as any).taskRegistry, "hasRunning").mockReturnValue(true)
-			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "stop-validate-1" } as any)
+			vi.spyOn(provider["taskRegistry"], "hasRunning").mockReturnValue(true)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue(taskHandle("stop-validate-1"))
 			const cancelTask = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
 
 			await provider.stopBoardValidation(card.id)
@@ -1453,9 +1470,9 @@ describe("ClineProvider Task History Synchronization", () => {
 
 		it("focuses the validation task before cancelling when another task is current", async () => {
 			const card = await createValidatingCard("stop-execution-2", "stop-validate-2")
-			vi.spyOn((provider as any).taskRegistry, "hasRunning").mockReturnValue(true)
-			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "other-task" } as any)
-			const setCurrent = vi.spyOn((provider as any).taskRegistry, "setCurrent").mockReturnValue(undefined)
+			vi.spyOn(provider["taskRegistry"], "hasRunning").mockReturnValue(true)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue(taskHandle("other-task"))
+			const setCurrent = vi.spyOn(provider["taskRegistry"], "setCurrent").mockReturnValue(undefined)
 			const cancelTask = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
 
 			await provider.stopBoardValidation(card.id)
@@ -1490,12 +1507,12 @@ describe("ClineProvider Task History Synchronization", () => {
 				abandoned: false,
 				idleAsk: { ts: 1 },
 				resumableAsk: undefined,
-				handleWebviewAskResponse: vi.fn(function (this: any) {
+				handleWebviewAskResponse: vi.fn(function (this: { idleAsk?: unknown }) {
 					this.idleAsk = undefined
 				}),
 			}
-			;(provider as any).taskRegistry.push(run)
-			vi.spyOn(provider, "getCurrentTask").mockReturnValue(run as any)
+			pushRun(run)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue(run as unknown as Task)
 
 			await provider.resumeBoardTask(card.id, "Fix the found issues")
 
@@ -1506,7 +1523,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			await createStartedCard()
 			// A run parked on its completion holds messages its last save may not have
 			// reached, so the resident copy is the one that has to be read.
-			;(provider as any).taskRegistry.push({
+			pushRun({
 				taskId: "validate-1",
 				abort: false,
 				abandoned: false,
@@ -1516,14 +1533,14 @@ describe("ClineProvider Task History Synchronization", () => {
 				],
 			})
 
-			await expect((provider as any).readBoardCompletionMessage("validate-1")).resolves.toBe(
+			await expect(provider["readBoardCompletionMessage"]("validate-1")).resolves.toBe(
 				"Criterion 2 not met: parser.ts:88.",
 			)
 		})
 
 		it("takes the most recent verdict when a run has signed off more than once", async () => {
 			await createStartedCard()
-			;(provider as any).taskRegistry.push({
+			pushRun({
 				taskId: "validate-twice",
 				abort: false,
 				abandoned: false,
@@ -1533,21 +1550,21 @@ describe("ClineProvider Task History Synchronization", () => {
 				],
 			})
 
-			await expect((provider as any).readBoardCompletionMessage("validate-twice")).resolves.toBe(
+			await expect(provider["readBoardCompletionMessage"]("validate-twice")).resolves.toBe(
 				"Second pass: one criterion unmet.",
 			)
 		})
 
 		it("reports no verdict for a run that never signed off", async () => {
 			await createStartedCard()
-			;(provider as any).taskRegistry.push({
+			pushRun({
 				taskId: "validate-unfinished",
 				abort: false,
 				abandoned: false,
 				clineMessages: [{ type: "say", say: "text", text: "Still checking", ts: 1 }],
 			})
 
-			await expect((provider as any).readBoardCompletionMessage("validate-unfinished")).resolves.toBeUndefined()
+			await expect(provider["readBoardCompletionMessage"]("validate-unfinished")).resolves.toBeUndefined()
 		})
 
 		it("refuses to resume a card that was never started", async () => {
@@ -1601,7 +1618,7 @@ describe("ClineProvider Task History Synchronization", () => {
 		 * find a previous test's registry entry instead of this one.
 		 */
 		const signOff = (taskId: string, text: string) =>
-			(provider as any).taskRegistry.push({
+			pushRun({
 				taskId,
 				abort: false,
 				abandoned: false,
@@ -1617,12 +1634,12 @@ describe("ClineProvider Task History Synchronization", () => {
 				idleAsk: { ts: 1 },
 				resumableAsk: undefined,
 				clineMessages: [],
-				handleWebviewAskResponse: vi.fn(function (this: any) {
+				handleWebviewAskResponse: vi.fn(function (this: { idleAsk?: unknown }) {
 					this.idleAsk = undefined
 				}),
 			}
-			;(provider as any).taskRegistry.push(run)
-			vi.spyOn(provider, "getCurrentTask").mockReturnValue(run as any)
+			pushRun(run)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue(run as unknown as Task)
 			return run
 		}
 
@@ -1690,7 +1707,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			const card = provider.boardStore.getSnapshot().tasks[0]!
 			await provider.boardStore.linkTaskToHistory(card.id, "execution-live")
 			const run = { taskId: "execution-live", abort: false, abandoned: false, handleWebviewAskResponse: vi.fn() }
-			;(provider as any).taskRegistry.push(run)
+			pushRun(run)
 
 			await provider.startBoardTask(card.id)
 
